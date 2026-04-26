@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html {
+    font-family: Inter, system-ui, sans-serif;
+  }
+
+  code,
+  .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+}
+
+@layer utilities {
+  /* Duplicate-detection highlight: brief yellow tint that fades to default. */
+  @keyframes flash-bg {
+    0% {
+      background-color: rgb(254 240 138 / 0.9); /* amber-200 */
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+  .animate-flash {
+    animation: flash-bg 1s ease-out;
+  }
+}

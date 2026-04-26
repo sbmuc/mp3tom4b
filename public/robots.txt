@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mp3tom4b.com/sitemap.xml
