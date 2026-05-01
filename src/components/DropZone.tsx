@@ -115,8 +115,7 @@ export default function DropZone() {
     const items = e.dataTransfer?.items
     if (!items) return
     for (let i = 0; i < items.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const entry = (items[i] as any).webkitGetAsEntry?.()
+      const entry = (items[i] as unknown as { webkitGetAsEntry?: () => FileSystemEntry }).webkitGetAsEntry?.()
       if (entry?.isDirectory) {
         folderNameRef.current = entry.name as string
         break
