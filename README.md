@@ -12,13 +12,20 @@ Other web converters (CloudConvert, Vertopal, Movavi, etc.) upload your files to
 
 ## Features
 
-- Drag-and-drop multi-file input
-- Each file becomes a chapter, in your chosen order
-- Editable chapter titles (auto-generated from filenames)
-- Embedded cover art (JPG/PNG)
-- Full audiobook metadata (title, author, narrator, year, genre)
-- 100% client-side — files never leave your browser
-- Free, no sign-up, no ads, no upload size limits
+- Drag-and-drop multi-file input — drop audio files and a cover image together, or a whole folder.
+- Each file becomes a chapter, in your chosen order, with editable titles.
+- Auto-fill of audiobook metadata from embedded tags, plus optional online lookup via iTunes / Open Library (only metadata leaves the browser, only on explicit click).
+- Embedded cover art (JPG / PNG / WebP), auto-resized to 1200×1200.
+- Bitrate options from 64 kbps (audiobook standard) up to 256 kbps, with a smart default and live output-size estimate.
+- Estimated time remaining during conversion.
+- Five SEO sister pages (`/flac-to-m4b`, `/wav-to-m4b`, `/m4a-to-m4b`, `/ogg-to-m4b`, `/opus-to-m4b`).
+- Light + dark theming that follows your OS preference.
+- 100% client-side — files never leave your browser.
+- Free, no sign-up, no ads, no upload size limits.
+
+See [FEATURES.md](FEATURES.md) for the full list.
+
+_See also: [CHANGELOG.md](CHANGELOG.md), [BACKLOG.md](BACKLOG.md)._
 
 ## Tech Stack
 

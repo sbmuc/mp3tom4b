@@ -38,8 +38,24 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
       typeof format.duration === 'number' && Number.isFinite(format.duration)
         ? Math.round(format.duration * 1000)
         : undefined
+    const sourceBitrateKbps =
+      typeof format.bitrate === 'number' && Number.isFinite(format.bitrate) && format.bitrate > 0
+        ? Math.round(format.bitrate / 1000)
+        : undefined
+    const sourceLossless = typeof format.lossless === 'boolean' ? format.lossless : undefined
 
-    return { title, author, narrator, year, genre, chapterTitle, coverFile, durationMs }
+    return {
+      title,
+      author,
+      narrator,
+      year,
+      genre,
+      chapterTitle,
+      coverFile,
+      durationMs,
+      sourceBitrateKbps,
+      sourceLossless,
+    }
   } catch {
     return {}
   }

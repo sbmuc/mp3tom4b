@@ -39,9 +39,9 @@ export default function Footer() {
           </nav>
         </div>
 
-        <div className="mt-6 text-center text-xs text-zinc-400 dark:text-zinc-600">
+        <div className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-500">
           © 2026 Burcevski ICT · KvK 74404172 ·{' '}
-          <a href="mailto:sebas.bur@gmail.com" className="hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors">
+          <a href="mailto:sebas.bur@gmail.com" className="transition-colors hover:text-zinc-800 dark:hover:text-zinc-200">
             Contact
           </a>{' '}
           · Built in Amersfoort by{' '}
@@ -49,7 +49,7 @@ export default function Footer() {
             href="https://burcevski.nl"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors"
+            className="transition-colors hover:text-zinc-800 dark:hover:text-zinc-200"
           >
             Burcevski ICT
           </a>

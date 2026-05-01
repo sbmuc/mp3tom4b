@@ -1,7 +1,7 @@
 'use client'
 
 import { useConversionStore } from '@/lib/store/conversionStore'
-import type { Genre } from '@/types'
+import type { Genre, MetadataSource } from '@/types'
 
 const GENRES: Genre[] = ['Audiobook', 'Podcast', 'Lecture', 'Other']
 const CURRENT_YEAR = new Date().getFullYear()
@@ -13,9 +13,23 @@ function isValidYear(value: string): boolean {
   return n >= 1900 && n <= 2099
 }
 
+const SOURCE_LABEL: Record<MetadataSource, string> = {
+  itunes: 'from iTunes',
+  openlibrary: 'from Open Library',
+}
+
+function VerifiedBadge({ source }: { source: MetadataSource }) {
+  return (
+    <span className="ml-2 inline-flex items-center rounded bg-accent-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-700 dark:bg-accent-900/40 dark:text-accent-300">
+      {SOURCE_LABEL[source]}
+    </span>
+  )
+}
+
 export default function MetadataForm() {
   const metadata = useConversionStore((s) => s.metadata)
   const setMetadata = useConversionStore((s) => s.setMetadata)
+  const verifiedFields = useConversionStore((s) => s.verifiedFields)
 
   const titleMissing = metadata.title.trim() === ''
   const authorMissing = metadata.author.trim() === ''
@@ -38,6 +52,7 @@ export default function MetadataForm() {
         <div className="sm:col-span-2">
           <label htmlFor="md-title" className={labelClass}>
             Title <span className="text-rose-500">*</span>
+            {verifiedFields.title && <VerifiedBadge source={verifiedFields.title} />}
           </label>
           <input
             id="md-title"
@@ -54,6 +69,7 @@ export default function MetadataForm() {
         <div>
           <label htmlFor="md-author" className={labelClass}>
             Author <span className="text-rose-500">*</span>
+            {verifiedFields.author && <VerifiedBadge source={verifiedFields.author} />}
           </label>
           <input
             id="md-author"
@@ -70,6 +86,7 @@ export default function MetadataForm() {
         <div>
           <label htmlFor="md-narrator" className={labelClass}>
             Narrator <span className="text-zinc-400">(optional)</span>
+            {verifiedFields.narrator && <VerifiedBadge source={verifiedFields.narrator} />}
           </label>
           <input
             id="md-narrator"
@@ -84,6 +101,7 @@ export default function MetadataForm() {
         <div>
           <label htmlFor="md-year" className={labelClass}>
             Year <span className="text-zinc-400">(optional)</span>
+            {verifiedFields.year && <VerifiedBadge source={verifiedFields.year} />}
           </label>
           <input
             id="md-year"

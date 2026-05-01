@@ -9,15 +9,21 @@ function sanitizeFilename(value: string): string {
   return value.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim()
 }
 
+function ensureM4bExtension(name: string): string {
+  return /\.m4b$/i.test(name) ? name : `${name}.m4b`
+}
+
 export default function DownloadCard() {
   const outputBlob = useConversionStore((s) => s.outputBlob)
   const metadata = useConversionStore((s) => s.metadata)
   const reset = useConversionStore((s) => s.reset)
   const [url, setUrl] = useState<string | null>(null)
+  const [override, setOverride] = useState<string>('')
 
   useEffect(() => {
     if (!outputBlob) {
       setUrl(null)
+      setOverride('')
       return
     }
     const objectUrl = URL.createObjectURL(outputBlob)
@@ -29,7 +35,13 @@ export default function DownloadCard() {
 
   const safeAuthor = sanitizeFilename(metadata.author) || 'Unknown Author'
   const safeTitle = sanitizeFilename(metadata.title) || 'Untitled'
-  const filename = `${safeAuthor} - ${safeTitle}.m4b`
+  const autoFilename = `${safeAuthor} - ${safeTitle}.m4b`
+
+  const overrideTrimmed = override.trim()
+  const resolved = overrideTrimmed
+    ? ensureM4bExtension(sanitizeFilename(overrideTrimmed) || autoFilename)
+    : autoFilename
+  const isCustom = overrideTrimmed.length > 0 && resolved !== autoFilename
 
   return (
     <div
@@ -43,14 +55,44 @@ export default function DownloadCard() {
             Your audiobook is ready
           </p>
           <p className="mt-0.5 font-mono text-xs text-emerald-700 dark:text-emerald-300">
-            {filename} · {formatBytes(outputBlob.size)}
+            {resolved} · {formatBytes(outputBlob.size)}
           </p>
         </div>
       </div>
+
+      <div className="mt-3">
+        <label
+          htmlFor="output-filename"
+          className="block text-xs font-medium text-emerald-900 dark:text-emerald-100"
+        >
+          Filename <span className="font-normal text-emerald-700/70 dark:text-emerald-300/70">(optional)</span>
+        </label>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <input
+            id="output-filename"
+            type="text"
+            value={override}
+            onChange={(e) => setOverride(e.target.value)}
+            placeholder={autoFilename}
+            className="min-w-0 flex-1 rounded-md border border-emerald-300 bg-white px-2.5 py-1.5 font-mono text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-emerald-800 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+          />
+          {isCustom && (
+            <button
+              type="button"
+              onClick={() => setOverride('')}
+              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-white px-2 py-1 text-xs text-emerald-800 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-emerald-800 dark:bg-zinc-950 dark:text-emerald-200 dark:hover:bg-zinc-900"
+            >
+              <RotateCcw size={12} aria-hidden="true" />
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="mt-4 flex flex-wrap gap-2">
         <a
           href={url}
-          download={filename}
+          download={resolved}
           className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           <Download size={16} aria-hidden="true" />

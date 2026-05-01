@@ -3,6 +3,11 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
+import {
+  DEFAULT_BITRATE,
+  estimateOutputBytes,
+  formatEstimatedSize,
+} from '@/lib/audio/bitrate'
 import type { Bitrate } from '@/types'
 
 interface Option {
@@ -14,15 +19,20 @@ interface Option {
 const OPTIONS: Option[] = [
   { value: 64, label: '64 kbps', hint: 'recommended for audiobooks (spoken word)' },
   { value: 96, label: '96 kbps', hint: 'higher quality (music or audio with effects)' },
-  { value: 128, label: '128 kbps', hint: 'best quality (larger file size)' },
+  { value: 128, label: '128 kbps', hint: 'best quality for most use cases' },
+  { value: 192, label: '192 kbps', hint: 'high quality for music-heavy content' },
+  { value: 256, label: '256 kbps', hint: 'maximum quality (large file size)' },
 ]
 
-const DEFAULT_BITRATE: Bitrate = 64
 const ADVANCED_OPTIONS = OPTIONS.filter((o) => o.value !== DEFAULT_BITRATE)
 
 export default function BitrateSelector() {
   const bitrate = useConversionStore((s) => s.bitrate)
   const setBitrate = useConversionStore((s) => s.setBitrate)
+  const bitrateUserTouched = useConversionStore((s) => s.bitrateUserTouched)
+  const totalSeconds = useConversionStore((s) =>
+    s.files.reduce((acc, f) => acc + (f.duration ?? 0), 0)
+  )
   const [userExpanded, setUserExpanded] = useState<boolean>(
     () => useConversionStore.getState().bitrate !== DEFAULT_BITRATE
   )
@@ -64,6 +74,12 @@ export default function BitrateSelector() {
   // When collapsed, only the default option is rendered (the recommended pick).
   const visibleOptions = expanded ? OPTIONS : OPTIONS.filter((o) => o.value === DEFAULT_BITRATE)
 
+  const estimatedBytes = totalSeconds > 0 ? estimateOutputBytes(totalSeconds, bitrate) : 0
+  const estimateLabel = formatEstimatedSize(estimatedBytes)
+
+  // Smart suggestion bumped the bitrate above the standard default automatically.
+  const showSmartHint = !bitrateUserTouched && bitrate !== DEFAULT_BITRATE
+
   return (
     <section aria-label="Output bitrate" className="mt-6">
       <h2 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
@@ -74,24 +90,41 @@ export default function BitrateSelector() {
         {visibleOptions.map(radio)}
       </div>
 
-      {/* Toggle is hidden when a non-default bitrate is active — to collapse,
-          the user has to first re-pick the default 64 kbps. */}
-      {!isNonDefault && (
-        <button
-          type="button"
-          onClick={() => setUserExpanded((v) => !v)}
-          aria-expanded={expanded}
-          aria-controls="bitrate-advanced"
-          className="mt-2 inline-flex items-center gap-1 text-xs text-accent-700 hover:text-accent-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-accent-400 dark:hover:text-accent-300"
-        >
-          <ChevronDown
-            size={14}
-            aria-hidden="true"
-            className={`transition-transform ${expanded ? 'rotate-180' : 'rotate-0'}`}
-          />
-          {expanded ? 'Show fewer options' : 'Show advanced options'}
-        </button>
-      )}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+        {/* Toggle is hidden when a non-default bitrate is active — to collapse,
+            the user has to first re-pick the default 64 kbps. */}
+        {!isNonDefault && (
+          <button
+            type="button"
+            onClick={() => setUserExpanded((v) => !v)}
+            aria-expanded={expanded}
+            aria-controls="bitrate-advanced"
+            className="inline-flex items-center gap-1 text-xs text-accent-700 hover:text-accent-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-accent-400 dark:hover:text-accent-300"
+          >
+            <ChevronDown
+              size={14}
+              aria-hidden="true"
+              className={`transition-transform ${expanded ? 'rotate-180' : 'rotate-0'}`}
+            />
+            {expanded ? 'Show fewer options' : 'Show advanced options'}
+          </button>
+        )}
+
+        {showSmartHint && (
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">
+            Suggested based on your source files.
+          </span>
+        )}
+
+        {estimateLabel && (
+          <span
+            aria-live="polite"
+            className="ml-auto font-mono text-xs text-zinc-500 dark:text-zinc-400"
+          >
+            {estimateLabel} at {bitrate} kbps
+          </span>
+        )}
+      </div>
 
       {/* Hidden hint targets so aria-controls has something stable to point at. */}
       <span id="bitrate-advanced" className="sr-only">

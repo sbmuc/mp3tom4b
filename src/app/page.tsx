@@ -1,15 +1,6 @@
-import BitrateSelector from '@/components/BitrateSelector'
-import ConvertButton from '@/components/ConvertButton'
-import CoverUpload from '@/components/CoverUpload'
-import DownloadCard from '@/components/DownloadCard'
-import DropZone from '@/components/DropZone'
-import DuplicateNotice from '@/components/DuplicateNotice'
-import FileList from '@/components/FileList'
+import ConverterTool from '@/components/ConverterTool'
 import HeroSection from '@/components/HeroSection'
 import HowItWorks from '@/components/HowItWorks'
-import MetadataForm from '@/components/MetadataForm'
-import PrivacyBadge from '@/components/PrivacyBadge'
-import ProgressBar from '@/components/ProgressBar'
 import WhyMp3ToM4b from '@/components/WhyMp3ToM4b'
 
 const softwareApplicationLd = {
@@ -43,20 +34,7 @@ export default function Home() {
       <div className="mx-auto max-w-5xl px-4 py-6">
         <HeroSection />
 
-        <div className="mt-4">
-          <DropZone />
-          <div className="mt-3 flex justify-center">
-            <PrivacyBadge />
-          </div>
-          <DuplicateNotice />
-          <FileList />
-          <MetadataForm />
-          <CoverUpload />
-          <BitrateSelector />
-          <ConvertButton />
-          <ProgressBar />
-          <DownloadCard />
-        </div>
+        <ConverterTool />
 
         <HowItWorks />
         <WhyMp3ToM4b />

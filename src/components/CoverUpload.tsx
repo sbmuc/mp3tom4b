@@ -66,9 +66,9 @@ export default function CoverUpload() {
                 alt="Cover preview"
                 className="h-full w-full object-cover"
               />
-              {coverSource === 'auto' && (
+              {(coverSource === 'auto' || coverSource === 'drop') && (
                 <span className="absolute bottom-1 left-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-center text-[10px] font-medium text-white">
-                  auto-detected — click to replace
+                  {coverSource === 'drop' ? 'from drop — click to replace' : 'from audio file — click to replace'}
                 </span>
               )}
             </div>

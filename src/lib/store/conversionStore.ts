@@ -2,6 +2,7 @@
 
 import { orderBy } from 'natural-orderby'
 import { create } from 'zustand'
+import { DEFAULT_BITRATE, suggestBitrate } from '@/lib/audio/bitrate'
 import type {
   AudioFile,
   Bitrate,
@@ -11,6 +12,7 @@ import type {
   DuplicateNotice,
   ExtractedMetadata,
   Genre,
+  MetadataSource,
   SortDirection,
 } from '@/types'
 
@@ -23,6 +25,7 @@ let flashTimeout: ReturnType<typeof setTimeout> | null = null
 
 type MetadataField = keyof ConversionMetadata
 type TouchedMap = Partial<Record<MetadataField, true>>
+type VerifiedMap = Partial<Record<MetadataField, MetadataSource>>
 
 interface ConversionStore {
   // Files
@@ -48,19 +51,29 @@ interface ConversionStore {
   setMetadata: (patch: Partial<ConversionMetadata>) => void
   /** Per-field user-touched flags */
   userTouched: TouchedMap
+  /** Per-field flag set when the value came from a verified online source (iTunes / Open Library). */
+  verifiedFields: VerifiedMap
+  /** Apply user-selected metadata from an external source. Marks each patched field with `source`. */
+  applyVerifiedMetadata: (patch: Partial<ConversionMetadata>, source: MetadataSource) => void
 
   // Cover
   coverFile: File | null
   coverSource: CoverSource
   /** User-driven cover upload. Always wins over auto-detected. */
   setCoverFile: (file: File | null) => void
+  /** Cover set automatically by the unified drop zone (image dropped alongside audio). */
+  setCoverFileDrop: (file: File) => void
 
   // Auto-fill from extracted metadata (applies only to untouched fields / non-user cover)
   applyAutoMetadata: (extracted: ExtractedMetadata) => void
 
   // Bitrate
   bitrate: Bitrate
+  /** True once the user has explicitly chosen a bitrate. Smart suggestions only run before this flips. */
+  bitrateUserTouched: boolean
   setBitrate: (bitrate: Bitrate) => void
+  /** Apply the smart-bitrate rule based on the current files and genre. No-op if user has touched bitrate. */
+  applySmartBitrate: () => void
 
   // Conversion state
   progress: ConversionProgress
@@ -120,18 +133,35 @@ export const useConversionStore = create<ConversionStore>((set) => ({
 
   metadata: defaultMetadata,
   userTouched: {},
+  verifiedFields: {},
   setMetadata: (patch) =>
     set((state) => {
       const touched: TouchedMap = { ...state.userTouched }
+      const verified: VerifiedMap = { ...state.verifiedFields }
       for (const key of Object.keys(patch) as MetadataField[]) {
         touched[key] = true
+        // A user edit clears the "from <source>" badge for that field.
+        delete verified[key]
       }
-      return { metadata: { ...state.metadata, ...patch }, userTouched: touched }
+      return {
+        metadata: { ...state.metadata, ...patch },
+        userTouched: touched,
+        verifiedFields: verified,
+      }
+    }),
+  applyVerifiedMetadata: (patch: Partial<ConversionMetadata>, source: MetadataSource) =>
+    set((state) => {
+      const verified: VerifiedMap = { ...state.verifiedFields }
+      for (const key of Object.keys(patch) as MetadataField[]) {
+        verified[key] = source
+      }
+      return { metadata: { ...state.metadata, ...patch }, verifiedFields: verified }
     }),
 
   coverFile: null,
   coverSource: null,
   setCoverFile: (file) => set({ coverFile: file, coverSource: file ? 'user' : null }),
+  setCoverFileDrop: (file) => set({ coverFile: file, coverSource: 'drop' }),
 
   applyAutoMetadata: (extracted) =>
     set((state) => {
@@ -139,6 +169,7 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       const fields: MetadataField[] = ['title', 'author', 'narrator', 'year', 'genre']
       for (const field of fields) {
         if (state.userTouched[field]) continue
+        if (state.verifiedFields[field]) continue
         const value = extracted[field as keyof ExtractedMetadata]
         if (value === undefined || value === null || value === '') continue
         patch[field] = value as never
@@ -180,8 +211,16 @@ export const useConversionStore = create<ConversionStore>((set) => ({
     }, 1100)
   },
 
-  bitrate: 64,
-  setBitrate: (bitrate) => set({ bitrate }),
+  bitrate: DEFAULT_BITRATE,
+  bitrateUserTouched: false,
+  setBitrate: (bitrate) => set({ bitrate, bitrateUserTouched: true }),
+  applySmartBitrate: () =>
+    set((state) => {
+      if (state.bitrateUserTouched) return {}
+      const next = suggestBitrate({ files: state.files, genre: state.metadata.genre })
+      if (next === state.bitrate) return {}
+      return { bitrate: next }
+    }),
 
   progress: defaultProgress,
   setProgress: (progress) => set({ progress }),
@@ -202,9 +241,11 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       sortDirection: 'asc',
       metadata: defaultMetadata,
       userTouched: {},
+      verifiedFields: {},
       coverFile: null,
       coverSource: null,
-      bitrate: 64,
+      bitrate: DEFAULT_BITRATE,
+      bitrateUserTouched: false,
       progress: defaultProgress,
       outputBlob: null,
       duplicateNotice: null,

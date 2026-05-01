@@ -18,7 +18,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'Is this really private? Are my files uploaded?',
-    a: 'No. The entire conversion runs in your browser using a WebAssembly build of FFmpeg. You can confirm this by opening your browser\'s network tab while converting: there are no audio uploads. The source code is published on GitHub so you can audit it.',
+    a: 'The entire conversion runs locally in your browser using a WebAssembly build of FFmpeg. You can confirm this by opening your browser\'s network tab while converting: there are no audio uploads. The source code is published on GitHub so you can audit it.',
   },
   {
     q: 'Which audio file types are supported?',
@@ -39,6 +39,10 @@ const FAQS: { q: string; a: string }[] = [
   {
     q: 'Can I use this offline?',
     a: 'Mostly yes. After the first conversion, the FFmpeg WebAssembly core is cached by your browser, so subsequent conversions work without an internet connection. The first load needs network access to fetch the wasm binary.',
+  },
+  {
+    q: 'Why is the narrator missing from online lookup results?',
+    a: 'Audiobook narrator information isn\'t consistently exposed by the metadata sources we query. iTunes audiobook entries usually only carry the author in their public search API, and Open Library is book-centric and rarely lists narrators at all. If you type a narrator into the form yourself, mp3tom4b keeps that value as you entered it — online lookups will not overwrite a narrator field you have filled in. The "Verify metadata" step also has a fallback that searches with the narrator as a stand-in author, which can find the right edition even when the narrator field itself isn\'t returned.',
   },
 ]
 

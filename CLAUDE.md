@@ -1,5 +1,9 @@
 # mp3tom4b — CLAUDE.md
 
+## Project documentation
+
+This project keeps a clean separation of past, present, and future across four files. **CLAUDE.md** (this file) is the architectural and scope source of truth — read it first to understand why decisions were made and what's in/out of scope. **FEATURES.md** is the present-tense inventory of what the product does today; consult it before adding something to confirm whether it already exists. **CHANGELOG.md** is the historical record of what shipped when, in user-facing language, newest-first; append a new entry when work ships. **BACKLOG.md** is the forward-looking list of deferred ideas, organised by version (V1.1 / V1.2 / V2 / V3 / Won't Do); pull from here, don't expand scope inline.
+
 ## Project Overview
 
 **mp3tom4b** is a free, browser-based tool that converts audio files (MP3, M4A, WAV, FLAC, OGG, Opus) into M4B audiobook files with chapters and embedded cover art. All conversion happens client-side via ffmpeg.wasm — no files are uploaded to any server.
