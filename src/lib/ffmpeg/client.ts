@@ -149,13 +149,13 @@ export function terminateFFmpeg(): void {
     }
     instance = null
   }
-  for (const worker of activeWorkers) {
+  activeWorkers.forEach((worker) => {
     try {
       worker.terminate()
     } catch {
       // ignore
     }
-  }
+  })
   activeWorkers.clear()
   loadPromise = null
 }
