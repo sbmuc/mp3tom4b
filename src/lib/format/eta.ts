@@ -1,16 +1,16 @@
 /**
- * Human-readable estimated time remaining for an in-progress conversion.
+ * Human-readable estimated time remaining.
  *
- * Returns null when:
- * - percent is too low to project meaningfully (early phases like ffmpeg load
- *   and probing are non-linear),
- * - percent is at the long-tail finalize stage (≥ 99) where the remaining
- *   work is muxing and a numeric estimate would just read "0s",
- * - the projected remaining time is < 5s (just say nothing).
+ * `elapsedMs` and `percent` (0–100) must both refer to the same work window —
+ * typically the encoding phase only, so that fast early phases (ffmpeg load,
+ * probing) don't skew the projection.
+ *
+ * Returns null when there is too little data to project meaningfully or the
+ * remaining time is trivially short.
  */
 export function formatEta(elapsedMs: number, percent: number): string | null {
   if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return null
-  if (!Number.isFinite(percent) || percent < 12 || percent >= 99) return null
+  if (!Number.isFinite(percent) || percent < 5 || percent >= 99) return null
 
   const totalMs = elapsedMs * (100 / percent)
   const remainingMs = totalMs - elapsedMs
