@@ -29,6 +29,14 @@ export default function Footer() {
               GitHub
             </a>
             <a
+              href="https://github.com/sbmuc/mp3tom4b/issues/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            >
+              Send feedback
+            </a>
+            <a
               href="https://burcevski.nl"
               target="_blank"
               rel="noopener noreferrer"
@@ -40,11 +48,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-500">
-          © 2026 Burcevski ICT · KvK 74404172 ·{' '}
-          <a href="mailto:sebas.bur@gmail.com" className="transition-colors hover:text-zinc-800 dark:hover:text-zinc-200">
-            Contact
-          </a>{' '}
-          · Built in Amersfoort by{' '}
+          © 2026 Burcevski ICT · KvK 74404172 · Built in Amersfoort by{' '}
           <a
             href="https://burcevski.nl"
             target="_blank"

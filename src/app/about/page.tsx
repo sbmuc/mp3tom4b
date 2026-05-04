@@ -61,14 +61,15 @@ export default function AboutPage() {
         >
           Burcevski ICT
         </a>{' '}
-        in Amersfoort, the Netherlands. Questions or feedback? Email{' '}
+        in Amersfoort, the Netherlands. Questions or feedback?{' '}
         <a
-          href="mailto:sebas.bur@gmail.com"
+          href="https://github.com/sbmuc/mp3tom4b/issues/new"
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-accent-600 underline hover:text-accent-700 dark:text-accent-400"
         >
-          sebas.bur@gmail.com
-        </a>{' '}
-        or open an issue on GitHub.
+          Open an issue on GitHub.
+        </a>
       </p>
 
       <p className="mt-10 text-sm text-zinc-500 dark:text-zinc-400">

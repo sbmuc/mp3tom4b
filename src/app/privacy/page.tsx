@@ -60,12 +60,14 @@ export default function PrivacyPage() {
       </h2>
       <p className="mt-2">
         Operator: Burcevski ICT (KvK 74404172), Amersfoort, the Netherlands.<br />
-        Email:{' '}
+        Contact:{' '}
         <a
-          href="mailto:sebas.bur@gmail.com"
+          href="https://github.com/sbmuc/mp3tom4b/issues/new"
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-accent-600 underline hover:text-accent-700 dark:text-accent-400"
         >
-          sebas.bur@gmail.com
+          open a GitHub issue
         </a>
       </p>
     </article>
