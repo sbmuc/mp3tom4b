@@ -1,11 +1,33 @@
 'use client'
 
+import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile } from '@ffmpeg/util'
 import type { AudioFile, Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { resizeCoverImage } from '@/lib/image/resize'
 import { buildChapters, buildFFMetadata } from './chapters'
-import { getFFmpeg } from './client'
+import { createWorkerFFmpeg, getFFmpeg, releaseWorkerFFmpeg } from './client'
 import { probeDurationMs } from './probe'
+
+// Mutex for the singleton FFmpeg instance. Concurrent calls into the same
+// ffmpeg.wasm instance corrupt its wasm heap (manifests as
+// "RuntimeError: memory access out of bounds"), even though the JS API queues
+// messages — the MT core's SharedArrayBuffer-backed memory is particularly
+// sensitive. Parallel workers must serialize their writes to the singleton.
+let singletonOpLock: Promise<void> = Promise.resolve()
+async function withSingleton<T>(op: (ffmpeg: FFmpeg) => Promise<T>): Promise<T> {
+  const previous = singletonOpLock
+  let release!: () => void
+  singletonOpLock = new Promise<void>((r) => {
+    release = r
+  })
+  try {
+    await previous
+    const ffmpeg = await getFFmpeg()
+    return await op(ffmpeg)
+  } finally {
+    release()
+  }
+}
 
 export interface ConvertOptions {
   files: AudioFile[]
@@ -36,6 +58,112 @@ async function safeDelete(path: string) {
   }
 }
 
+/** How many files to encode in parallel. Scales with logical CPU count. */
+function encodeConcurrency(fileCount: number): number {
+  const cores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency ?? 4) : 4
+  // Leave half the cores for the OS + browser main thread.
+  // Cap at 3 to keep memory pressure manageable.
+  return Math.min(3, fileCount, Math.max(1, Math.floor(cores / 2)))
+}
+
+/**
+ * Encode all input files to AAC using a pool of parallel ffmpeg worker
+ * instances. Each worker handles one file at a time from a shared queue.
+ * Encoded outputs are written to the main singleton's virtual FS so that the
+ * concat step can read them normally.
+ */
+async function encodeFilesParallel(
+  files: AudioFile[],
+  segments: Array<{ ext: string }>,
+  bitrate: Bitrate,
+  emit: (p: ConversionProgress) => void,
+): Promise<void> {
+  const total = files.length
+  // Per-file encode progress (0–1). Updated by whichever worker holds the file.
+  const perFileProgress = new Array<number>(total).fill(0)
+  let completedCount = 0
+
+  function emitProgress() {
+    const sumProgress = perFileProgress.reduce((a, b) => a + b, 0)
+    const overall = 10 + Math.round((sumProgress / total) * 70)
+    emit({
+      status: 'encoding',
+      percent: Math.min(80, overall),
+      label: `Encoding chapters… (${completedCount} of ${total} done)`,
+    })
+  }
+
+  const queue: number[] = Array.from({ length: total }, (_, i) => i)
+
+  async function runWorker() {
+    const worker = await createWorkerFFmpeg()
+    try {
+      while (true) {
+        const idx = queue.shift()
+        if (idx === undefined) break
+
+        const f = files[idx]
+        const ext = segments[idx].ext
+        const inPath = inputName(idx, ext)
+        const outPath = encodedName(idx)
+
+        const onProgress = ({ progress }: { progress: number }) => {
+          perFileProgress[idx] = Math.max(0, Math.min(1, progress))
+          emitProgress()
+        }
+        worker.on('progress', onProgress)
+
+        // Tag any failure with the chapter + step that crashed so the user
+        // sees something more useful than a bare wasm error.
+        const tagged = async <T>(step: string, fn: () => Promise<T>): Promise<T> => {
+          try {
+            return await fn()
+          } catch (err) {
+            const orig = err instanceof Error ? err.message : String(err)
+            throw new Error(`${step} chapter ${idx + 1}/${total}: ${orig || 'unknown wasm error'}`)
+          }
+        }
+
+        try {
+          await tagged('reading', async () => {
+            const sourceBytes = await fetchFile(f.file)
+            await worker.writeFile(inPath, sourceBytes)
+          })
+          await tagged('encoding', () =>
+            worker.exec([
+              '-hide_banner', '-i', inPath,
+              '-vn', '-c:a', 'aac', '-b:a', `${bitrate}k`,
+              outPath,
+            ]),
+          )
+          const bytes = await tagged('reading encoded output of', async () => {
+            const data = await worker.readFile(outPath)
+            const src = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
+            const buf = new Uint8Array(src.byteLength)
+            buf.set(src)
+            return buf
+          })
+          await tagged('writing encoded output of', () =>
+            withSingleton((mainFFmpeg) => mainFFmpeg.writeFile(outPath, bytes)),
+          )
+        } finally {
+          worker.off('progress', onProgress)
+          perFileProgress[idx] = 1
+          completedCount++
+          emitProgress()
+          try { await worker.deleteFile(inPath) } catch { /* ignore */ }
+          try { await worker.deleteFile(outPath) } catch { /* ignore */ }
+        }
+      }
+    } finally {
+      releaseWorkerFFmpeg(worker)
+    }
+  }
+
+  const concurrency = encodeConcurrency(total)
+  await Promise.all(Array.from({ length: concurrency }, () => runWorker()))
+}
+
 /**
  * Convert a list of audio files into a single chaptered M4B audiobook.
  * All processing happens in-browser via ffmpeg.wasm.
@@ -49,7 +177,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
   emit({ status: 'loading-ffmpeg', percent: 2, label: 'Loading converter…' })
   const ffmpeg = await getFFmpeg()
 
-  // Track all virtual paths we create so we can clean up at the end.
+  // Track all virtual paths created on the singleton FS so we can clean up.
   const tempPaths: string[] = []
 
   try {
@@ -63,45 +191,44 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
         percent: 2 + Math.round((i / files.length) * 8),
         label: `Reading file ${i + 1} of ${files.length}…`,
       })
-      const probeName = `probe_${i}.${ext}`
-      const durationMs = await probeDurationMs(f.file, probeName)
+      let durationMs: number
+      if (f.duration != null && isFinite(f.duration) && f.duration > 0) {
+        durationMs = Math.round(f.duration * 1000)
+      } else {
+        const probeName = `probe_${i}.${ext}`
+        durationMs = await probeDurationMs(f.file, probeName)
+      }
       segments.push({ title: f.chapterTitle, durationMs, ext })
     }
 
-    // 2. Encode each input to AAC at the chosen bitrate
+    // 2. Encode or stream-copy inputs to AAC, then register outputs for cleanup.
+    // If every input is already an M4A (AAC in MP4 container), skip re-encoding
+    // entirely — write the source file straight to the singleton FS under the
+    // enc_N.m4a name so the concat step can stream-copy them at no CPU cost.
+    // Any other format goes through the parallel AAC encoding workers.
+    const allM4A = segments.every((s) => s.ext === 'm4a')
+    if (allM4A) {
+      emit({ status: 'encoding', percent: 10, label: 'Copying chapters (already AAC)…' })
+      // Read source bytes in parallel, but write to the singleton serially.
+      let done = 0
+      await Promise.all(
+        files.map(async (f, i) => {
+          const bytes = await fetchFile(f.file)
+          await withSingleton((mainFFmpeg) => mainFFmpeg.writeFile(encodedName(i), bytes))
+          done++
+          emit({
+            status: 'encoding',
+            percent: Math.min(80, 10 + Math.round((done / files.length) * 70)),
+            label: `Copying chapters (already AAC)… (${done} of ${files.length} done)`,
+          })
+        }),
+      )
+    } else {
+      emit({ status: 'encoding', percent: 10, label: 'Encoding chapters…' })
+      await encodeFilesParallel(files, segments, bitrate, emit)
+    }
     for (let i = 0; i < files.length; i++) {
-      const f = files[i]
-      const ext = segments[i].ext
-      const inPath = inputName(i, ext)
-      const outPath = encodedName(i)
-      tempPaths.push(inPath, outPath)
-
-      const encodeProgress = (p: { progress: number }) => {
-        const fileShare = 1 / files.length
-        const localPercent = Math.max(0, Math.min(1, p.progress)) * fileShare
-        const overall = 10 + Math.round((i * fileShare + localPercent) * 70)
-        emit({
-          status: 'encoding',
-          percent: Math.min(80, overall),
-          label: `Encoding chapter ${i + 1} of ${files.length}…`,
-        })
-      }
-      ffmpeg.on('progress', encodeProgress)
-
-      try {
-        await ffmpeg.writeFile(inPath, await fetchFile(f.file))
-        await ffmpeg.exec([
-          '-hide_banner',
-          '-i', inPath,
-          '-vn',
-          '-c:a', 'aac',
-          '-b:a', `${bitrate}k`,
-          outPath,
-        ])
-      } finally {
-        ffmpeg.off('progress', encodeProgress)
-        await safeDelete(inPath)
-      }
+      tempPaths.push(encodedName(i))
     }
 
     // 3. Concat list file
@@ -113,7 +240,6 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     // 4. Chapter metadata
     const chapters = buildChapters(segments.map((s) => ({ title: s.title, durationMs: s.durationMs })))
     const ffmetaBody = buildFFMetadata(chapters)
-    // Prepend high-level container metadata
     const containerMeta =
       `;FFMETADATA1\n` +
       `title=${metadata.title}\n` +
@@ -123,12 +249,11 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
       (metadata.narrator ? `composer=${metadata.narrator}\n` : '') +
       (metadata.year ? `date=${metadata.year}\n` : '') +
       `genre=${metadata.genre}\n`
-    // The chapter section already begins with ;FFMETADATA1 — strip the duplicate header.
     const ffmetaCombined = containerMeta + ffmetaBody.replace(/^;FFMETADATA1\n/, '')
     await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(ffmetaCombined))
     tempPaths.push(META_PATH)
 
-    // 5. Cover art (resized through the existing helper)
+    // 5. Cover art
     let hasCover = false
     if (coverFile) {
       emit({ status: 'muxing', percent: 86, label: 'Preparing cover art…' })
@@ -145,7 +270,6 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     if (hasCover) muxArgs.push('-i', COVER_PATH)
     muxArgs.push('-i', META_PATH)
 
-    // map: audio from concat list, optional cover image, metadata from ffmeta
     muxArgs.push('-map', '0:a', '-map_metadata', String(hasCover ? 2 : 1))
     if (hasCover) {
       muxArgs.push('-map', '1', '-c:v', 'mjpeg', '-disposition:v', 'attached_pic')
@@ -170,8 +294,6 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
 
     const data = await ffmpeg.readFile(OUTPUT_PATH)
     const source = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
-    // Copy into a fresh ArrayBuffer — ffmpeg.wasm may return data backed by
-    // SharedArrayBuffer, which the Blob constructor type signature rejects.
     const bytes = new Uint8Array(source.byteLength)
     bytes.set(source)
     const blob = new Blob([bytes], { type: 'audio/mp4' })
@@ -179,11 +301,21 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
-    emit({
-      status: 'error',
-      percent: 0,
-      label: err instanceof Error ? err.message : 'Conversion failed.',
-    })
+    // Surface as much detail as possible — ffmpeg.wasm sometimes throws
+    // numbers (POSIX codes), strings, or Errors with empty messages.
+    console.error('mp3tom4b conversion failed:', err)
+    let label = 'Conversion failed.'
+    if (err instanceof Error && err.message) {
+      label = err.message
+    } else if (typeof err === 'string' && err) {
+      label = err
+    } else if (typeof err === 'number') {
+      label = `ffmpeg error code ${err}`
+    } else if (err != null) {
+      const s = String(err)
+      if (s && s !== '[object Object]') label = s
+    }
+    emit({ status: 'error', percent: 0, label })
     throw err
   } finally {
     for (const path of tempPaths) {
