@@ -37,6 +37,14 @@ export default function Footer() {
               Send feedback
             </a>
             <a
+              href="https://buymeacoffee.com/mp3tom4b"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            >
+              ☕ Support this project
+            </a>
+            <a
               href="https://burcevski.nl"
               target="_blank"
               rel="noopener noreferrer"

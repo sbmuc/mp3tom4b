@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 
 export const metadata: Metadata = {
   title: 'FAQ',
@@ -7,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/faq' },
 }
 
-const FAQS: { q: string; a: string }[] = [
+const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   {
     q: 'What is an M4B file?',
     a: 'M4B is an audio container based on MP4 that supports embedded chapter markers, cover art, and bookmarking. Apple Books, Plex, and most modern audiobook players treat M4B files as audiobooks rather than music — they remember playback position and group correctly in your library.',
@@ -44,6 +45,24 @@ const FAQS: { q: string; a: string }[] = [
     q: 'Why is the narrator missing from online lookup results?',
     a: 'Audiobook narrator information isn\'t consistently exposed by the metadata sources we query. iTunes audiobook entries usually only carry the author in their public search API, and Open Library is book-centric and rarely lists narrators at all. If you type a narrator into the form yourself, mp3tom4b keeps that value as you entered it — online lookups will not overwrite a narrator field you have filled in. The "Verify metadata" step also has a fallback that searches with the narrator as a stand-in author, which can find the right edition even when the narrator field itself isn\'t returned.',
   },
+  {
+    q: 'Is mp3tom4b really free?',
+    a: 'Yes — free forever, no ads, no account required, no file size limits beyond what your browser can handle. The tool has no paid tier. If it\'s saved you time and you\'d like to support the hosting costs, you can optionally buy me a coffee, but it\'s never required and the tool works identically either way.',
+    aNode: (
+      <>
+        Yes — free forever, no ads, no account required, no file size limits beyond what your browser can handle. The tool has no paid tier. If it&apos;s saved you time and you&apos;d like to support the hosting costs, you can optionally{' '}
+        <a
+          href="https://buymeacoffee.com/mp3tom4b"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
+        >
+          buy me a coffee
+        </a>
+        , but it&apos;s never required and the tool works identically either way.
+      </>
+    ),
+  },
 ]
 
 export default function FaqPage() {
@@ -66,10 +85,10 @@ export default function FaqPage() {
       <article className="mx-auto max-w-3xl px-4 py-12 text-zinc-700 dark:text-zinc-300">
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Frequently asked questions</h1>
         <dl className="mt-8 space-y-6">
-          {FAQS.map(({ q, a }) => (
+          {FAQS.map(({ q, a, aNode }) => (
             <div key={q} className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
               <dt className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{q}</dt>
-              <dd className="mt-2 text-sm leading-relaxed">{a}</dd>
+              <dd className="mt-2 text-sm leading-relaxed">{aNode ?? a}</dd>
             </div>
           ))}
         </dl>
