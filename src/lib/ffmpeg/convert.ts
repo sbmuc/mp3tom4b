@@ -276,19 +276,43 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     }
     muxArgs.push('-c:a', 'copy', '-movflags', '+faststart', '-f', 'mp4', OUTPUT_PATH)
 
-    const muxProgress = (p: { progress: number }) => {
-      const local = Math.max(0, Math.min(1, p.progress))
+    // ffmpeg.wasm's 'progress' event rarely fires during stream-copy. Parse
+    // 'time=HH:MM:SS.cc' from log lines instead — that fires for stream-copy
+    // and gives us a real progress signal during the mux step (which is
+    // otherwise invisible and reads like a hang for large audiobooks).
+    const totalMuxDurationMs = segments.reduce((acc, s) => acc + s.durationMs, 0)
+    const TIME_RE = /time=(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
+
+    const updateMuxProgress = (ratio: number) => {
       emit({
         status: 'muxing',
-        percent: Math.min(99, 90 + Math.round(local * 9)),
+        percent: Math.min(99, 90 + Math.round(ratio * 9)),
         label: 'Finalizing audiobook…',
       })
     }
+
+    const muxProgress = (p: { progress: number }) => {
+      const local = Math.max(0, Math.min(1, p.progress))
+      updateMuxProgress(local)
+    }
+    const muxLog = ({ message }: { message: string }) => {
+      const m = message.match(TIME_RE)
+      if (!m || totalMuxDurationMs <= 0) return
+      const h = Number(m[1])
+      const min = Number(m[2])
+      const s = Number(m[3])
+      const cs = Number(m[4].padEnd(2, '0'))
+      const elapsedMs = ((h * 3600 + min * 60 + s) * 100 + cs) * 10
+      const ratio = Math.max(0, Math.min(1, elapsedMs / totalMuxDurationMs))
+      updateMuxProgress(ratio)
+    }
     ffmpeg.on('progress', muxProgress)
+    ffmpeg.on('log', muxLog)
     try {
       await ffmpeg.exec(muxArgs)
     } finally {
       ffmpeg.off('progress', muxProgress)
+      ffmpeg.off('log', muxLog)
     }
     tempPaths.push(OUTPUT_PATH)
 
