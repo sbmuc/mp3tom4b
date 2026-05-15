@@ -42,7 +42,7 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
             >
-              Support this project
+              ☕ Support this project
             </a>
             <a
               href="https://burcevski.nl"
