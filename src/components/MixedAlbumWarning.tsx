@@ -90,7 +90,7 @@ export default function MixedAlbumWarning() {
             </button>
           ) : (
             <span className="text-xs text-amber-800 dark:text-amber-300">
-              Multiple albums tied — remove the unwanted files manually.
+              Multiple albums tied. Remove the unwanted files manually.
             </span>
           )}
         </div>

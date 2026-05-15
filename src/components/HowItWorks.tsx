@@ -14,7 +14,7 @@ const STEPS = [
   {
     icon: Download,
     title: 'Download M4B',
-    body: 'A single tagged, chaptered audiobook — ready for Apple Books, Plex, or any M4B-aware player.',
+    body: 'A single tagged, chaptered audiobook, ready for Apple Books, Plex, or any M4B-aware player.',
   },
 ]
 

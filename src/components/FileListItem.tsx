@@ -97,7 +97,7 @@ export default function FileListItem({ file, index }: Props) {
       </span>
 
       <span className="hidden w-14 shrink-0 text-right font-mono text-xs text-zinc-500 sm:inline dark:text-zinc-400">
-        {file.duration != null ? formatDuration(file.duration) : '—'}
+        {file.duration != null ? formatDuration(file.duration) : '–'}
       </span>
 
       <button

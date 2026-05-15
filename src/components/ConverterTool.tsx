@@ -1,4 +1,5 @@
 import BitrateSelector from '@/components/BitrateSelector'
+import CompatibilityNotices from '@/components/CompatibilityNotices'
 import ConvertButton from '@/components/ConvertButton'
 import CoverUpload from '@/components/CoverUpload'
 import DownloadCard from '@/components/DownloadCard'
@@ -14,6 +15,7 @@ import ProgressBar from '@/components/ProgressBar'
 export default function ConverterTool() {
   return (
     <div className="mt-4">
+      <CompatibilityNotices />
       <DropZone />
       <div className="mt-3 flex justify-center">
         <PrivacyBadge />

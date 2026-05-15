@@ -16,7 +16,7 @@ export default function WhyMp3ToM4b() {
       </h2>
       <p className="mt-2 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
         Every other browser-based MP3-to-M4B converter we&apos;ve found uploads your audio to a server
-        for processing. We don&apos;t — the conversion runs entirely in your browser via WebAssembly.
+        for processing. We don&apos;t. The conversion runs entirely in your browser via WebAssembly.
       </p>
 
       <div className="mt-6 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">

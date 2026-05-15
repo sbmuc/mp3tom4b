@@ -6,6 +6,7 @@ import type { AudioFile, Bitrate, ConversionMetadata, ConversionProgress } from 
 import { resizeCoverImage } from '@/lib/image/resize'
 import { buildChapters, buildFFMetadata } from './chapters'
 import { createWorkerFFmpeg, getFFmpeg, releaseWorkerFFmpeg } from './client'
+import { humanizeFfmpegError } from './errors'
 import { probeDurationMs } from './probe'
 
 // Mutex for the singleton FFmpeg instance. Concurrent calls into the same
@@ -325,21 +326,8 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
-    // Surface as much detail as possible — ffmpeg.wasm sometimes throws
-    // numbers (POSIX codes), strings, or Errors with empty messages.
     console.error('mp3tom4b conversion failed:', err)
-    let label = 'Conversion failed.'
-    if (err instanceof Error && err.message) {
-      label = err.message
-    } else if (typeof err === 'string' && err) {
-      label = err
-    } else if (typeof err === 'number') {
-      label = `ffmpeg error code ${err}`
-    } else if (err != null) {
-      const s = String(err)
-      if (s && s !== '[object Object]') label = s
-    }
-    emit({ status: 'error', percent: 0, label })
+    emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err
   } finally {
     for (const path of tempPaths) {

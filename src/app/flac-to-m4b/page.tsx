@@ -4,27 +4,27 @@ import HowItWorks from '@/components/HowItWorks'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'FLAC to M4B — Convert Lossless Audio to Audiobook',
+  title: 'FLAC to M4B: Convert Lossless Audio to Audiobook',
   description:
     'Convert FLAC files to a chaptered M4B audiobook in your browser. No upload, no signup, no limits. Lossless input re-encoded to AAC with chapter markers, cover art, and embedded metadata.',
   alternates: { canonical: '/flac-to-m4b' },
   openGraph: {
-    title: 'FLAC to M4B Converter — Free, Private, No Upload',
+    title: 'FLAC to M4B Converter: Free, Private, No Upload',
     description:
-      'Drop your FLAC files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly — your audio never leaves your device.',
+      'Drop your FLAC files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
   },
   twitter: {
     card: 'summary',
-    title: 'FLAC to M4B Converter — Free, Private, No Upload',
+    title: 'FLAC to M4B Converter: Free, Private, No Upload',
     description:
-      'Drop your FLAC files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly — your audio never leaves your device.',
+      'Drop your FLAC files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
   },
 }
 
 const softwareApplicationLd = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'mp3tom4b — FLAC to M4B',
+  name: 'mp3tom4b: FLAC to M4B',
   description:
     'Free browser-based tool to convert FLAC audio files into chaptered M4B audiobooks. Conversion runs entirely client-side; no files are uploaded.',
   applicationCategory: 'MultimediaApplication',
@@ -36,7 +36,7 @@ const softwareApplicationLd = {
 const FAQS = [
   {
     q: 'Does converting FLAC to M4B lose quality?',
-    a: 'Yes — FLAC is lossless and M4B uses AAC, which is lossy. For spoken-word audiobooks the difference is inaudible at 64 kbps; that is the default and the standard for audiobook distribution. If you have music or high-fidelity content, choose 128 kbps in the bitrate selector.',
+    a: 'Yes. FLAC is lossless and M4B uses AAC, which is lossy. For spoken-word audiobooks the difference is inaudible at 64 kbps; that is the default and the standard for audiobook distribution. If you have music or high-fidelity content, choose 128 kbps in the bitrate selector.',
   },
   {
     q: 'Can I mix FLAC and MP3 files in the same audiobook?',
@@ -44,11 +44,11 @@ const FAQS = [
   },
   {
     q: 'Why are my FLAC files large but the M4B is small?',
-    a: 'FLAC files store audio losslessly, which is much larger than AAC. A 500 MB FLAC audiobook will typically produce an M4B of 100–150 MB at 64 kbps — perfectly normal and the right trade-off for spoken audio.',
+    a: 'FLAC files store audio losslessly, which is much larger than AAC. A 500 MB FLAC audiobook will typically produce an M4B of 100 to 150 MB at 64 kbps. That is perfectly normal and the right trade-off for spoken audio.',
   },
   {
     q: 'Are my FLAC files uploaded for conversion?',
-    a: 'No. The entire conversion runs in your browser via a WebAssembly build of FFmpeg. Nothing leaves your device. You can verify this by watching the Network tab in your browser\'s developer tools — there are no audio file uploads.',
+    a: 'No. The entire conversion runs in your browser via a WebAssembly build of FFmpeg. Nothing leaves your device. You can verify this by watching the Network tab in your browser\'s developer tools; there are no audio file uploads.',
   },
 ]
 
@@ -81,7 +81,7 @@ export default function FlacToM4bPage() {
             FLAC to M4B
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-            Convert lossless FLAC audio into a chaptered M4B audiobook — right in your browser.
+            Convert lossless FLAC audio into a chaptered M4B audiobook, right in your browser.
             Chapter markers, cover art, and embedded metadata are all included.{' '}
             <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Your files never leave your device.</strong>
           </p>
@@ -92,7 +92,7 @@ export default function FlacToM4bPage() {
 
         <section aria-labelledby="faq-heading" className="mt-16 border-t border-zinc-200 pt-10 dark:border-zinc-800">
           <h2 id="faq-heading" className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            FLAC to M4B — common questions
+            FLAC to M4B: common questions
           </h2>
           <dl className="mt-6 space-y-5">
             {FAQS.map(({ q, a }) => (

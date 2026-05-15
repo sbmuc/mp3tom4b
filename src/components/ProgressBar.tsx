@@ -136,7 +136,7 @@ export default function ProgressBar() {
         <p className="mt-2 font-mono text-xs text-zinc-500 dark:text-zinc-400">{eta}</p>
       )}
       <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
-        Converting locally in your browser — no upload needed. Keep this tab open and your device awake until it finishes.
+        Converting locally in your browser. No upload needed. Keep this tab open and your device awake until it finishes.
       </p>
     </div>
   )

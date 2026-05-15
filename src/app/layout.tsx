@@ -6,8 +6,8 @@ import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: {
-    default: 'mp3tom4b — Convert MP3 to M4B Audiobook Online, Without Uploading',
-    template: '%s — mp3tom4b',
+    default: 'mp3tom4b: Convert MP3 to M4B Audiobook Online, Without Uploading',
+    template: '%s · mp3tom4b',
   },
   description:
     'Free browser-based tool to convert MP3, M4A, WAV, FLAC, OGG, and Opus files into chaptered M4B audiobooks. Your files never leave your device.',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: 'mp3tom4b — Convert MP3 to M4B Audiobook Online',
+    title: 'mp3tom4b: Convert MP3 to M4B Audiobook Online',
     description: 'Free, private, client-side M4B audiobook converter. No uploads. No signup.',
     url: 'https://mp3tom4b.com',
     siteName: 'mp3tom4b',
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'mp3tom4b — Convert MP3 to M4B Audiobook Online',
+    title: 'mp3tom4b: Convert MP3 to M4B Audiobook Online',
     description: 'Free, private, client-side M4B audiobook converter. No uploads. No signup.',
   },
 }

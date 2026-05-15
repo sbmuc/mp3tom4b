@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   {
     q: 'What is an M4B file?',
-    a: 'M4B is an audio container based on MP4 that supports embedded chapter markers, cover art, and bookmarking. Apple Books, Plex, and most modern audiobook players treat M4B files as audiobooks rather than music — they remember playback position and group correctly in your library.',
+    a: 'M4B is an audio container based on MP4 that supports embedded chapter markers, cover art, and bookmarking. Apple Books, Plex, and most modern audiobook players treat M4B files as audiobooks rather than music, so they remember playback position and group correctly in your library.',
   },
   {
     q: 'Why convert MP3 to M4B?',
@@ -23,11 +23,11 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   },
   {
     q: 'Which audio file types are supported?',
-    a: 'MP3, M4A, WAV, FLAC, OGG, and Opus. Mixed formats in a single audiobook are fine — each file is re-encoded to AAC at the bitrate you choose before being joined.',
+    a: 'MP3, M4A, WAV, FLAC, OGG, and Opus. Mixed formats in a single audiobook are fine, because each file is re-encoded to AAC at the bitrate you choose before being joined.',
   },
   {
     q: 'Are there file size limits?',
-    a: 'There are no artificial limits — only what your browser can hold in memory. On modern desktop browsers, audiobooks up to roughly 12 hours / 1.5 GB of input usually convert without trouble. Larger jobs may run out of memory; in that case, split into shorter sessions.',
+    a: 'There are no artificial limits, only what your browser can hold in memory. On modern desktop browsers, audiobooks up to roughly 12 hours / 1.5 GB of input usually convert without trouble. Larger jobs may run out of memory; in that case, split into shorter sessions.',
   },
   {
     q: 'Which browsers are supported?',
@@ -35,7 +35,7 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   },
   {
     q: 'What happens if I close the tab during conversion?',
-    a: 'The conversion stops and any progress is lost — there is nothing on a server to resume from, because no server is involved. Just keep the tab open until the download appears. You can use other tabs or apps in the meantime.',
+    a: 'The conversion stops and any progress is lost. There is nothing on a server to resume from, because no server is involved. Just keep the tab open until the download appears. You can use other tabs or apps in the meantime.',
   },
   {
     q: 'Can I use this offline?',
@@ -43,14 +43,14 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   },
   {
     q: 'Why is the narrator missing from online lookup results?',
-    a: 'Audiobook narrator information isn\'t consistently exposed by the metadata sources we query. iTunes audiobook entries usually only carry the author in their public search API, and Open Library is book-centric and rarely lists narrators at all. If you type a narrator into the form yourself, mp3tom4b keeps that value as you entered it — online lookups will not overwrite a narrator field you have filled in. The "Verify metadata" step also has a fallback that searches with the narrator as a stand-in author, which can find the right edition even when the narrator field itself isn\'t returned.',
+    a: 'Narrator data isn\'t reliably available from the public sources we query (iTunes and Open Library). Type the narrator into the form manually; online lookups never overwrite a value you\'ve filled in.',
   },
   {
     q: 'Is mp3tom4b really free?',
-    a: 'Yes — free forever, no ads, no account required, no file size limits beyond what your browser can handle. The tool has no paid tier. If it\'s saved you time and you\'d like to support the hosting costs, you can optionally buy me a coffee, but it\'s never required and the tool works identically either way.',
+    a: 'Yes. It\'s free forever, no ads, no account required, no file size limits beyond what your browser can handle. The tool has no paid tier. If it\'s saved you time and you\'d like to support the hosting costs, you can optionally buy me a coffee, but it\'s never required and the tool works identically either way.',
     aNode: (
       <>
-        Yes — free forever, no ads, no account required, no file size limits beyond what your browser can handle. The tool has no paid tier. If it&apos;s saved you time and you&apos;d like to support the hosting costs, you can optionally{' '}
+        Yes. It&apos;s free forever, no ads, no account required, no file size limits beyond what your browser can handle. The tool has no paid tier. If it&apos;s saved you time and you&apos;d like to support the hosting costs, you can optionally{' '}
         <a
           href="https://buymeacoffee.com/mp3tom4b"
           target="_blank"

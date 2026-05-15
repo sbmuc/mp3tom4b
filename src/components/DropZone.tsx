@@ -146,7 +146,7 @@ export default function DropZone() {
       if (imageFiles.length > 0) {
         const state = useConversionStore.getState()
         if (state.coverFile !== null) {
-          addNotice('Cover already set — remove it in the Cover image section first.')
+          addNotice('Cover already set. Remove it in the Cover image section first.')
         } else {
           coverSetThisDrop = pickBestCoverImage(imageFiles)
           setCoverFileDrop(coverSetThisDrop)
@@ -162,7 +162,7 @@ export default function DropZone() {
         const { valid, rejected } = validateFiles(audioFiles)
         const skipped = rejected.length + unknownCount
         if (skipped > 0) {
-          addNotice(`${skipped} file${skipped === 1 ? '' : 's'} skipped (unsupported format).`)
+          addNotice(`${skipped} file${skipped === 1 ? '' : 's'} skipped. Only MP3, M4A, WAV, FLAC, OGG, and Opus audio are supported.`)
         }
 
         if (valid.length > 0) {
@@ -229,7 +229,7 @@ export default function DropZone() {
           }
         }
       } else if (unknownCount > 0 && !folderNameRef.current) {
-        addNotice(`${unknownCount} file${unknownCount === 1 ? '' : 's'} skipped (unsupported format).`)
+        addNotice(`${unknownCount} file${unknownCount === 1 ? '' : 's'} skipped. Only MP3, M4A, WAV, FLAC, OGG, and Opus audio are supported.`)
       }
 
       folderNameRef.current = null
@@ -286,7 +286,7 @@ export default function DropZone() {
         <div className="mt-4 rounded-md border border-dashed border-zinc-200 bg-zinc-50/60 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
           <p className="text-zinc-700 dark:text-zinc-300">
             <span className="font-medium text-zinc-900 dark:text-zinc-100">New here?</span>{' '}
-            M4B is the audiobook format Apple Books, Plex, and most modern players recognise — chapters,
+            M4B is the audiobook format Apple Books, Plex, and most modern players recognise: chapters,
             cover art, and resume position in one tagged file. Drop your audio in and you&apos;ll get
             back a single M4B with chapters at every file boundary.
           </p>

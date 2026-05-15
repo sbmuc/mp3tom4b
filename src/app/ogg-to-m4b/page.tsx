@@ -4,27 +4,27 @@ import HowItWorks from '@/components/HowItWorks'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'OGG to M4B — Convert OGG Vorbis Audio to Audiobook',
+  title: 'OGG to M4B: Convert OGG Vorbis Audio to Audiobook',
   description:
     'Convert OGG Vorbis files to a chaptered M4B audiobook in your browser. No upload, no signup, no limits. OGG re-encoded to AAC with chapter markers, cover art, and embedded metadata.',
   alternates: { canonical: '/ogg-to-m4b' },
   openGraph: {
-    title: 'OGG to M4B Converter — Free, Private, No Upload',
+    title: 'OGG to M4B Converter: Free, Private, No Upload',
     description:
-      'Drop your OGG files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly — your audio never leaves your device.',
+      'Drop your OGG files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
   },
   twitter: {
     card: 'summary',
-    title: 'OGG to M4B Converter — Free, Private, No Upload',
+    title: 'OGG to M4B Converter: Free, Private, No Upload',
     description:
-      'Drop your OGG files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly — your audio never leaves your device.',
+      'Drop your OGG files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
   },
 }
 
 const softwareApplicationLd = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'mp3tom4b — OGG to M4B',
+  name: 'mp3tom4b: OGG to M4B',
   description:
     'Free browser-based tool to convert OGG Vorbis audio files into chaptered M4B audiobooks. Conversion runs entirely client-side; no files are uploaded.',
   applicationCategory: 'MultimediaApplication',
@@ -40,11 +40,11 @@ const FAQS = [
   },
   {
     q: 'Will I lose quality converting OGG to M4B?',
-    a: 'There is a small quality cost because OGG Vorbis is re-encoded to AAC — two lossy codecs in sequence. For spoken-word content the difference is imperceptible at 64 kbps. If your OGG files were encoded at a high bitrate for music, choose 128 kbps in the bitrate selector to minimise the loss.',
+    a: 'There is a small quality cost because OGG Vorbis is re-encoded to AAC, which means two lossy codecs in sequence. For spoken-word content the difference is imperceptible at 64 kbps. If your OGG files were encoded at a high bitrate for music, choose 128 kbps in the bitrate selector to minimise the loss.',
   },
   {
     q: 'Can I mix OGG and MP3 files together?',
-    a: 'Yes. Every input — regardless of format — is re-encoded to AAC before being joined, so mixed formats work fine in a single audiobook job.',
+    a: 'Yes. Every input file, regardless of format, is re-encoded to AAC before being joined, so mixed formats work fine in a single audiobook job.',
   },
   {
     q: 'Are my OGG files uploaded for conversion?',
@@ -81,7 +81,7 @@ export default function OggToM4bPage() {
             OGG to M4B
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-            Convert OGG Vorbis audio files into a chaptered M4B audiobook — right in your browser.
+            Convert OGG Vorbis audio files into a chaptered M4B audiobook, right in your browser.
             Ideal for LibriVox downloads and open-source audiobook archives.{' '}
             <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Your files never leave your device.</strong>
           </p>
@@ -92,7 +92,7 @@ export default function OggToM4bPage() {
 
         <section aria-labelledby="faq-heading" className="mt-16 border-t border-zinc-200 pt-10 dark:border-zinc-800">
           <h2 id="faq-heading" className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            OGG to M4B — common questions
+            OGG to M4B: common questions
           </h2>
           <dl className="mt-6 space-y-5">
             {FAQS.map(({ q, a }) => (

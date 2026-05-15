@@ -65,7 +65,7 @@ export default function BitrateSelector() {
           <span className="font-mono text-sm font-medium text-zinc-900 dark:text-zinc-100">
             {opt.label}
           </span>
-          <span className="ml-2 text-sm text-zinc-600 dark:text-zinc-400">— {opt.hint}</span>
+          <span className="ml-2 text-sm text-zinc-600 dark:text-zinc-400">· {opt.hint}</span>
         </span>
       </label>
     )

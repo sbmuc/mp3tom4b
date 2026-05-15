@@ -15,7 +15,7 @@ export default function AboutPage() {
 
       <p className="mt-4 text-lg">
         mp3tom4b is a free, open-source tool that turns a folder of audio files into a single
-        chaptered M4B audiobook — without uploading anything.
+        chaptered M4B audiobook, without uploading anything.
       </p>
 
       <h2 className="mt-10 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
@@ -27,7 +27,7 @@ export default function AboutPage() {
         finished M4B is offered as a download. No bytes touch any server we operate.
       </p>
       <p className="mt-2">
-        You can verify this by opening your browser&apos;s network tab while converting — you&apos;ll see no
+        You can verify this by opening your browser&apos;s network tab while converting; you&apos;ll see no
         upload traffic. The full source code is published on{' '}
         <a
           href="https://github.com/sbmuc/mp3tom4b"
@@ -68,8 +68,16 @@ export default function AboutPage() {
           rel="noopener noreferrer"
           className="text-accent-600 underline hover:text-accent-700 dark:text-accent-400"
         >
-          Open an issue on GitHub.
+          Open an issue on GitHub
+        </a>{' '}
+        or email{' '}
+        <a
+          href="mailto:sebas.bur@gmail.com"
+          className="text-accent-600 underline hover:text-accent-700 dark:text-accent-400"
+        >
+          sebas.bur@gmail.com
         </a>
+        .
       </p>
 
       <p className="mt-10 text-sm text-zinc-500 dark:text-zinc-400">
