@@ -4,8 +4,11 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { toBlobURL } from '@ffmpeg/util'
 
 const CORE_VERSION = '0.12.6'
-const MT_BASE_URL = `https://unpkg.com/@ffmpeg/core-mt@${CORE_VERSION}/dist/umd`
-const ST_BASE_URL = `https://unpkg.com/@ffmpeg/core@${CORE_VERSION}/dist/umd`
+// Self-hosted ffmpeg-core to keep the privacy promise airtight: no third-party
+// origin is contacted during conversion. Files live in public/ffmpeg/<ver>/
+// and are served with a long immutable cache header (see next.config.js).
+const MT_BASE_URL = `/ffmpeg/${CORE_VERSION}`
+const ST_BASE_URL = `/ffmpeg/${CORE_VERSION}`
 
 let instance: FFmpeg | null = null
 let loadPromise: Promise<FFmpeg> | null = null

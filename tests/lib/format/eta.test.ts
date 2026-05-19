@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { formatEta } from '@/lib/format/eta'
 
 describe('formatEta', () => {
-  it('returns null below the 12% confidence threshold', () => {
+  it('returns null below the 5% confidence threshold', () => {
     expect(formatEta(1000, 0)).toBeNull()
-    expect(formatEta(1000, 5)).toBeNull()
-    expect(formatEta(1000, 11.9)).toBeNull()
+    expect(formatEta(1000, 4.9)).toBeNull()
+    expect(formatEta(1000, -1)).toBeNull()
   })
 
   it('returns null at or above 99% (long-tail finalize)', () => {

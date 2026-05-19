@@ -34,6 +34,46 @@ export default function ProgressBar() {
 
   const isActive = ACTIVE_STATUSES.has(progress.status)
 
+  // Hold a screen wake lock while converting so the OS doesn't sleep the tab
+  // (which can pause the wasm worker and break long-running conversions).
+  // The browser auto-releases the lock when the tab is hidden, so we re-acquire
+  // it on visibilitychange. Silently no-ops on browsers without the API.
+  useEffect(() => {
+    if (!isActive) return
+    if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return
+
+    let sentinel: WakeLockSentinel | null = null
+    let cancelled = false
+
+    const acquire = async () => {
+      try {
+        const next = await navigator.wakeLock.request('screen')
+        if (cancelled) {
+          next.release().catch(() => {})
+          return
+        }
+        sentinel = next
+      } catch {
+        // User gesture missing, page hidden, or policy denial — ignore.
+      }
+    }
+
+    acquire()
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && (sentinel === null || sentinel.released)) {
+        acquire()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisibility)
+      sentinel?.release().catch(() => {})
+    }
+  }, [isActive])
+
   useEffect(() => {
     if (!isActive) {
       encodingStartRef.current = null
@@ -136,7 +176,7 @@ export default function ProgressBar() {
         <p className="mt-2 font-mono text-xs text-zinc-500 dark:text-zinc-400">{eta}</p>
       )}
       <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
-        Converting locally in your browser. No upload needed. Keep this tab open and your device awake until it finishes.
+        Converting locally in your browser. No upload needed. Keep this tab open until it finishes.
       </p>
     </div>
   )

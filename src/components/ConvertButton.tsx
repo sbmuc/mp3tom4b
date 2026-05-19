@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import { Loader2, Wand2, X } from 'lucide-react'
+import { track } from '@vercel/analytics'
 import { convertToM4B } from '@/lib/ffmpeg/convert'
 import { useConversionStore } from '@/lib/store/conversionStore'
 
@@ -30,6 +31,7 @@ export default function ConvertButton() {
   const handleClick = async () => {
     cancelledRef.current = false
     setOutputBlob(null)
+    const startedAt = Date.now()
     try {
       const blob = await convertToM4B({
         files,
@@ -43,6 +45,19 @@ export default function ConvertButton() {
         },
       })
       setOutputBlob(blob)
+
+      // Funnel telemetry: how often does a landed visitor finish a conversion?
+      // Anonymous, cookieless via Vercel Web Analytics. No file content, only
+      // aggregate shape metrics.
+      const totalAudioSec = files.reduce((acc, f) => acc + (f.duration ?? 0), 0)
+      track('conversion_completed', {
+        fileCount: files.length,
+        bitrateKbps: bitrate,
+        audioDurationSec: Math.round(totalAudioSec),
+        outputMb: Math.round((blob.size / (1024 * 1024)) * 10) / 10,
+        elapsedSec: Math.round((Date.now() - startedAt) / 1000),
+        hasCover: coverFile != null,
+      })
     } catch {
       // Errors are surfaced via the onProgress 'error' event above.
       // User input is preserved for retry.
