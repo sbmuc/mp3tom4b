@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
+  verification: {
+    google: 'a7w95AL0n5Q448kZGk',
+  },
   openGraph: {
     title: 'mp3tom4b: Convert MP3 to M4B Audiobook Online',
     description: 'Free, private, client-side M4B audiobook converter. No uploads. No signup.',
