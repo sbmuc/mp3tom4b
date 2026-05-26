@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import type { Genre, MetadataSource } from '@/types'
 
@@ -26,17 +27,30 @@ function VerifiedBadge({ source }: { source: MetadataSource }) {
   )
 }
 
+type Touched = { title?: true; author?: true; year?: true }
+
 export default function MetadataForm() {
   const metadata = useConversionStore((s) => s.metadata)
   const setMetadata = useConversionStore((s) => s.setMetadata)
   const verifiedFields = useConversionStore((s) => s.verifiedFields)
+  const submitAttempted = useConversionStore((s) => s.submitAttempted)
+
+  // Per-field blur tracking. An error only appears once the user has left
+  // the field, OR after their first submit attempt — never on the first
+  // keystroke into an empty field.
+  const [touched, setTouched] = useState<Touched>({})
+  const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }))
 
   const titleMissing = metadata.title.trim() === ''
   const authorMissing = metadata.author.trim() === ''
   const yearInvalid = !isValidYear(metadata.year)
 
+  const showTitleError = titleMissing && (touched.title || submitAttempted)
+  const showAuthorError = authorMissing && (touched.author || submitAttempted)
+  const showYearError = yearInvalid && (touched.year || submitAttempted)
+
   const inputBase =
-    'w-full rounded-md border bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-accent-500 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500'
+    'w-full rounded-md border bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-accent-500 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-400'
   const inputOk = 'border-zinc-300 dark:border-zinc-700'
   const inputErr = 'border-rose-400 dark:border-rose-700'
   const labelClass = 'mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300'
@@ -44,7 +58,7 @@ export default function MetadataForm() {
 
   return (
     <section aria-label="Audiobook metadata" className="mt-6">
-      <h2 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+      <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
         Audiobook details
       </h2>
 
@@ -59,11 +73,13 @@ export default function MetadataForm() {
             type="text"
             value={metadata.title}
             onChange={(e) => setMetadata({ title: e.target.value })}
+            onBlur={() => markTouched('title')}
             placeholder="The Hobbit"
-            aria-invalid={titleMissing}
-            className={`${inputBase} ${titleMissing ? inputErr : inputOk}`}
+            aria-invalid={showTitleError || undefined}
+            aria-describedby={showTitleError ? 'md-title-err' : undefined}
+            className={`${inputBase} ${showTitleError ? inputErr : inputOk}`}
           />
-          {titleMissing && <p className={errClass}>Title is required.</p>}
+          {showTitleError && <p id="md-title-err" className={errClass}>Title is required.</p>}
         </div>
 
         <div>
@@ -76,11 +92,13 @@ export default function MetadataForm() {
             type="text"
             value={metadata.author}
             onChange={(e) => setMetadata({ author: e.target.value })}
+            onBlur={() => markTouched('author')}
             placeholder="J.R.R. Tolkien"
-            aria-invalid={authorMissing}
-            className={`${inputBase} ${authorMissing ? inputErr : inputOk}`}
+            aria-invalid={showAuthorError || undefined}
+            aria-describedby={showAuthorError ? 'md-author-err' : undefined}
+            className={`${inputBase} ${showAuthorError ? inputErr : inputOk}`}
           />
-          {authorMissing && <p className={errClass}>Author is required.</p>}
+          {showAuthorError && <p id="md-author-err" className={errClass}>Author is required.</p>}
         </div>
 
         <div>
@@ -111,11 +129,13 @@ export default function MetadataForm() {
             maxLength={4}
             value={metadata.year}
             onChange={(e) => setMetadata({ year: e.target.value })}
+            onBlur={() => markTouched('year')}
             placeholder={String(CURRENT_YEAR)}
-            aria-invalid={yearInvalid}
-            className={`${inputBase} ${yearInvalid ? inputErr : inputOk} font-mono`}
+            aria-invalid={showYearError || undefined}
+            aria-describedby={showYearError ? 'md-year-err' : undefined}
+            className={`${inputBase} ${showYearError ? inputErr : inputOk} font-mono`}
           />
-          {yearInvalid && <p className={errClass}>Enter a 4-digit year between 1900 and 2099.</p>}
+          {showYearError && <p id="md-year-err" className={errClass}>Enter a 4-digit year between 1900 and 2099.</p>}
         </div>
 
         <div>

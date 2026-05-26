@@ -47,7 +47,7 @@ export default function CoverUpload() {
 
   return (
     <section aria-label="Cover image" className="mt-6">
-      <h2 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+      <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
         Cover image <span className="text-sm font-normal text-zinc-400">(optional)</span>
       </h2>
 

@@ -250,6 +250,7 @@ export default function DropZone() {
     <div>
       <div
         {...getRootProps()}
+        id="dropzone"
         onDropCapture={captureDropInfo}
         aria-label="Drop audio files and cover image here, or press Enter to browse"
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 ${borderClass}`}

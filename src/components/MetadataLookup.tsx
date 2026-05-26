@@ -189,7 +189,7 @@ export default function MetadataLookup() {
 
   return (
     <section aria-label="Online metadata lookup" className="mt-6">
-      <h2 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+      <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
         Verify metadata{' '}
         <span className="text-sm font-normal text-zinc-400">(optional)</span>
       </h2>
@@ -206,15 +206,24 @@ export default function MetadataLookup() {
       )}
 
       {phase === 'idle' && (
-        <button
-          type="button"
-          onClick={() => setPhase('confirming')}
-          disabled={!canSearch}
-          className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-        >
-          <Search size={14} aria-hidden="true" />
-          Look up online
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setPhase('confirming')}
+            disabled={!canSearch}
+            title={!canSearch ? 'Enter a title, author, or narrator first.' : undefined}
+            aria-describedby={!canSearch ? 'lookup-help' : undefined}
+            className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            <Search size={14} aria-hidden="true" />
+            Look up online
+          </button>
+          {!canSearch && (
+            <p id="lookup-help" className="text-xs text-zinc-500 dark:text-zinc-400">
+              Enter a title, author, or narrator first.
+            </p>
+          )}
+        </div>
       )}
 
       {phase !== 'idle' && (

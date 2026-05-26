@@ -1,6 +1,5 @@
 'use client'
 
-import { track } from '@vercel/analytics'
 import { orderBy } from 'natural-orderby'
 import { create } from 'zustand'
 import { DEFAULT_BITRATE, suggestBitrate } from '@/lib/audio/bitrate'
@@ -77,6 +76,11 @@ interface ConversionStore {
   /** Apply the smart-bitrate rule based on the current files and genre. No-op if user has touched bitrate. */
   applySmartBitrate: () => void
 
+  /** True once the user has clicked Convert at least once. Surfaces form errors
+   *  that were hidden until the first submit attempt. Resets with `reset()`. */
+  submitAttempted: boolean
+  setSubmitAttempted: (v: boolean) => void
+
   // Conversion state
   progress: ConversionProgress
   setProgress: (progress: ConversionProgress) => void
@@ -103,7 +107,7 @@ const defaultProgress: ConversionProgress = {
   label: '',
 }
 
-export const useConversionStore = create<ConversionStore>((set, get) => ({
+export const useConversionStore = create<ConversionStore>((set) => ({
   files: [],
   sortDirection: 'asc',
   addFiles: (incoming) =>
@@ -226,21 +230,13 @@ export const useConversionStore = create<ConversionStore>((set, get) => ({
       return { bitrate: next }
     }),
 
+  submitAttempted: false,
+  setSubmitAttempted: (v) => set({ submitAttempted: v }),
+
   progress: defaultProgress,
   setProgress: (progress) => set({ progress }),
   outputBlob: null,
-  setOutputBlob: (blob) => {
-    if (blob) {
-      const { files, bitrate, metadata } = get()
-      track('conversion_complete', {
-        file_count: files.length,
-        bitrate,
-        genre: metadata.genre,
-        output_mb: Math.round((blob.size / 1024 / 1024) * 10) / 10,
-      })
-    }
-    set({ outputBlob: blob })
-  },
+  setOutputBlob: (blob) => set({ outputBlob: blob }),
 
   cancelConversion: () => {
     terminateFFmpeg()
@@ -268,6 +264,7 @@ export const useConversionStore = create<ConversionStore>((set, get) => ({
       coverSource: null,
       bitrate: DEFAULT_BITRATE,
       bitrateUserTouched: false,
+      submitAttempted: false,
       progress: defaultProgress,
       outputBlob: null,
       duplicateNotice: null,

@@ -82,7 +82,7 @@ export default function BitrateSelector() {
 
   return (
     <section aria-label="Output bitrate" className="mt-6">
-      <h2 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+      <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
         Output bitrate
       </h2>
 
