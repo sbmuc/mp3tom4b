@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   },
   description:
     'Free browser-based tool to convert MP3, M4A, WAV, FLAC, OGG, and Opus files into chaptered M4B audiobooks. Your files never leave your device.',
-  metadataBase: new URL('https://mp3tom4b.com'),
+  metadataBase: new URL('https://www.mp3tom4b.com'),
   alternates: {
     canonical: '/',
   },
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'mp3tom4b: Convert MP3 to M4B Audiobook Online',
     description: 'Free, private, client-side M4B audiobook converter. No uploads. No signup.',
-    url: 'https://mp3tom4b.com',
+    url: 'https://www.mp3tom4b.com',
     siteName: 'mp3tom4b',
     locale: 'en_US',
     type: 'website',

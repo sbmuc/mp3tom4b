@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mp3tom4b.com/sitemap.xml
+Sitemap: https://www.mp3tom4b.com/sitemap.xml

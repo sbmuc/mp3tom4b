@@ -29,7 +29,7 @@ const softwareApplicationLd = {
     'Free browser-based tool to convert FLAC audio files into chaptered M4B audiobooks. Conversion runs entirely client-side; no files are uploaded.',
   applicationCategory: 'MultimediaApplication',
   operatingSystem: 'Any (modern web browser)',
-  url: 'https://mp3tom4b.com/flac-to-m4b',
+  url: 'https://www.mp3tom4b.com/flac-to-m4b',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
 }
 

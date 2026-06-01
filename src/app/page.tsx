@@ -11,7 +11,7 @@ const softwareApplicationLd = {
     'Free browser-based tool to convert MP3, M4A, WAV, FLAC, OGG, and Opus audio files into chaptered M4B audiobooks. Conversion runs entirely client-side; no files are uploaded.',
   applicationCategory: 'MultimediaApplication',
   operatingSystem: 'Any (modern web browser)',
-  url: 'https://mp3tom4b.com',
+  url: 'https://www.mp3tom4b.com',
   offers: {
     '@type': 'Offer',
     price: '0',
