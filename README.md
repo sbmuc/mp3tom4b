@@ -2,6 +2,10 @@
 
 > Drag your audio files in. Get an M4B audiobook out. Your files never leave your browser.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Live](https://img.shields.io/badge/live-mp3tom4b.com-06b6d4)](https://mp3tom4b.com)
+[![Built with Next.js](https://img.shields.io/badge/built%20with-Next.js-000000)](https://nextjs.org)
+
 A free, browser-based tool that converts MP3, M4A, WAV, FLAC, OGG, and Opus files into M4B audiobook files with chapters and embedded cover art. All conversion happens client-side via WebAssembly — nothing is uploaded to any server.
 
 🌐 **Live:** [mp3tom4b.com](https://mp3tom4b.com)
@@ -9,6 +13,14 @@ A free, browser-based tool that converts MP3, M4A, WAV, FLAC, OGG, and Opus file
 ## What makes this different
 
 Other web converters (CloudConvert, Vertopal, Movavi, etc.) upload your files to their servers. mp3tom4b doesn't — the entire conversion runs inside your browser via ffmpeg.wasm. The repo is open source so you can verify that for yourself.
+
+### Verify it yourself
+
+You don't have to take our word for it:
+
+1. Open your browser's DevTools → **Network** tab.
+2. Drop in some audio files and run a conversion.
+3. Watch: there are **no upload requests**. The only network traffic is the one-time download of the ffmpeg WebAssembly core. Your audio never leaves the tab.
 
 ## Features
 
