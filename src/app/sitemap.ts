@@ -14,5 +14,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/m4a-to-m4b`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/ogg-to-m4b`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/opus-to-m4b`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/compress-m4b`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
   ]
 }

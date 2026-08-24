@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import ConverterTool from '@/components/ConverterTool'
 import HeroSection from '@/components/HeroSection'
 import HowItWorks from '@/components/HowItWorks'
@@ -38,6 +39,17 @@ export default function Home() {
 
         <HowItWorks />
         <WhyMp3ToM4b />
+
+        <p className="mt-8 text-sm text-zinc-600 dark:text-zinc-400">
+          Want a smaller audiobook?{' '}
+          <Link
+            href="/compress-m4b"
+            className="font-medium text-accent-700 underline underline-offset-2 hover:text-accent-800 dark:text-accent-400 dark:hover:text-accent-300"
+          >
+            Compress an M4B file
+          </Link>{' '}
+          at spoken-word bitrates.
+        </p>
       </div>
     </>
   )
