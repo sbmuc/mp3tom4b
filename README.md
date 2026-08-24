@@ -3,12 +3,12 @@
 > Drag your audio files in. Get an M4B audiobook out. Your files never leave your browser.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Live](https://img.shields.io/badge/live-mp3tom4b.com-06b6d4)](https://mp3tom4b.com)
+[![Live](https://img.shields.io/badge/live-mp3tom4b.com-06b6d4)](https://www.mp3tom4b.com)
 [![Built with Next.js](https://img.shields.io/badge/built%20with-Next.js-000000)](https://nextjs.org)
 
 A free, browser-based tool that converts MP3, M4A, WAV, FLAC, OGG, and Opus files into M4B audiobook files with chapters and embedded cover art. All conversion happens client-side via WebAssembly — nothing is uploaded to any server.
 
-🌐 **Live:** [mp3tom4b.com](https://mp3tom4b.com)
+🌐 **Live:** [mp3tom4b.com](https://www.mp3tom4b.com)
 
 ## What makes this different
 
