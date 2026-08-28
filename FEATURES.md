@@ -59,6 +59,16 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Custom filename input — override the auto-generated name; the `.m4b` extension is added if missing, and a "reset" button restores the auto name.
 - "Start over" button to clear all state and begin a new conversion.
 
+## Compress an existing M4B
+
+- Available on the `/compress-m4b` page via a mode toggle: "Shrink an existing M4B" (default) or "Build from separate files".
+- Drop a single finished `.m4b` / `.m4a`; the file is probed in-browser for its duration, chapter count, cover presence, and current bitrate.
+- Re-encodes only the audio stream to a lower AAC bitrate (64 / 96 / 128 kbps) while keeping the original chapters, cover art, and metadata untouched.
+- Estimated output size and expected space saving ("about 50% smaller") update with the chosen bitrate.
+- Compression is disabled when the chosen bitrate is not lower than the source's current bitrate (it wouldn't shrink the file).
+- Download filename derived from the file's embedded tags (`{Author} - {Title}.m4b`), falling back to the original name.
+- Like the main converter, everything runs in the browser — the file is never uploaded.
+
 ## UI / UX
 
 - Drop zone with privacy badge directly underneath.
@@ -76,6 +86,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - `/faq` — common questions about M4B, audiobooks, and the conversion process.
 - `/privacy` — privacy policy.
 - Five SEO sister landing pages with format-specific hero copy and FAQ: `/flac-to-m4b`, `/wav-to-m4b`, `/m4a-to-m4b`, `/ogg-to-m4b`, `/opus-to-m4b`.
+- `/compress-m4b` — landing page for shrinking or building a compact M4B, with the compressor and build tool behind a mode toggle.
 
 ## SEO
 

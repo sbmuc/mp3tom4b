@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Minimize2 } from 'lucide-react'
 import ConverterTool from '@/components/ConverterTool'
 import HeroSection from '@/components/HeroSection'
 import HowItWorks from '@/components/HowItWorks'
@@ -37,19 +38,24 @@ export default function Home() {
 
         <ConverterTool />
 
+        <Link
+          href="/compress-m4b"
+          className="mt-6 flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-4 transition-colors hover:border-accent-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-accent-500"
+        >
+          <Minimize2 size={20} className="shrink-0 text-accent-600 dark:text-accent-400" aria-hidden="true" />
+          <span className="text-sm text-zinc-700 dark:text-zinc-300">
+            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+              Already have an M4B that is too big?
+            </span>{' '}
+            Shrink an existing audiobook to a smaller file — chapters and cover kept.
+          </span>
+          <span className="ml-auto shrink-0 font-medium text-accent-600 dark:text-accent-400" aria-hidden="true">
+            →
+          </span>
+        </Link>
+
         <HowItWorks />
         <WhyMp3ToM4b />
-
-        <p className="mt-8 text-sm text-zinc-600 dark:text-zinc-400">
-          Want a smaller audiobook?{' '}
-          <Link
-            href="/compress-m4b"
-            className="font-medium text-accent-700 underline underline-offset-2 hover:text-accent-800 dark:text-accent-400 dark:hover:text-accent-300"
-          >
-            Compress an M4B file
-          </Link>{' '}
-          at spoken-word bitrates.
-        </p>
       </div>
     </>
   )

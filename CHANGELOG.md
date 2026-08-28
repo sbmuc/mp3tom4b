@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.4.0] — 2026-08-25
+
+### Added
+- **Compress an existing M4B** — a new mode on the `/compress-m4b` page that shrinks a finished M4B (or M4A) audiobook by re-encoding its audio to a lower bitrate, while keeping its chapters, cover art, and metadata intact. Drop a file to see its duration, chapter count, cover, and current bitrate, pick a target bitrate, and get an estimated output size with the expected space saving ("about 50% smaller").
+- Mode toggle on the compress page — "Shrink an existing M4B" (default) and "Build from separate files".
+- A "Compress" link in the site header, and a callout on the homepage, pointing to the new compressor.
+
+### Changed
+- The `/compress-m4b` page now serves both building a compact M4B from separate files and shrinking an existing one.
+- Compression is blocked when the chosen bitrate is not lower than the file's current bitrate, so you can't accidentally re-encode without shrinking.
+
+---
+
 ## [1.3.0] — 2026-04-27
 
 ### Added

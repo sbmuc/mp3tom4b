@@ -16,6 +16,9 @@ export default function Header() {
         </Link>
 
         <nav className="flex items-center gap-4 text-sm text-zinc-500 dark:text-zinc-400">
+          <Link href="/compress-m4b" className={navLinkClass}>
+            Compress
+          </Link>
           <Link href="/about" className={navLinkClass}>
             About
           </Link>

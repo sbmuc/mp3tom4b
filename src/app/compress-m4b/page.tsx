@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import ConverterTool from '@/components/ConverterTool'
+import CompressModeSwitch from '@/components/CompressModeSwitch'
 import HowItWorks from '@/components/HowItWorks'
 import Link from 'next/link'
 
@@ -54,7 +54,7 @@ const FAQS = [
   },
   {
     q: 'I already have a single .m4b file — can I shrink it directly?',
-    a: 'Right now the tool is built to create a compact M4B from your source chapter files, not to re-compress a finished single M4B — dropping one in would collapse it into a single chapter and lose its existing chapter markers. If you still have the original per-chapter files, re-export them here at a lower bitrate. A chapter-preserving mode for shrinking an existing M4B is on the roadmap.',
+    a: 'Yes. Choose the "Shrink an existing M4B" tab, drop your finished .m4b (or .m4a) in, and pick a lower bitrate. The tool re-encodes only the audio to a smaller AAC bitrate and keeps your chapter markers, cover art, and metadata intact.',
   },
   {
     q: 'Are my files uploaded when I compress them?',
@@ -92,13 +92,14 @@ export default function CompressM4bPage() {
             Compress M4B
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-            Shrink your audiobook to a compact, chaptered M4B at spoken-word bitrates, right in your
-            browser. Drop your chapter files, pick a bitrate, and download a much smaller file.{' '}
+            Shrink an existing M4B audiobook, or build a compact one from separate files — right in
+            your browser. Pick a lower bitrate and download a much smaller file, with chapters and
+            cover art preserved.{' '}
             <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Your files never leave your device.</strong>
           </p>
         </section>
 
-        <ConverterTool />
+        <CompressModeSwitch />
         <HowItWorks />
 
         <section aria-labelledby="size-heading" className="mt-16 border-t border-zinc-200 pt-10 dark:border-zinc-800">
@@ -142,21 +143,6 @@ export default function CompressM4bPage() {
             For plain narration, <strong className="font-semibold text-zinc-800 dark:text-zinc-200">64 kbps mono</strong> is
             the sweet spot: roughly half the size of 128 kbps stereo with no audible difference.
           </p>
-        </section>
-
-        <section aria-labelledby="existing-heading" className="mt-12">
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-5 dark:border-amber-500/40 dark:bg-amber-500/10">
-            <h2 id="existing-heading" className="text-base font-semibold text-amber-900 dark:text-amber-200">
-              Already have a single, finished .m4b file?
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-amber-800 dark:text-amber-100/90">
-              This tool is built to create a compact M4B from your source chapter files. It is not yet
-              a re-compressor for a finished single M4B — dropping one in would collapse it into one
-              chapter and lose its existing chapter markers. If you still have the original per-chapter
-              files, re-export them here at a lower bitrate. A chapter-preserving mode for shrinking an
-              existing M4B is on the roadmap.
-            </p>
-          </div>
         </section>
 
         <section aria-labelledby="faq-heading" className="mt-16 border-t border-zinc-200 pt-10 dark:border-zinc-800">

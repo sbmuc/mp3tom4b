@@ -33,6 +33,7 @@ Larger UX improvements that don't fit in quick-fix territory.
 
 ### Conversion experience
 - **"Continue from where you left off"** recovery if browser crashes mid-conversion. Stores progress in IndexedDB.
+- **"Force mono" option in the M4B compressor** — downmix stereo to mono so very low bitrates (e.g. 32–48 kbps) still sound clean for pure narration. The compressor shipped without it (at a fixed bitrate, output size is already independent of channel count).
 
 ### UI / design
 - **Mobile experience improvements** — beyond "this works best on desktop." Make tablet usable end-to-end.
@@ -106,7 +107,6 @@ Native SwiftUI app, not a web wrapper. Shares brand and UX patterns with the web
 
 Only if V1 finds a real audience and there's demand for related utilities. Each tool reuses the existing codebase and brand:
 
-- **M4B compressor / re-encoder** — accept a finished single `.m4b`, re-encode its audio to a lower bitrate (e.g. 128 kbps stereo → 64 kbps mono) while *preserving* its existing chapter markers and metadata. Distinct from the current "one file = one chapter" build flow, which would flatten a dropped M4B into a single chapter. Would let the `/compress-m4b` landing page serve the "shrink an existing M4B" intent directly (proven query: "shrinking m4b" is currently the site's top Search Console query). Same wasm engine, different pipeline (demux → re-encode audio stream → remux with original chapter atoms).
 - **M4B chapter editor** — edit chapters in existing M4B files without re-encoding. Different ffmpeg pipeline (chapter atom edit only), much faster.
 - **M4B metadata fixer** — batch-fix tags in audiobook libraries. Useful for users with messy collections.
 - **M4B splitter** — split a long M4B into chapter MP3s (this is V2's reverse conversion, possibly worth promoting to its own page).
