@@ -1,11 +1,11 @@
 'use client'
 
 import type { KeyboardEvent } from 'react'
-import { GripVertical, RotateCcw, Trash2 } from 'lucide-react'
+import { GripVertical, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useConversionStore } from '@/lib/store/conversionStore'
-import { formatBytes, formatDuration } from '@/lib/audio/format'
+import { fileNameToChapterTitle, formatBytes, formatDuration } from '@/lib/audio/format'
 import type { AudioFile } from '@/types'
 
 interface Props {
@@ -39,6 +39,10 @@ export default function FileListItem({ file, index }: Props) {
   }
 
   const isModified = file.chapterTitle !== file.originalChapterTitle
+  // Show the raw filename underneath when the chapter title isn't simply the
+  // filename (i.e. it came from an embedded tag or was edited), so the user can
+  // still tell which file is which.
+  const showFilename = file.chapterTitle.trim() !== fileNameToChapterTitle(file.file.name)
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) {
@@ -70,15 +74,33 @@ export default function FileListItem({ file, index }: Props) {
         {index + 1}.
       </span>
 
-      <input
-        type="text"
-        value={file.chapterTitle}
-        onChange={(e) => updateChapterTitle(file.id, e.target.value)}
-        onKeyDown={handleKeyDown}
-        aria-label="Chapter title"
-        {...{ [CHAPTER_INPUT_ATTR]: index }}
-        className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm text-zinc-900 hover:border-zinc-300 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-500/30 dark:text-zinc-100 dark:hover:border-zinc-700 dark:focus:border-accent-400 dark:focus:bg-zinc-950"
-      />
+      <div className="group/title min-w-0 flex-1">
+        <div className="relative flex items-center">
+          <input
+            type="text"
+            value={file.chapterTitle}
+            onChange={(e) => updateChapterTitle(file.id, e.target.value)}
+            onKeyDown={handleKeyDown}
+            aria-label="Chapter title"
+            title="Click to rename this chapter"
+            {...{ [CHAPTER_INPUT_ATTR]: index }}
+            className="w-full rounded border border-transparent bg-transparent py-1 pl-2 pr-7 text-sm text-zinc-900 hover:border-zinc-300 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-500/30 dark:text-zinc-100 dark:hover:border-zinc-700 dark:focus:border-accent-400 dark:focus:bg-zinc-950"
+          />
+          <Pencil
+            size={12}
+            aria-hidden="true"
+            className="pointer-events-none absolute right-2 text-zinc-300 opacity-60 transition-opacity group-hover/title:opacity-100 group-focus-within/title:opacity-0 dark:text-zinc-600"
+          />
+        </div>
+        {showFilename && (
+          <p
+            className="truncate px-2 pt-0.5 font-mono text-[11px] leading-tight text-zinc-400 dark:text-zinc-500"
+            title={file.file.name}
+          >
+            {file.file.name}
+          </p>
+        )}
+      </div>
 
       {isModified && (
         <button

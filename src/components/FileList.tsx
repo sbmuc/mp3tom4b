@@ -122,11 +122,10 @@ export default function FileList() {
         </SortableContext>
       </DndContext>
 
-      {showSortControls && (
-        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
-          Drag to reorder, or tab to the drag handle and use ↑ ↓ arrow keys.
-        </p>
-      )}
+      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
+        Click a title to rename it.
+        {showSortControls && ' Drag to reorder, or tab to the drag handle and use ↑ ↓ arrow keys.'}
+      </p>
     </section>
   )
 }

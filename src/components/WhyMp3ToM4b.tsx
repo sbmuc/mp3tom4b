@@ -5,7 +5,7 @@ const ROWS: { label: string; us: string; them: string }[] = [
   { label: 'Account / signup', us: 'None', them: 'Often required' },
   { label: 'Free tier limits', us: 'No artificial caps', them: '"Free" then paywalled' },
   { label: 'Source code', us: 'Open on GitHub', them: 'Closed' },
-  { label: 'Works offline', us: 'After first load', them: 'Server-dependent' },
+  { label: 'Server needed to convert', us: 'Never', them: 'Every file' },
 ]
 
 export default function WhyMp3ToM4b() {

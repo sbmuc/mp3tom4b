@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.4.2] — 2026-09-02
+
+### Fixed
+- Chapter titles now fall back to the file name when a set of files all share the same embedded title tag (common with MP3 audiobooks), instead of producing a list of identically-named chapters. A unique per-file embedded title is still used when it's present.
+- The offline claim is now accurate: the comparison table and FAQ describe the tool as needing no server per conversion and being cached best-effort by your browser, rather than implying a guaranteed offline install.
+
+### Added
+- Each file row now shows its filename beneath the chapter title (when they differ), plus a pencil cue and a "click a title to rename" hint so inline editing is discoverable.
+
+---
+
 ## [1.4.1] — 2026-09-02
 
 ### Fixed

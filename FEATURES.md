@@ -21,7 +21,8 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 ## Chapters
 
 - Chapter title auto-generated from each filename (extension stripped, separators normalised, title-cased).
-- Embedded `title` tag is used as the chapter title when present, falling back to the filename.
+- Embedded `title` tag is used as the chapter title only when it is unique across the dropped files; otherwise the filename is used, so a set that shares one album/book title doesn't become a run of identical chapters.
+- Each row shows the source filename beneath the title when they differ, with a pencil cue and hint making it clear titles are click-to-edit.
 - Inline chapter title editing with keyboard navigation: Arrow/Enter moves to the next chapter, Shift+Enter or ArrowUp moves to the previous.
 - Per-row "reset to original" button when a chapter title has been edited.
 

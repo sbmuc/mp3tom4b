@@ -181,6 +181,16 @@ export default function DropZone() {
           const matchedExistingIds: string[] = []
           let firstAcceptedExtraction: ExtractedMetadata | null = null
 
+          // An embedded title only works as a chapter name when it's unique
+          // across the drop. Many MP3 sets stamp every file with the same
+          // album/book title, which would otherwise yield N identical chapters —
+          // in that case we fall back to the filename instead.
+          const embeddedTitleCounts = new Map<string, number>()
+          for (const ex of extractions) {
+            const t = ex.chapterTitle?.trim().toLowerCase()
+            if (t) embeddedTitleCounts.set(t, (embeddedTitleCounts.get(t) ?? 0) + 1)
+          }
+
           for (let i = 0; i < valid.length; i++) {
             const file = valid[i]
             const extracted = extractions[i]
@@ -196,7 +206,9 @@ export default function DropZone() {
               continue
             }
 
-            const initialChapterTitle = extracted.chapterTitle || fileNameToChapterTitle(file.name)
+            const tag = extracted.chapterTitle?.trim()
+            const tagIsUnique = !!tag && embeddedTitleCounts.get(tag.toLowerCase()) === 1
+            const initialChapterTitle = tagIsUnique ? tag : fileNameToChapterTitle(file.name)
             const newFile: AudioFile = {
               id: crypto.randomUUID(),
               file,
@@ -295,7 +307,7 @@ export default function DropZone() {
           <ul className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
             <li className="flex items-center gap-2">
               <Bookmark size={14} className="shrink-0 text-accent-600 dark:text-accent-400" aria-hidden="true" />
-              <span>One chapter per file, titled from the filename</span>
+              <span>One chapter per file, titled from the file name or its embedded title</span>
             </li>
             <li className="flex items-center gap-2">
               <ImageIcon size={14} className="shrink-0 text-accent-600 dark:text-accent-400" aria-hidden="true" />

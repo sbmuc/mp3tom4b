@@ -39,7 +39,7 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   },
   {
     q: 'Can I use this offline?',
-    a: 'Mostly yes. After the first conversion, the FFmpeg WebAssembly core is cached by your browser, so subsequent conversions work without an internet connection. The first load needs network access to fetch the wasm binary.',
+    a: 'Largely, yes. The conversion itself never contacts a server — it all runs on your device. After the first load your browser caches the app and the FFmpeg WebAssembly core, so repeat visits and conversions usually work without a connection. This relies on the browser cache rather than a full offline install, so treat it as best-effort rather than guaranteed.',
   },
   {
     q: 'Why is the narrator missing from online lookup results?',
