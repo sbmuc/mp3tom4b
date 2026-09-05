@@ -184,7 +184,9 @@ export default function M4bCompressor() {
     const author = tags?.author ? sanitizeFilename(tags.author) : ''
     const title = tags?.title ? sanitizeFilename(tags.title) : ''
     if (author && title) return `${author} - ${title}.m4b`
-    if (file) return `${sanitizeFilename(fileBaseName(file.name))}.m4b`
+    // Falling back to the original name would collide with the source file in
+    // the same folder ("book (1).m4b"); mark it as the compressed copy.
+    if (file) return `${sanitizeFilename(fileBaseName(file.name))} (compressed).m4b`
     return 'audiobook.m4b'
   })()
 
@@ -201,7 +203,7 @@ export default function M4bCompressor() {
             : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} accept=".m4b,.m4a,audio/mp4,audio/x-m4a" />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your M4B here' : 'Drop a finished M4B, or click to browse'}
@@ -376,7 +378,7 @@ export default function M4bCompressor() {
           >
             <div className="h-full bg-accent-500 transition-all" style={{ width: `${progress.percent}%` }} />
           </div>
-          <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
+          <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
             Compressing locally in your browser. No upload needed. Keep this tab open until it finishes.
           </p>
         </div>

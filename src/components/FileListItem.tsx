@@ -94,7 +94,7 @@ export default function FileListItem({ file, index }: Props) {
         </div>
         {showFilename && (
           <p
-            className="truncate px-2 pt-0.5 font-mono text-[11px] leading-tight text-zinc-400 dark:text-zinc-500"
+            className="truncate px-2 pt-0.5 font-mono text-[11px] leading-tight text-zinc-500 dark:text-zinc-400"
             title={file.file.name}
           >
             {file.file.name}
@@ -118,7 +118,7 @@ export default function FileListItem({ file, index }: Props) {
         {formatBytes(file.file.size)}
       </span>
 
-      <span className="hidden w-14 shrink-0 text-right font-mono text-xs text-zinc-500 sm:inline dark:text-zinc-400">
+      <span className="w-14 shrink-0 text-right font-mono text-xs text-zinc-500 dark:text-zinc-400">
         {file.duration != null ? formatDuration(file.duration) : '–'}
       </span>
 

@@ -122,7 +122,7 @@ export default function FileList() {
         </SortableContext>
       </DndContext>
 
-      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
+      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
         Click a title to rename it.
         {showSortControls && ' Drag to reorder, or tab to the drag handle and use ↑ ↓ arrow keys.'}
       </p>

@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.4.3] — 2026-09-02
+
+### Added
+- A favicon / browser-tab icon.
+- The FFmpeg engine now starts downloading as soon as you add your first file, so it's usually ready by the time you click Convert instead of stalling on first use.
+
+### Fixed
+- The cover preview now shows the image exactly as it will be embedded (letterboxed on white for non-square images) instead of a cropped square.
+- A corrupt or unreadable cover image is caught the moment you add it, with a clear message, instead of failing at the end of a conversion.
+- Files with an identical size and duration but different names (e.g. fixed-length blocks) are no longer wrongly skipped as duplicates.
+- "Skipped file" notices now stay until dismissed, so they aren't missed in a large drop.
+- The click-to-browse dialog now filters to supported audio and image types.
+- Each file row now shows its duration on mobile too.
+- A compressed file downloads as "<name> (compressed).m4b" so it doesn't collide with the original in the same folder.
+- Raised the contrast of muted helper text in dark mode to meet WCAG AA.
+
+---
+
 ## [1.4.2] — 2026-09-02
 
 ### Fixed

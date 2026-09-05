@@ -39,7 +39,8 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 ## Cover image
 
 - JPG / PNG / WEBP upload via dedicated cover zone or via mixed drop.
-- Live preview thumbnail.
+- Live preview that mirrors the embedded result (letterboxed on a white background for non-square images), so what you see is what gets embedded.
+- Corrupt or unreadable images are rejected the moment they are added, rather than failing at the end of a conversion.
 - Auto-resize to 1200×1200 JPEG before embedding; non-square images are padded onto a white background.
 - Source badge on the cover preview ("from drop" or "from audio file") so users see at a glance how the cover was set.
 - Remove-cover button.

@@ -194,7 +194,7 @@ export default function ProgressBar() {
       {eta && (
         <p className="mt-2 font-mono text-xs text-zinc-500 dark:text-zinc-400">{eta}</p>
       )}
-      <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
+      <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
         Converting locally in your browser. No upload needed. Keep this tab open until it finishes.
       </p>
     </div>

@@ -48,7 +48,7 @@ export default function Footer() {
           </a>
         </nav>
 
-        <div className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-500">
+        <div className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
           © 2026 Burcevski ICT · KvK 74404172 · Built in Amersfoort by{' '}
           <a
             href="https://burcevski.nl"

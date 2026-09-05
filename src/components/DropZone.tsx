@@ -8,6 +8,8 @@ import { useConversionStore } from '@/lib/store/conversionStore'
 import { validateFiles } from '@/lib/audio/validate'
 import { fileNameToChapterTitle } from '@/lib/audio/format'
 import { extractMetadata } from '@/lib/audio/metadata'
+import { isDecodableImage } from '@/lib/image/validate'
+import { getFFmpeg } from '@/lib/ffmpeg/client'
 import type { AudioFile, ExtractedMetadata } from '@/types'
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.wav', '.flac', '.ogg', '.opus'])
@@ -50,6 +52,7 @@ function pickBestCoverImage(images: File[]): File {
 
 interface MatchableFile {
   id: string
+  name: string
   size: number
   durationMs: number | null
 }
@@ -63,10 +66,14 @@ function findDuplicate(
   pool: MatchableFile[]
 ): string | null {
   for (const existing of pool) {
+    // Require a name match too: two genuinely different files can share an exact
+    // byte size and duration (e.g. fixed-length WAV blocks), and deduping those
+    // would silently drop chapters. Same name + size + duration is a real dupe.
+    if (existing.name !== candidate.name) continue
     if (existing.size !== candidate.size) continue
     if (candidate.durationMs == null || existing.durationMs == null) {
       console.warn(
-        `[mp3tom4b] Duplicate check fell back to size-only for "${candidate.name}" — duration data unavailable.`
+        `[mp3tom4b] Duplicate check fell back to name+size for "${candidate.name}" — duration data unavailable.`
       )
       return existing.id
     }
@@ -93,14 +100,18 @@ export default function DropZone() {
   const noticeTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const folderNameRef = useRef<string | null>(null)
 
-  const addNotice = useCallback((message: string) => {
+  const addNotice = useCallback((message: string, persist = false) => {
     const id = crypto.randomUUID()
     setNotices((prev) => [...prev, { id, message }])
-    const timer = setTimeout(() => {
-      setNotices((prev) => prev.filter((n) => n.id !== id))
-      noticeTimersRef.current.delete(id)
-    }, 6000)
-    noticeTimersRef.current.set(id, timer)
+    // "Skipped" / "couldn't read" notices persist until dismissed so they aren't
+    // missed in a large drop; informational ones auto-dismiss after 6s.
+    if (!persist) {
+      const timer = setTimeout(() => {
+        setNotices((prev) => prev.filter((n) => n.id !== id))
+        noticeTimersRef.current.delete(id)
+      }, 6000)
+      noticeTimersRef.current.set(id, timer)
+    }
   }, [])
 
   const dismissNotice = useCallback((id: string) => {
@@ -146,13 +157,18 @@ export default function DropZone() {
       if (imageFiles.length > 0) {
         const state = useConversionStore.getState()
         if (state.coverFile !== null) {
-          addNotice('Cover already set. Remove it in the Cover image section first.')
+          addNotice('Cover already set. Remove it in the Cover image section first.', true)
         } else {
-          coverSetThisDrop = pickBestCoverImage(imageFiles)
-          setCoverFileDrop(coverSetThisDrop)
-          if (imageFiles.length > 1) {
-            const rest = imageFiles.length - 1
-            addNotice(`Used "${coverSetThisDrop.name}" as cover. ${rest} other image${rest > 1 ? 's' : ''} ignored.`)
+          const best = pickBestCoverImage(imageFiles)
+          if (await isDecodableImage(best)) {
+            coverSetThisDrop = best
+            setCoverFileDrop(best)
+            if (imageFiles.length > 1) {
+              const rest = imageFiles.length - 1
+              addNotice(`Used "${best.name}" as cover. ${rest} other image${rest > 1 ? 's' : ''} ignored.`)
+            }
+          } else {
+            addNotice(`"${best.name}" could not be read as an image and was skipped.`, true)
           }
         }
       }
@@ -162,7 +178,7 @@ export default function DropZone() {
         const { valid, rejected } = validateFiles(audioFiles)
         const skipped = rejected.length + unknownCount
         if (skipped > 0) {
-          addNotice(`${skipped} file${skipped === 1 ? '' : 's'} skipped. Only MP3, M4A, WAV, FLAC, OGG, and Opus audio are supported.`)
+          addNotice(`${skipped} file${skipped === 1 ? '' : 's'} skipped. Only MP3, M4A, WAV, FLAC, OGG, and Opus audio are supported.`, true)
         }
 
         if (valid.length > 0) {
@@ -172,6 +188,7 @@ export default function DropZone() {
           const existing = useConversionStore.getState().files
           const pool: MatchableFile[] = existing.map((f) => ({
             id: f.id,
+            name: f.file.name,
             size: f.file.size,
             durationMs: fileSecondsToMs(f.duration),
           }))
@@ -220,13 +237,20 @@ export default function DropZone() {
               sourceLossless: extracted.sourceLossless,
             }
             newFiles.push(newFile)
-            pool.push({ id: newFile.id, size: file.size, durationMs: candidate.durationMs })
+            pool.push({ id: newFile.id, name: file.name, size: file.size, durationMs: candidate.durationMs })
             if (!firstAcceptedExtraction) firstAcceptedExtraction = extracted
           }
 
           if (newFiles.length > 0) addFiles(newFiles)
           if (wasEmpty && firstAcceptedExtraction) applyAutoMetadata(firstAcceptedExtraction)
           if (newFiles.length > 0) applySmartBitrate()
+
+          if (wasEmpty && newFiles.length > 0) {
+            // Warm the ffmpeg core now so its ~31 MB one-time download overlaps
+            // with the user filling in metadata, instead of stalling the first
+            // click on Convert.
+            void getFFmpeg().catch(() => {})
+          }
 
           if (duplicateNames.length > 0) {
             setDuplicateNotice({ fileNames: duplicateNames })
@@ -241,7 +265,7 @@ export default function DropZone() {
           }
         }
       } else if (unknownCount > 0 && !folderNameRef.current) {
-        addNotice(`${unknownCount} file${unknownCount === 1 ? '' : 's'} skipped. Only MP3, M4A, WAV, FLAC, OGG, and Opus audio are supported.`)
+        addNotice(`${unknownCount} file${unknownCount === 1 ? '' : 's'} skipped. Only MP3, M4A, WAV, FLAC, OGG, and Opus audio are supported.`, true)
       }
 
       folderNameRef.current = null
@@ -268,7 +292,12 @@ export default function DropZone() {
         aria-label="Drop audio files and cover image here, or press Enter to browse"
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 ${borderClass}`}
       >
-        <input {...getInputProps()} />
+        {/* accept filters only the click-to-browse dialog; drag-drop still
+            delivers everything so the skip/classify notices keep working. */}
+        <input
+          {...getInputProps()}
+          accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.opus,image/jpeg,image/png,.jpg,.jpeg,.png"
+        />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your files here' : 'Drop audio files + cover image, or click to browse'}

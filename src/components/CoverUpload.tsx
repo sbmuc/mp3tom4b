@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { ImageIcon, X } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
+import { isDecodableImage } from '@/lib/image/validate'
 
 const ACCEPT = {
   'image/jpeg': ['.jpg', '.jpeg'],
@@ -15,6 +16,7 @@ export default function CoverUpload() {
   const coverSource = useConversionStore((s) => s.coverSource)
   const setCoverFile = useConversionStore((s) => s.setCoverFile)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!coverFile) {
@@ -27,8 +29,17 @@ export default function CoverUpload() {
   }, [coverFile])
 
   const onDrop = useCallback(
-    (accepted: File[]) => {
-      if (accepted[0]) setCoverFile(accepted[0])
+    async (accepted: File[]) => {
+      const file = accepted[0]
+      if (!file) return
+      // Validate up front with the same decoder the conversion uses, so a
+      // corrupt image fails here instead of after a long encode.
+      if (!(await isDecodableImage(file))) {
+        setError('That image could not be read. Try a different JPG or PNG.')
+        return
+      }
+      setError(null)
+      setCoverFile(file)
     },
     [setCoverFile]
   )
@@ -59,12 +70,15 @@ export default function CoverUpload() {
         >
           <input {...getInputProps()} />
           {previewUrl ? (
-            <div className="relative h-full w-full">
+            <div className="relative h-full w-full bg-white">
+              {/* object-contain + white bg mirrors the actual output, which pads
+                  non-square covers to 1200×1200 on white — so the preview tells
+                  the truth instead of showing a cropped square. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
                 alt="Cover preview"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
               />
               {(coverSource === 'auto' || coverSource === 'drop') && (
                 <span className="absolute bottom-1 left-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-center text-[10px] font-medium text-white">
@@ -78,7 +92,7 @@ export default function CoverUpload() {
               <p className="mt-2 px-2 text-xs text-zinc-600 dark:text-zinc-400">
                 Drop or click to add cover
               </p>
-              <p className="mt-1 font-mono text-[10px] text-zinc-500 dark:text-zinc-500">
+              <p className="mt-1 font-mono text-[10px] text-zinc-500 dark:text-zinc-400">
                 JPG · PNG
               </p>
             </>
@@ -93,12 +107,20 @@ export default function CoverUpload() {
           {coverFile && (
             <button
               type="button"
-              onClick={() => setCoverFile(null)}
+              onClick={() => {
+                setCoverFile(null)
+                setError(null)
+              }}
               className="mt-3 inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               <X size={12} aria-hidden="true" />
               Remove cover
             </button>
+          )}
+          {error && (
+            <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-400">
+              {error}
+            </p>
           )}
         </div>
       </div>
