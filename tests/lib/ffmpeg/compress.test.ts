@@ -14,6 +14,8 @@ describe('buildCompressArgs', () => {
     expect(args.join(' ')).toContain('-map_chapters 0')
     expect(args.join(' ')).toContain('-map_metadata 0')
     expect(args.join(' ')).toContain('-movflags +faststart')
+    // audiobook classification (stik=2) so players shelve it correctly
+    expect(args.join(' ')).toContain('-metadata media_type=2')
   })
 
   it('substitutes the chosen bitrate', () => {

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import CompressModeSwitch from '@/components/CompressModeSwitch'
-import HowItWorks from '@/components/HowItWorks'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
@@ -100,7 +99,6 @@ export default function CompressM4bPage() {
         </section>
 
         <CompressModeSwitch />
-        <HowItWorks />
 
         <section aria-labelledby="size-heading" className="mt-16 border-t border-zinc-200 pt-10 dark:border-zinc-800">
           <h2 id="size-heading" className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">

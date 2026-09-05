@@ -66,6 +66,18 @@ export default function M4bCompressor() {
 
   const isRunning = ACTIVE_STATUSES.has(progress.status)
 
+  // Warn before leaving while a compression is running — closing the tab
+  // throws away all in-progress work.
+  useEffect(() => {
+    if (!isRunning) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isRunning])
+
   useEffect(() => {
     if (!outputBlob) {
       setDownloadUrl(null)
@@ -181,6 +193,7 @@ export default function M4bCompressor() {
       {/* Drop zone */}
       <div
         {...getRootProps()}
+        role="button"
         aria-label="Drop an M4B or M4A audiobook here, or press Enter to browse"
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 ${
           isDragActive
@@ -353,7 +366,14 @@ export default function M4bCompressor() {
             <span className="truncate text-zinc-800 dark:text-zinc-100">{progress.label}</span>
             <span className="shrink-0 font-mono text-xs text-zinc-500 dark:text-zinc-400">{progress.percent}%</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded bg-zinc-200 dark:bg-zinc-800">
+          <div
+            role="progressbar"
+            aria-valuenow={progress.percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Compression progress"
+            className="mt-2 h-2 overflow-hidden rounded bg-zinc-200 dark:bg-zinc-800"
+          >
             <div className="h-full bg-accent-500 transition-all" style={{ width: `${progress.percent}%` }} />
           </div>
           <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">

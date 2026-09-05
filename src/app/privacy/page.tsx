@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 text-zinc-700 dark:text-zinc-300">
       <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">Last updated: 26 April 2026</p>
+      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">Last updated: 2 September 2026</p>
 
       <h2 className="mt-10 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
         Your audio files
@@ -40,12 +40,26 @@ export default function PrivacyPage() {
       </p>
 
       <h2 className="mt-8 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-        External resources
+        The conversion engine
       </h2>
       <p className="mt-2">
-        On first use, your browser downloads the FFmpeg WebAssembly core from a public CDN
-        (unpkg.com). This is a one-time fetch of a publicly available binary; no data about you or
-        your files is sent in the request.
+        On your first conversion, your browser downloads the FFmpeg WebAssembly core (about 31 MB)
+        from mp3tom4b&apos;s own domain — it is served directly from this site, not from a
+        third-party CDN, and is then cached by your browser for reuse. No data about you or your
+        files is sent in that request.
+      </p>
+
+      <h2 className="mt-8 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+        Optional metadata lookup
+      </h2>
+      <p className="mt-2">
+        If — and only if — you click &ldquo;Look up online&rdquo; in the metadata section, the
+        title, author, and narrator you typed are sent to Apple&apos;s iTunes Search API
+        (itunes.apple.com), and, when that returns no match, to Open Library (openlibrary.org), to
+        fetch matching book details and cover art. These providers are located outside the EU,
+        including in the United States. This is the only situation in which any text you enter
+        leaves your device; it is strictly opt-in per search, shown to you beforehand, and your
+        audio files and cover images are never involved.
       </p>
 
       <h2 className="mt-8 text-xl font-semibold text-zinc-900 dark:text-zinc-100">

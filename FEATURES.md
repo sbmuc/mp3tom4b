@@ -52,6 +52,8 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Estimated time remaining once conversion has settled into a stable phase.
 - ffmpeg.wasm runs entirely in-browser; nothing is uploaded.
 - Output is a single M4B file with chapter markers, embedded cover art, and full audiobook metadata, optimised for streaming/seek (`+faststart`).
+- Output is tagged as an Audiobook (media type `stik=2`) with gapless playback, so players shelve it under audiobooks and keep the resume position.
+- Warns before you close the tab or navigate away while a conversion or compression is still running.
 
 ## Download
 

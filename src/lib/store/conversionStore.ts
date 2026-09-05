@@ -97,7 +97,9 @@ const defaultMetadata: ConversionMetadata = {
   title: '',
   author: '',
   narrator: '',
-  year: String(new Date().getFullYear()),
+  // Left blank on purpose: auto-filling the current year would stamp e.g. a
+  // 1937 book with a 2026 release date. Empty means no `date` atom is written.
+  year: '',
   genre: 'Audiobook' as Genre,
 }
 
@@ -114,11 +116,11 @@ export const useConversionStore = create<ConversionStore>((set) => ({
     set((state) => {
       const merged = [...state.files, ...incoming]
       // Custom order is sticky: new drops append to the end without re-sorting.
-      if (state.sortDirection === 'custom') return { files: merged }
-      return { files: sortFilesNatural(merged, state.sortDirection) }
+      if (state.sortDirection === 'custom') return { files: merged, outputBlob: null }
+      return { files: sortFilesNatural(merged, state.sortDirection), outputBlob: null }
     }),
   removeFile: (id) =>
-    set((state) => ({ files: state.files.filter((f) => f.id !== id) })),
+    set((state) => ({ files: state.files.filter((f) => f.id !== id), outputBlob: null })),
   reorderFiles: (activeId, overId) =>
     set((state) => {
       const files = [...state.files]
@@ -127,7 +129,7 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       if (from === -1 || to === -1) return {}
       const [moved] = files.splice(from, 1)
       files.splice(to, 0, moved)
-      return { files, sortDirection: 'custom' }
+      return { files, sortDirection: 'custom', outputBlob: null }
     }),
   setSortDirection: (direction) =>
     set((state) => ({
@@ -137,6 +139,7 @@ export const useConversionStore = create<ConversionStore>((set) => ({
   updateChapterTitle: (id, title) =>
     set((state) => ({
       files: state.files.map((f) => (f.id === id ? { ...f, chapterTitle: title } : f)),
+      outputBlob: null,
     })),
 
   metadata: defaultMetadata,
@@ -155,6 +158,7 @@ export const useConversionStore = create<ConversionStore>((set) => ({
         metadata: { ...state.metadata, ...patch },
         userTouched: touched,
         verifiedFields: verified,
+        outputBlob: null,
       }
     }),
   applyVerifiedMetadata: (patch: Partial<ConversionMetadata>, source: MetadataSource) =>
@@ -163,13 +167,13 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       for (const key of Object.keys(patch) as MetadataField[]) {
         verified[key] = source
       }
-      return { metadata: { ...state.metadata, ...patch }, verifiedFields: verified }
+      return { metadata: { ...state.metadata, ...patch }, verifiedFields: verified, outputBlob: null }
     }),
 
   coverFile: null,
   coverSource: null,
-  setCoverFile: (file) => set({ coverFile: file, coverSource: file ? 'user' : null }),
-  setCoverFileDrop: (file) => set({ coverFile: file, coverSource: 'drop' }),
+  setCoverFile: (file) => set({ coverFile: file, coverSource: file ? 'user' : null, outputBlob: null }),
+  setCoverFileDrop: (file) => set({ coverFile: file, coverSource: 'drop', outputBlob: null }),
 
   applyAutoMetadata: (extracted) =>
     set((state) => {
@@ -221,7 +225,7 @@ export const useConversionStore = create<ConversionStore>((set) => ({
 
   bitrate: DEFAULT_BITRATE,
   bitrateUserTouched: false,
-  setBitrate: (bitrate) => set({ bitrate, bitrateUserTouched: true }),
+  setBitrate: (bitrate) => set({ bitrate, bitrateUserTouched: true, outputBlob: null }),
   applySmartBitrate: () =>
     set((state) => {
       if (state.bitrateUserTouched) return {}

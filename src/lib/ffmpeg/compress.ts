@@ -50,6 +50,10 @@ export function buildCompressArgs(opts: CompressArgsOptions): string[] {
   args.push(
     '-map_metadata', '0',
     '-map_chapters', '0',
+    // stik=2 marks the file as an Audiobook (resume position, correct shelf);
+    // pgap enables gapless playback. Set after -map_metadata so they win.
+    '-metadata', 'media_type=2',
+    '-metadata:s:a', 'pgap=1',
     '-movflags', '+faststart',
     '-f', 'mp4',
     output,

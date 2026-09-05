@@ -275,6 +275,9 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     if (hasCover) {
       muxArgs.push('-map', '1', '-c:v', 'mjpeg', '-disposition:v', 'attached_pic')
     }
+    // stik=2 marks the file as an Audiobook so players file it correctly and
+    // remember the resume position; pgap enables gapless playback.
+    muxArgs.push('-metadata', 'media_type=2', '-metadata:s:a', 'pgap=1')
     muxArgs.push('-c:a', 'copy', '-movflags', '+faststart', '-f', 'mp4', OUTPUT_PATH)
 
     // ffmpeg.wasm's 'progress' event rarely fires during stream-copy. Parse

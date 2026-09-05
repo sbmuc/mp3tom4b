@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.4.1] — 2026-09-02
+
+### Fixed
+- Output M4B files are now tagged as an **Audiobook** (media type) with gapless playback, so players shelve them under audiobooks and remember the resume position instead of treating them as music. Applies to both the converter and the M4B compressor.
+- The "your audiobook is ready" card is now cleared when you change files, metadata, cover, or bitrate after a conversion — previously it could keep offering a download whose filename no longer matched the tags inside the file.
+- The year field no longer pre-fills with the current year (which stamped older books with a wrong release date). It starts empty, with the current year shown only as a placeholder hint.
+- Privacy policy corrected: the FFmpeg core is served from mp3tom4b's own domain (not a third-party CDN), and the optional online metadata lookup (iTunes / Open Library, located outside the EU) is now disclosed.
+
+### Added
+- A warning before closing the tab or navigating away while a conversion or compression is running, so long jobs aren't lost by accident.
+- The homepage now links to the format-specific converter pages (FLAC, WAV, M4A, OGG, Opus).
+
+### Changed
+- The "Shrink an existing M4B" tab now shows its own how-it-works steps instead of the build-from-files steps.
+- Accessibility: drop zones expose a button role and progress bars expose a proper progressbar role with value.
+
+---
+
 ## [1.4.0] — 2026-08-25
 
 ### Added

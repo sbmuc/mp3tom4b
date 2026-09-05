@@ -34,6 +34,18 @@ export default function ProgressBar() {
 
   const isActive = ACTIVE_STATUSES.has(progress.status)
 
+  // Warn before leaving while a conversion is running — closing the tab or
+  // navigating away throws away all in-progress work (can be 15+ minutes).
+  useEffect(() => {
+    if (!isActive) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isActive])
+
   // Hold a screen wake lock while converting so the OS doesn't sleep the tab
   // (which can pause the wasm worker and break long-running conversions).
   // The browser auto-releases the lock when the tab is hidden, so we re-acquire
@@ -166,7 +178,14 @@ export default function ProgressBar() {
           {progress.percent}%
         </span>
       </div>
-      <div className="mt-2 h-2 overflow-hidden rounded bg-zinc-200 dark:bg-zinc-800">
+      <div
+        role="progressbar"
+        aria-valuenow={progress.percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Conversion progress"
+        className="mt-2 h-2 overflow-hidden rounded bg-zinc-200 dark:bg-zinc-800"
+      >
         <div
           className="h-full bg-accent-500 transition-all"
           style={{ width: `${progress.percent}%` }}
