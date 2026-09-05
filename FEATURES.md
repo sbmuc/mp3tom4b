@@ -57,6 +57,14 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Output is tagged as an Audiobook (media type `stik=2`) with gapless playback, so players shelve it under audiobooks and keep the resume position.
 - Warns before you close the tab or navigate away while a conversion or compression is still running.
 
+## Split an M4B (M4B → MP3)
+
+- Available at `/m4b-to-mp3`: drop a finished `.m4b` / `.m4a` and it is probed in-browser for its chapter list.
+- Each chapter is re-encoded to an MP3 (64 / 96 / 128 kbps), named and numbered by chapter, and the set is bundled into a ZIP for download.
+- A file without chapters is exported as a single MP3.
+- Each MP3 is tagged with the chapter title, a track number, and the book's title/author (album/artist).
+- Runs entirely in the browser via WebAssembly — the audiobook is never uploaded.
+
 ## Download
 
 - Auto-generated filename in `{Author} - {Title}.m4b` format.
@@ -91,6 +99,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - `/privacy` — privacy policy.
 - Five SEO sister landing pages with format-specific hero copy and FAQ: `/flac-to-m4b`, `/wav-to-m4b`, `/m4a-to-m4b`, `/ogg-to-m4b`, `/opus-to-m4b`.
 - `/compress-m4b` — landing page for shrinking or building a compact M4B, with the compressor and build tool behind a mode toggle.
+- `/m4b-to-mp3` — landing page for splitting an M4B into per-chapter MP3s.
 
 ## SEO
 

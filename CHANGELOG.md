@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.5.0] — 2026-09-02
+
+### Added
+- **M4B to MP3 (split)** — a new tool at `/m4b-to-mp3` that splits an existing M4B audiobook into per-chapter MP3 files (bundled as a ZIP), or into a single MP3 when the file has no chapters. Each MP3 is named and numbered by chapter and tagged with the chapter title, track number, and the book's title and author. Everything runs in your browser; nothing is uploaded.
+- Choice of MP3 bitrate (64 / 96 / 128 kbps) with an estimated total size and a chapter-list preview.
+- The homepage and the compress page now link to the M4B-to-MP3 tool, and it's in the sitemap.
+
+---
+
 ## [1.4.3] — 2026-09-02
 
 ### Added

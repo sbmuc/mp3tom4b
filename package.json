@@ -17,6 +17,7 @@
     "@ffmpeg/util": "^0.12.2",
     "@next/third-parties": "^16.2.6",
     "@vercel/analytics": "^2.0.1",
+    "fflate": "^0.8.3",
     "lucide-react": "^0.511.0",
     "music-metadata": "^11.12.3",
     "natural-orderby": "^5.0.0",

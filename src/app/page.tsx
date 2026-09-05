@@ -71,6 +71,8 @@ export default function Home() {
               { label: 'M4A to M4B', href: '/m4a-to-m4b' },
               { label: 'OGG to M4B', href: '/ogg-to-m4b' },
               { label: 'Opus to M4B', href: '/opus-to-m4b' },
+              { label: 'Compress an M4B', href: '/compress-m4b' },
+              { label: 'M4B to MP3', href: '/m4b-to-mp3' },
             ].map(({ label, href }) => (
               <li key={href}>
                 <Link

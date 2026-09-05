@@ -71,9 +71,6 @@ iTunes Search and Open Library already ship in V1.1. These would only land if re
 - **Browser-storage project save/resume** using IndexedDB. No account, no cloud — entirely local. Lets users come back to an in-progress audiobook setup after closing the tab.
 - **"Continue where you left off"** prompt on next visit if a project is in progress.
 
-### Reverse conversion
-- **M4B → individual MP3 files** — split an existing M4B back into chapter MP3s. Different ffmpeg pipeline but same wasm engine.
-
 ### Internationalization
 - **Dutch UI translation** — natural fit given Sebastiaan's market and KvK presence.
 - **German UI translation** — large adjacent market, similar audiobook culture.
@@ -109,7 +106,6 @@ Only if V1 finds a real audience and there's demand for related utilities. Each 
 
 - **M4B chapter editor** — edit chapters in existing M4B files without re-encoding. Different ffmpeg pipeline (chapter atom edit only), much faster.
 - **M4B metadata fixer** — batch-fix tags in audiobook libraries. Useful for users with messy collections.
-- **M4B splitter** — split a long M4B into chapter MP3s (this is V2's reverse conversion, possibly worth promoting to its own page).
 - **Audiobook cover generator** — basic AI-generated or template-based cover creation for user-recorded audiobooks (authors, podcasters).
 
 These could live at sub-paths (`mp3tom4b.com/chapter-editor`) or get their own keyword-targeted domains (`m4bchapters.com`, `audiobooktools.com`).
