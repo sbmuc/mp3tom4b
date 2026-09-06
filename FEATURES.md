@@ -76,6 +76,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Available on the `/compress-m4b` page via a mode toggle: "Shrink an existing M4B" (default) or "Build from separate files".
 - Drop a single finished `.m4b` / `.m4a`; the file is probed in-browser for its duration, chapter count, cover presence, and current bitrate.
 - Re-encodes only the audio stream to a lower AAC bitrate (64 / 96 / 128 kbps) while keeping the original chapters, cover art, and metadata untouched.
+- Chaptered books are split at chapter boundaries and re-encoded in parallel across workers (~2–3× faster); chapterless files use a single serial pass.
 - Estimated output size and expected space saving ("about 50% smaller") update with the chosen bitrate.
 - Compression is disabled when the chosen bitrate is not lower than the source's current bitrate (it wouldn't shrink the file).
 - Download filename derived from the file's embedded tags (`{Author} - {Title}.m4b`), falling back to the original name.
@@ -90,6 +91,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Responsive layout that works on tablet; desktop is the optimised target.
 - Keyboard-accessible interactive elements; ARIA labels on icon-only buttons.
 - aria-live progress announcements during conversion.
+- Keeps the screen awake during conversion, compression, and splitting (while the tab is in the foreground) so a long job isn't interrupted by display sleep.
 
 ## Pages
 

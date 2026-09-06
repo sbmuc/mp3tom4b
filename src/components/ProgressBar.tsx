@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { formatEta } from '@/lib/format/eta'
+import { useWakeLock } from '@/lib/hooks/useWakeLock'
 
 const ACTIVE_STATUSES = new Set([
   'loading-ffmpeg',
@@ -46,45 +47,9 @@ export default function ProgressBar() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [isActive])
 
-  // Hold a screen wake lock while converting so the OS doesn't sleep the tab
+  // Keep the screen awake while converting so the OS doesn't sleep the tab
   // (which can pause the wasm worker and break long-running conversions).
-  // The browser auto-releases the lock when the tab is hidden, so we re-acquire
-  // it on visibilitychange. Silently no-ops on browsers without the API.
-  useEffect(() => {
-    if (!isActive) return
-    if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return
-
-    let sentinel: WakeLockSentinel | null = null
-    let cancelled = false
-
-    const acquire = async () => {
-      try {
-        const next = await navigator.wakeLock.request('screen')
-        if (cancelled) {
-          next.release().catch(() => {})
-          return
-        }
-        sentinel = next
-      } catch {
-        // User gesture missing, page hidden, or policy denial — ignore.
-      }
-    }
-
-    acquire()
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible' && (sentinel === null || sentinel.released)) {
-        acquire()
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-
-    return () => {
-      cancelled = true
-      document.removeEventListener('visibilitychange', onVisibility)
-      sentinel?.release().catch(() => {})
-    }
-  }, [isActive])
+  useWakeLock(isActive)
 
   useEffect(() => {
     if (!isActive) {
@@ -195,7 +160,7 @@ export default function ProgressBar() {
         <p className="mt-2 font-mono text-xs text-zinc-500 dark:text-zinc-400">{eta}</p>
       )}
       <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-        Converting locally in your browser. No upload needed. Keep this tab open until it finishes.
+        Converting locally in your browser — no upload needed. Your screen stays awake; just keep this tab open until it finishes.
       </p>
     </div>
   )

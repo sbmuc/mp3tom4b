@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.6.0] — 2026-09-06
+
+### Changed
+- Compressing an M4B is now much faster for chaptered audiobooks: the file is split at its chapter boundaries and the chapters are re-encoded **in parallel** across multiple workers, instead of one serial pass (roughly 2–3× quicker). Chapters, cover art, and metadata are preserved; files without chapters still use the original single-pass path.
+
+### Added
+- The compressor and the M4B-to-MP3 splitter now keep your screen awake while they run, so a long job isn't paused by the display going to sleep — matching what the converter already did. (Active while the tab stays in the foreground.)
+
+---
+
 ## [1.5.0] — 2026-09-02
 
 ### Added

@@ -20,6 +20,7 @@ import { track } from '@vercel/analytics'
 import { splitM4B, type SplitResult } from '@/lib/ffmpeg/split'
 import { probeChapters, type Chapter } from '@/lib/ffmpeg/splitChapters'
 import { terminateFFmpeg } from '@/lib/ffmpeg/client'
+import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { estimateOutputBytes, formatEstimatedSize } from '@/lib/audio/bitrate'
 import { formatBytes, formatDuration } from '@/lib/audio/format'
@@ -56,6 +57,9 @@ export default function M4bSplitter() {
 
   const cancelledRef = useRef(false)
   const isRunning = ACTIVE_STATUSES.has(progress.status)
+
+  // Keep the screen awake so a long split isn't paused by device sleep.
+  useWakeLock(isRunning)
 
   useEffect(() => {
     if (!isRunning) return
@@ -338,7 +342,7 @@ export default function M4bSplitter() {
             <div className="h-full bg-accent-500 transition-all" style={{ width: `${progress.percent}%` }} />
           </div>
           <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-            Splitting locally in your browser. No upload needed. Keep this tab open until it finishes.
+            Splitting locally in your browser — no upload needed. Your screen stays awake; just keep this tab open until it finishes.
           </p>
         </div>
       )}
