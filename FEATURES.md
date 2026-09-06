@@ -85,6 +85,16 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Duplicate files (same name + size) are skipped with a notice; the download is named `{Author} - {Title} (merged).m4b` to avoid overwriting the sources.
 - Runs entirely in the browser via WebAssembly — the files are never uploaded.
 
+## Add chapters to a single file
+
+- Available at `/add-chapters-to-mp3`: drop one long audio file (MP3, M4A, M4B, WAV, FLAC, OGG, Opus) and turn it into a chaptered M4B.
+- Three ways to set chapter marks: split evenly into a number of chapters (or one every N minutes), auto-detect chapters from the silent pauses (`silencedetect`, opt-in — a full decode pass with progress + wake lock), or enter/adjust the times by hand.
+- Editable chapter table (reused from the editor): first chapter pinned to 0:00:00, add/remove, auto-sort by time, live validation.
+- Metadata form (prefilled from the file) and cover (keep the file's own, upload a new image, or remove).
+- Bitrate 64 / 96 / 128 kbps; the audio stays one continuous stream with chapter markers added over it.
+- Long files are split into chapter-sized pieces and re-encoded in parallel (bounded memory + faster); short files use a single pass.
+- Runs entirely in the browser via WebAssembly — the file is never uploaded.
+
 ## Download
 
 - Auto-generated filename in `{Author} - {Title}.m4b` format.
@@ -124,6 +134,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - `/m4b-to-mp3` — landing page for splitting an M4B into per-chapter MP3s.
 - `/edit-m4b-chapters` — landing page for editing chapters, metadata, and cover art in an existing M4B.
 - `/merge-m4b` — landing page for merging several M4B files into one audiobook.
+- `/add-chapters-to-mp3` — landing page for turning a single audio file into a chaptered M4B.
 
 ## SEO
 

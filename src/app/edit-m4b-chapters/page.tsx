@@ -70,6 +70,7 @@ const RELATED = [
   { label: 'Compress an M4B', href: '/compress-m4b' },
   { label: 'M4B to MP3', href: '/m4b-to-mp3' },
   { label: 'Merge M4Bs', href: '/merge-m4b' },
+  { label: 'Add chapters to MP3', href: '/add-chapters-to-mp3' },
 ]
 
 export default function EditM4bPage() {

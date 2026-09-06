@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.9.0] — 2026-09-06
+
+### Added
+- **Add chapters to a single file** — a new tool at `/add-chapters-to-mp3` that turns one long audio file (MP3, M4A, M4B, WAV, FLAC, OGG, or Opus) into a properly chaptered M4B. Set the chapter marks three ways: split evenly into N chapters (or one every N minutes), auto-detect chapters from the silent pauses in the recording, or type the times by hand — then edit any of them. Metadata and cover (keep the file's own, upload a new one, or remove it) are set like the other tools.
+- This fills the gap where one big MP3 could only become a single-chapter audiobook. The audio stays one continuous file; only chapter markers are added.
+- The homepage and the other M4B tool pages link to it, and it's in the sitemap.
+
+### Fixed
+- Long books no longer run out of memory while converting: the file is split into chapter-sized pieces, re-encoded in parallel, then joined — the same bounded-memory approach the compressor uses — instead of re-encoding the whole file in one pass.
+
+---
+
 ## [1.8.0] — 2026-09-06
 
 ### Added

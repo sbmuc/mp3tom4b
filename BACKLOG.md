@@ -78,8 +78,8 @@ iTunes Search and Open Library already ship in V1.1. These would only land if re
 
 ### Advanced chapter handling
 - **Per-chapter cover art** — different image per chapter, embedded as MP4 chapter atoms.
-- **Custom chapter timestamps within a single file** — split one long MP3 into multiple chapters at user-defined times. Different from current "one file = one chapter" model.
 - **Chapter-title collision detection** — when multiple files have the same embedded title, warn and offer to deduplicate or rename.
+- **Parallelise the chapterizer re-encode** — the "add chapters to a single file" tool (`/add-chapters-to-mp3`) re-encodes the whole file in one serial pass. Since the chosen chapter times are natural split points, the compressor's worker-pool segment infra (`compress.ts`) could split → encode segments in parallel → concat, for a big speed-up on long files.
 
 ### File handling improvements
 - **Larger file support** — investigate ffmpeg.wasm-mt (multithreaded) for files > 1.5GB. Requires COOP/COEP headers (already configured) and SharedArrayBuffer support.
