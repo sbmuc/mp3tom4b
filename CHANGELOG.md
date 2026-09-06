@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.7.0] — 2026-09-06
+
+### Added
+- **Edit M4B chapters & metadata** — a new tool at `/edit-m4b-chapters` for fixing up an existing audiobook. Drop a finished `.m4b` and you can rename, add, remove, or re-time its chapters, correct the title/author/narrator/year/genre tags, and keep, replace, or remove the cover image. The chapter list re-orders itself by time as you edit, and the first chapter is pinned to the start of the book.
+- Because only the markers, tags, and cover change, the audio stream is copied through untouched — no re-encode, no quality loss, and a near-instant save even for a long book. It also works on a chapterless file: add markers from scratch.
+- The homepage, the compress page, and the M4B-to-MP3 page now link to the editor, and it's in the sitemap.
+
+---
+
 ## [1.6.0] — 2026-09-06
 
 ### Changed

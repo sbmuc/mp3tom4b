@@ -79,6 +79,7 @@ const OTHER_FORMATS = [
   { label: 'OGG to M4B', href: '/ogg-to-m4b' },
   { label: 'Opus to M4B', href: '/opus-to-m4b' },
   { label: 'M4B to MP3', href: '/m4b-to-mp3' },
+  { label: 'Edit M4B chapters', href: '/edit-m4b-chapters' },
 ]
 
 export default function CompressM4bPage() {

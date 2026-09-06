@@ -104,8 +104,8 @@ Native SwiftUI app, not a web wrapper. Shares brand and UX patterns with the web
 
 Only if V1 finds a real audience and there's demand for related utilities. Each tool reuses the existing codebase and brand:
 
-- **M4B chapter editor** — edit chapters in existing M4B files without re-encoding. Different ffmpeg pipeline (chapter atom edit only), much faster.
-- **M4B metadata fixer** — batch-fix tags in audiobook libraries. Useful for users with messy collections.
+- **Merge multiple M4Bs** — combine several M4B files into one audiobook (multi-part books), renumbering/offsetting chapters. Next toolbox tool after the editor.
+- **M4B metadata fixer (batch)** — fix tags across many files at once. Single-file chapter/metadata editing already shipped at `/edit-m4b-chapters`; this is the batch-library version.
 - **Audiobook cover generator** — basic AI-generated or template-based cover creation for user-recorded audiobooks (authors, podcasters).
 
 These could live at sub-paths (`mp3tom4b.com/chapter-editor`) or get their own keyword-targeted domains (`m4bchapters.com`, `audiobooktools.com`).

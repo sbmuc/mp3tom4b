@@ -65,6 +65,16 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Each MP3 is tagged with the chapter title, a track number, and the book's title/author (album/artist).
 - Runs entirely in the browser via WebAssembly — the audiobook is never uploaded.
 
+## Edit an M4B (chapters, metadata & cover)
+
+- Available at `/edit-m4b-chapters`: drop a finished `.m4b` / `.m4a` and it is probed in-browser for its chapters, tags, duration, and cover.
+- Edit the chapter list — rename, add, remove, or re-time chapters; the list re-orders itself by start time as you edit, and the first chapter is pinned to `0:00:00`.
+- Add chapters to a file that has none, building the marker list from scratch.
+- Live validation: chapter start times must increase and stay within the book length; Save is disabled with an inline reason until the list is valid.
+- Edit the book metadata (title, author, narrator, year, genre) and choose to keep, replace, or remove the cover image.
+- Metadata-only `-c copy` remux — the audio stream is copied through untouched, so there is no re-encode, no quality loss, and the save is near-instant even for a long book.
+- Runs entirely in the browser via WebAssembly — the audiobook is never uploaded.
+
 ## Download
 
 - Auto-generated filename in `{Author} - {Title}.m4b` format.
@@ -102,6 +112,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Five SEO sister landing pages with format-specific hero copy and FAQ: `/flac-to-m4b`, `/wav-to-m4b`, `/m4a-to-m4b`, `/ogg-to-m4b`, `/opus-to-m4b`.
 - `/compress-m4b` — landing page for shrinking or building a compact M4B, with the compressor and build tool behind a mode toggle.
 - `/m4b-to-mp3` — landing page for splitting an M4B into per-chapter MP3s.
+- `/edit-m4b-chapters` — landing page for editing chapters, metadata, and cover art in an existing M4B.
 
 ## SEO
 
