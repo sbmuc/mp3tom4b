@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.8.0] — 2026-09-06
+
+### Added
+- **Merge multiple M4Bs** — a new tool at `/merge-m4b` that combines several M4B/M4A files into one audiobook, ideal for multi-part books. Each file's chapters are shifted onto a single continuous timeline (or you can collapse each file to one chapter). Drag the files into the order you want; they're joined top-to-bottom.
+- Smart joining: when the files share the same audio settings they're **stream-copied** together — no re-encode, no quality loss, and near-instant. When they differ, they're re-encoded to a common format so they play back seamlessly, with a clear notice and a bitrate choice.
+- Set the combined book's title, author, narrator, year, and genre (prefilled from the first file), and **choose which file's cover to use** — or upload a new one, or remove it.
+- The download is named `{Author} - {Title} (merged).m4b` so it won't overwrite the source files, and adding the same file twice is skipped with a notice.
+- The homepage and the other M4B tool pages now link to the merge tool, and it's in the sitemap.
+
+---
+
 ## [1.7.0] — 2026-09-06
 
 ### Added

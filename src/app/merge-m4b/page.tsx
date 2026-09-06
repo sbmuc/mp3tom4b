@@ -1,57 +1,57 @@
 import type { Metadata } from 'next'
-import M4bEditor from '@/components/M4bEditor'
+import M4bMerger from '@/components/M4bMerger'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Edit M4B Chapters & Metadata',
+  title: 'Merge M4B Files: Combine Audiobooks Into One',
   description:
-    'Edit an M4B audiobook in your browser: rename, add, remove, or re-time chapters, fix the title/author/narrator tags, and swap the cover. No upload, no re-encode — the audio is untouched.',
-  alternates: { canonical: '/edit-m4b-chapters' },
+    'Combine several M4B/M4A files into one audiobook in your browser — perfect for multi-part books. Chapters are placed on a continuous timeline, with cover and tags kept. No upload, no signup.',
+  alternates: { canonical: '/merge-m4b' },
   openGraph: {
-    title: 'M4B Chapter & Metadata Editor: Free, Private, No Upload',
+    title: 'Merge M4B Files: Combine Audiobooks Into One, Free and Private',
     description:
-      'Fix chapters, tags, and cover art on an M4B audiobook, right in your browser. Runs entirely client-side via WebAssembly; the audio is copied, never re-encoded.',
+      'Join multi-part M4B audiobooks into a single chaptered file, right in your browser. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
   },
   twitter: {
     card: 'summary',
-    title: 'M4B Chapter & Metadata Editor: Free, Private, No Upload',
+    title: 'Merge M4B Files: Combine Audiobooks Into One, Free and Private',
     description:
-      'Fix chapters, tags, and cover art on an M4B audiobook, right in your browser. Runs entirely client-side via WebAssembly; the audio is copied, never re-encoded.',
+      'Join multi-part M4B audiobooks into a single chaptered file, right in your browser. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
   },
 }
 
 const softwareApplicationLd = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'mp3tom4b: M4B Editor',
+  name: 'mp3tom4b: Merge M4B',
   description:
-    'Free browser-based tool to edit chapters, metadata, and cover art in an M4B audiobook without re-encoding. Runs entirely client-side; no files are uploaded.',
+    'Free browser-based tool to merge several M4B audiobooks into one, offsetting each part\'s chapters onto a continuous timeline. Runs entirely client-side; no files are uploaded.',
   applicationCategory: 'MultimediaApplication',
   operatingSystem: 'Any (modern web browser)',
-  url: 'https://www.mp3tom4b.com/edit-m4b-chapters',
+  url: 'https://www.mp3tom4b.com/merge-m4b',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
 }
 
 const FAQS = [
   {
-    q: 'Can I add chapters to an M4B that has none?',
-    a: 'Yes. Drop the file, then use "Add chapter" to place markers at the times you want, each with its own title. It also works the other way — you can remove or re-time existing chapters.',
+    q: 'Does merging keep the chapters from each file?',
+    a: 'Yes. Each file\'s chapters are shifted onto one continuous timeline, so a book split across "Part 1", "Part 2", and so on becomes a single file with all chapters in order. You can also choose to make each file a single chapter instead.',
   },
   {
-    q: 'Does editing re-encode the audio?',
-    a: 'No. Only the chapter markers, tags, and cover change; the audio stream is copied through untouched. That means no quality loss and a near-instant save, even for a long book.',
+    q: 'How does it join the files — is there quality loss?',
+    a: 'When the files share the same audio settings (which parts of the same book almost always do), they are stream-copied together with no re-encode and no quality loss — and it is near-instant. If the files use different settings, they are re-encoded to a common format so they join cleanly; a notice tells you when that happens.',
   },
   {
-    q: 'What can I edit?',
-    a: 'Chapter titles and start times (add, remove, rename, re-time), the book title, author, narrator, year, and genre, and the cover image (keep, replace, or remove).',
+    q: 'Can I set the order of the files?',
+    a: 'Yes. Drag the files into the order you want (or use the keyboard). They are joined top-to-bottom, and the chapter timeline follows that order.',
+  },
+  {
+    q: 'What about the cover and metadata?',
+    a: 'The merged file uses the first file\'s cover by default, but you can pick any input file\'s cover, upload a new image, or remove it. You also set the title, author, narrator, year, and genre for the combined book — prefilled from the first file.',
   },
   {
     q: 'Are my files uploaded anywhere?',
-    a: 'No. Editing runs entirely inside your browser using a WebAssembly build of FFmpeg. Your audiobook never leaves your device. Open your browser\'s Network tab while saving to verify there are no uploads.',
-  },
-  {
-    q: 'How do I enter chapter times?',
-    a: 'As H:MM:SS measured from the start of the book (for example 1:23:45), or plain seconds. The first chapter must start at 0:00:00, and times must increase and stay within the book length.',
+    a: 'No. Merging runs entirely inside your browser using a WebAssembly build of FFmpeg. Your audiobooks never leave your device. Open your browser\'s Network tab while merging to verify there are no uploads.',
   },
 ]
 
@@ -68,11 +68,11 @@ const faqLd = {
 const RELATED = [
   { label: 'MP3 to M4B', href: '/' },
   { label: 'Compress an M4B', href: '/compress-m4b' },
+  { label: 'Edit M4B chapters', href: '/edit-m4b-chapters' },
   { label: 'M4B to MP3', href: '/m4b-to-mp3' },
-  { label: 'Merge M4Bs', href: '/merge-m4b' },
 ]
 
-export default function EditM4bPage() {
+export default function MergeM4bPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationLd) }} />
@@ -80,33 +80,34 @@ export default function EditM4bPage() {
       <div className="mx-auto max-w-5xl px-4 py-6">
         <section className="py-10 text-center sm:py-14">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
-            Edit M4B chapters &amp; metadata
+            Merge M4B files
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-            Rename, add, remove, or re-time chapters, fix the tags, and swap the cover on an existing
-            M4B — right in your browser, without re-encoding the audio.{' '}
+            Combine several M4B audiobooks into one — ideal for multi-part books. Chapters from every
+            file land on a single continuous timeline, right in your browser.{' '}
             <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Your files never leave your device.</strong>
           </p>
         </section>
 
-        <M4bEditor />
+        <M4bMerger />
 
         <section aria-labelledby="how-heading" className="mt-16 border-t border-zinc-200 pt-10 dark:border-zinc-800">
           <h2 id="how-heading" className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            How M4B editing works
+            How merging M4B files works
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-            Drop a finished M4B and the tool reads its chapters, tags, and cover. Adjust anything —
-            chapter titles and times, the book metadata, the cover — then save. Because only the
-            markers and metadata change, the audio is copied rather than re-encoded, so there is no
-            quality loss and the save is fast. Everything runs locally through a WebAssembly build of
-            FFmpeg; nothing is uploaded.
+            Drop two or more M4B files, drag them into order, and the tool reads each file&apos;s
+            chapters and length. It then joins them into a single audiobook, shifting every chapter
+            onto one continuous timeline. When the files share the same audio settings they are joined
+            without re-encoding — fast and lossless; otherwise they are re-encoded to a common format
+            so they play back seamlessly. Everything runs locally through a WebAssembly build of
+            FFmpeg — nothing is uploaded.
           </p>
         </section>
 
         <section aria-labelledby="faq-heading" className="mt-16 border-t border-zinc-200 pt-10 dark:border-zinc-800">
           <h2 id="faq-heading" className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Editing M4B: common questions
+            Merging M4B: common questions
           </h2>
           <dl className="mt-6 space-y-5">
             {FAQS.map(({ q, a }) => (

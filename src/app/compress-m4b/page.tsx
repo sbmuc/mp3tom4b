@@ -80,6 +80,7 @@ const OTHER_FORMATS = [
   { label: 'Opus to M4B', href: '/opus-to-m4b' },
   { label: 'M4B to MP3', href: '/m4b-to-mp3' },
   { label: 'Edit M4B chapters', href: '/edit-m4b-chapters' },
+  { label: 'Merge M4Bs', href: '/merge-m4b' },
 ]
 
 export default function CompressM4bPage() {

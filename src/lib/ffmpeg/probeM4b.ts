@@ -3,7 +3,16 @@
 import { fetchFile } from '@ffmpeg/util'
 import { getFFmpeg } from './client'
 
-export interface M4bProbeInfo {
+export interface AudioStreamInfo {
+  /** Codec name, lower-cased (e.g. "aac"), or null if not found. */
+  codec: string | null
+  /** Sample rate in Hz, or null if not reported. */
+  sampleRate: number | null
+  /** Channel layout as ffmpeg prints it ("mono", "stereo", "5.1", …), or null. */
+  channelLayout: string | null
+}
+
+export interface M4bProbeInfo extends AudioStreamInfo {
   /** Duration in ms, or null if it couldn't be parsed. */
   durationMs: number | null
   /** Current overall bitrate in kbps, or null if not reported. */
@@ -19,6 +28,28 @@ const BITRATE_RE = /bitrate:\s*(\d+)\s*kb\/s/
 const CHAPTER_RE = /Chapter #\d+:\d+/
 const COVER_RE = /attached pic/i
 const VIDEO_STREAM_RE = /Stream #\d+:\d+.*:\s*Video:/i
+const AUDIO_LINE_RE = /Stream #\d+:\d+.*?:\s*Audio:\s*([A-Za-z0-9_.\-]+)/i
+const SAMPLE_RATE_RE = /(\d+)\s*Hz/
+const CHANNELS_RE = /\d+\s*Hz,\s*([^,]+)/
+
+/**
+ * Parse the first audio `Stream …` line into codec / sample rate / channels.
+ * Pure + unit-testable — no ffmpeg dependency.
+ */
+export function parseAudioStream(logLines: string[]): AudioStreamInfo {
+  for (const line of logLines) {
+    const m = line.match(AUDIO_LINE_RE)
+    if (!m) continue
+    const rateM = line.match(SAMPLE_RATE_RE)
+    const chM = line.match(CHANNELS_RE)
+    return {
+      codec: m[1].toLowerCase(),
+      sampleRate: rateM ? Number(rateM[1]) : null,
+      channelLayout: chM ? chM[1].trim() : null,
+    }
+  }
+  return { codec: null, sampleRate: null, channelLayout: null }
+}
 
 /**
  * Parse ffmpeg's `-i` header dump (one message per line) into structured M4B
@@ -49,7 +80,7 @@ export function parseM4bProbe(logLines: string[]): M4bProbeInfo {
     if (!hasCover && (COVER_RE.test(line) || VIDEO_STREAM_RE.test(line))) hasCover = true
   }
 
-  return { durationMs, currentBitrateKbps, chapterCount, hasCover }
+  return { durationMs, currentBitrateKbps, chapterCount, hasCover, ...parseAudioStream(logLines) }
 }
 
 /**

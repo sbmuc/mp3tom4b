@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseM4bProbe } from '@/lib/ffmpeg/probeM4b'
+import { parseAudioStream, parseM4bProbe } from '@/lib/ffmpeg/probeM4b'
 
 // Representative ffmpeg `-i` header dump for a chaptered M4B with cover art.
 const CHAPTERED_WITH_COVER = [
@@ -52,5 +52,24 @@ describe('parseM4bProbe', () => {
       '  Stream #0:1: Video: png, rgba, 600x600, attached pic',
     ])
     expect(info.hasCover).toBe(true)
+  })
+
+  it('surfaces the audio stream codec, sample rate, and channels', () => {
+    const info = parseM4bProbe(CHAPTERED_WITH_COVER)
+    expect(info.codec).toBe('aac')
+    expect(info.sampleRate).toBe(44100)
+    expect(info.channelLayout).toBe('stereo')
+  })
+})
+
+describe('parseAudioStream', () => {
+  it('parses codec, sample rate, and channel layout from the audio line', () => {
+    const s = parseAudioStream(['  Stream #0:0[0x1](und): Audio: aac (LC) (mp4a / 0x6134706D), 22050 Hz, mono, fltp, 64 kb/s'])
+    expect(s).toEqual({ codec: 'aac', sampleRate: 22050, channelLayout: 'mono' })
+  })
+
+  it('ignores a video (cover) stream and returns nulls when no audio is present', () => {
+    const s = parseAudioStream(['  Stream #0:1: Video: mjpeg, yuvj444p, 1200x1200, attached pic'])
+    expect(s).toEqual({ codec: null, sampleRate: null, channelLayout: null })
   })
 })

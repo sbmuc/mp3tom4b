@@ -74,6 +74,7 @@ export default function Home() {
               { label: 'Compress an M4B', href: '/compress-m4b' },
               { label: 'M4B to MP3', href: '/m4b-to-mp3' },
               { label: 'Edit M4B chapters', href: '/edit-m4b-chapters' },
+              { label: 'Merge M4Bs', href: '/merge-m4b' },
             ].map(({ label, href }) => (
               <li key={href}>
                 <Link

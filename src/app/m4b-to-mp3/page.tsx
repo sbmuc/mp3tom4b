@@ -69,6 +69,7 @@ const RELATED = [
   { label: 'MP3 to M4B', href: '/' },
   { label: 'Compress an M4B', href: '/compress-m4b' },
   { label: 'Edit M4B chapters', href: '/edit-m4b-chapters' },
+  { label: 'Merge M4Bs', href: '/merge-m4b' },
   { label: 'FLAC to M4B', href: '/flac-to-m4b' },
   { label: 'WAV to M4B', href: '/wav-to-m4b' },
 ]

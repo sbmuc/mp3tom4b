@@ -75,6 +75,16 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Metadata-only `-c copy` remux — the audio stream is copied through untouched, so there is no re-encode, no quality loss, and the save is near-instant even for a long book.
 - Runs entirely in the browser via WebAssembly — the audiobook is never uploaded.
 
+## Merge multiple M4Bs
+
+- Available at `/merge-m4b`: drop two or more `.m4b` / `.m4a` files and each is probed in-browser for its chapters, length, audio settings, and cover.
+- Drag-to-reorder the files (keyboard-accessible); they are joined top-to-bottom.
+- Each file's chapters are shifted onto one continuous timeline, or optionally collapsed to a single chapter per file. A chapterless file becomes one chapter titled after it.
+- Compatible files (same codec/sample rate/channels) are stream-copied together — no re-encode, no quality loss, near-instant; mismatched files are re-encoded to a common AAC target (with a notice and a bitrate choice).
+- Set the combined book's title/author/narrator/year/genre (prefilled from the first file); pick which input file's cover to use, upload a new one, or remove it.
+- Duplicate files (same name + size) are skipped with a notice; the download is named `{Author} - {Title} (merged).m4b` to avoid overwriting the sources.
+- Runs entirely in the browser via WebAssembly — the files are never uploaded.
+
 ## Download
 
 - Auto-generated filename in `{Author} - {Title}.m4b` format.
@@ -113,6 +123,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - `/compress-m4b` — landing page for shrinking or building a compact M4B, with the compressor and build tool behind a mode toggle.
 - `/m4b-to-mp3` — landing page for splitting an M4B into per-chapter MP3s.
 - `/edit-m4b-chapters` — landing page for editing chapters, metadata, and cover art in an existing M4B.
+- `/merge-m4b` — landing page for merging several M4B files into one audiobook.
 
 ## SEO
 
