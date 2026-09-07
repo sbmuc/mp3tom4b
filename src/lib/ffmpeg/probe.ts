@@ -9,8 +9,11 @@ const DURATION_RE = /Duration:\s*(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
  * Decode just enough of the file to read its duration via the browser's
  * native HTMLAudioElement. Reliable for any format the browser can play
  * (mp3, m4a, wav, ogg, opus and on most browsers flac).
+ *
+ * Exported so the drop zone can cheaply tell "unreadable" from "no duration in
+ * the tags" without pulling in the ~31 MB ffmpeg core.
  */
-function probeDurationViaAudioElement(file: File): Promise<number | null> {
+export function probeDurationViaAudioElement(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const audio = new Audio()

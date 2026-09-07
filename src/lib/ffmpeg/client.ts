@@ -140,6 +140,15 @@ export function isFFmpegLoaded(): boolean {
 }
 
 /**
+ * Progress label for the load phase. On a first visit the core is a ~31 MB
+ * one-time download, which otherwise looks like an unexplained stall; once it's
+ * cached the same step is instant, so don't claim a download then.
+ */
+export function ffmpegLoadingLabel(): string {
+  return isFFmpegLoaded() ? 'Loading converter…' : 'Downloading converter (one-time, ~31 MB)…'
+}
+
+/**
  * Terminate the singleton and all active worker instances, then reset state
  * so the next getFFmpeg() call starts fresh. Safe to call mid-conversion.
  */

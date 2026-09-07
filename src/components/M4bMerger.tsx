@@ -46,6 +46,7 @@ import { probeChapters, type Chapter } from '@/lib/ffmpeg/splitChapters'
 import { probeM4bInfo } from '@/lib/ffmpeg/probeM4b'
 import { terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
+import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { isDecodableImage } from '@/lib/image/validate'
 import { fileNameToChapterTitle, formatBytes, formatDuration } from '@/lib/audio/format'
@@ -116,7 +117,7 @@ function SortablePartRow({
         {...listeners}
         disabled={disabled}
         aria-label={`Reorder ${row.file.name}`}
-        className="cursor-grab touch-none rounded p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-500 dark:hover:text-zinc-200"
+        className="flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center rounded text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-500 dark:hover:text-zinc-200"
       >
         <GripVertical size={18} aria-hidden="true" />
       </button>
@@ -147,7 +148,7 @@ function SortablePartRow({
         type="button"
         onClick={() => onRemove(row.id)}
         aria-label={`Remove ${row.file.name}`}
-        className="shrink-0 rounded p-1 text-zinc-400 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-400 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400"
       >
         <Trash2 size={16} aria-hidden="true" />
       </button>
@@ -190,6 +191,7 @@ export default function M4bMerger() {
   const isRunning = ACTIVE_STATUSES.has(progress.status)
 
   useWakeLock(isRunning)
+  const eta = useEta(progress.percent, isRunning)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -656,7 +658,9 @@ export default function M4bMerger() {
           <section aria-label="Cover image" className="mt-6">
             <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Cover</h2>
             <div className="flex items-start gap-4">
-              <div className="flex h-[120px] w-[120px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+              {/* Always white: the embedded cover is letterboxed onto white, so a
+                  dark frame would misrepresent the actual output in dark mode. */}
+              <div className="flex h-[120px] w-[120px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800">
                 {coverPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={coverPreview} alt="Cover" className="h-full w-full object-contain" />
@@ -784,6 +788,7 @@ export default function M4bMerger() {
             className="mt-2 h-2 overflow-hidden rounded bg-zinc-200 dark:bg-zinc-800">
             <div className="h-full bg-accent-500 transition-all" style={{ width: `${progress.percent}%` }} />
           </div>
+          {eta && <p className="mt-1.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">{eta}</p>}
           <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
             Merging locally in your browser — no upload needed. Your screen stays awake; just keep this tab open until it finishes.
           </p>

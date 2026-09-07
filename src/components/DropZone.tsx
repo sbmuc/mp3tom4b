@@ -10,12 +10,20 @@ import { fileNameToChapterTitle } from '@/lib/audio/format'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { isDecodableImage } from '@/lib/image/validate'
 import { getFFmpeg } from '@/lib/ffmpeg/client'
+import { probeDurationViaAudioElement } from '@/lib/ffmpeg/probe'
 import type { AudioFile, ExtractedMetadata } from '@/types'
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.wav', '.flac', '.ogg', '.opus'])
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
-// Extensions silently discarded — no "skipped" notice
+// Sidecar files common in audiobook folders. Still reported when skipped —
+// dropping a folder shouldn't silently swallow things the user can see in it.
 const JUNK_EXTENSIONS = new Set(['.txt', '.nfo', '.cue', '.log', '.m3u', '.m3u8', '.sfv', '.pdf', '.xml', '.json'])
+
+/** "a.txt, b.pdf and 2 more" — keeps a long skip list readable. */
+function formatNameList(names: string[], max = 3): string {
+  if (names.length <= max) return names.join(', ')
+  return `${names.slice(0, max).join(', ')} and ${names.length - max} more`
+}
 
 function getExt(name: string): string {
   const i = name.lastIndexOf('.')
@@ -141,14 +149,15 @@ export default function DropZone() {
 
       const audioFiles: File[] = []
       const imageFiles: File[] = []
-      let unknownCount = 0
+      // Everything that is neither audio nor a usable image. Reported by name so
+      // a folder drop never silently swallows a file the user can see.
+      const skippedNonAudio: string[] = []
 
       for (const file of allFiles) {
         switch (classifyFile(file)) {
           case 'audio': audioFiles.push(file); break
           case 'image': imageFiles.push(file); break
-          case 'junk': break
-          default: unknownCount++
+          default: skippedNonAudio.push(file.name)
         }
       }
 
@@ -176,14 +185,25 @@ export default function DropZone() {
       // Audio file routing
       if (audioFiles.length > 0) {
         const { valid, rejected } = validateFiles(audioFiles)
-        const skipped = rejected.length + unknownCount
-        if (skipped > 0) {
-          addNotice(`${skipped} file${skipped === 1 ? '' : 's'} skipped. Only MP3, M4A, WAV, FLAC, OGG, and Opus audio are supported.`, true)
+        if (rejected.length > 0) {
+          addNotice(
+            `Skipped ${rejected.length} audio file${rejected.length === 1 ? '' : 's'}: ${formatNameList(rejected.map((f) => f.name))}. Only MP3, M4A, WAV, FLAC, OGG, and Opus are supported.`,
+            true,
+          )
         }
 
         if (valid.length > 0) {
           const wasEmpty = useConversionStore.getState().files.length === 0
           const extractions = await Promise.all(valid.map((f) => extractMetadata(f)))
+
+          // Tags don't always carry a duration, so fall back to the browser's own
+          // decoder (fast, no ffmpeg). A file neither can read is broken and would
+          // only fail mid-conversion — flag it now instead.
+          const durationsMs = await Promise.all(
+            valid.map(async (f, i) =>
+              extractions[i].durationMs ?? (await probeDurationViaAudioElement(f)),
+            ),
+          )
 
           const existing = useConversionStore.getState().files
           const pool: MatchableFile[] = existing.map((f) => ({
@@ -208,12 +228,15 @@ export default function DropZone() {
             if (t) embeddedTitleCounts.set(t, (embeddedTitleCounts.get(t) ?? 0) + 1)
           }
 
+          const unreadableNames: string[] = []
+
           for (let i = 0; i < valid.length; i++) {
             const file = valid[i]
             const extracted = extractions[i]
+            const durationMs = durationsMs[i] ?? null
             const candidate = {
               size: file.size,
-              durationMs: extracted.durationMs ?? null,
+              durationMs,
               name: file.name,
             }
             const matchId = findDuplicate(candidate, pool)
@@ -231,11 +254,13 @@ export default function DropZone() {
               file,
               chapterTitle: initialChapterTitle,
               originalChapterTitle: initialChapterTitle,
-              duration: extracted.durationMs != null ? extracted.durationMs / 1000 : null,
+              duration: durationMs != null ? durationMs / 1000 : null,
               embeddedAlbum: extracted.title,
               sourceBitrateKbps: extracted.sourceBitrateKbps,
               sourceLossless: extracted.sourceLossless,
+              unreadable: durationMs == null,
             }
+            if (durationMs == null) unreadableNames.push(file.name)
             newFiles.push(newFile)
             pool.push({ id: newFile.id, name: file.name, size: file.size, durationMs: candidate.durationMs })
             if (!firstAcceptedExtraction) firstAcceptedExtraction = extracted
@@ -252,6 +277,13 @@ export default function DropZone() {
             void getFFmpeg().catch(() => {})
           }
 
+          if (unreadableNames.length > 0) {
+            addNotice(
+              `Could not read ${unreadableNames.length} file${unreadableNames.length === 1 ? '' : 's'}: ${formatNameList(unreadableNames)}. ${unreadableNames.length === 1 ? 'It is' : 'They are'} marked in the list — remove ${unreadableNames.length === 1 ? 'it' : 'them'} to convert.`,
+              true,
+            )
+          }
+
           if (duplicateNames.length > 0) {
             setDuplicateNotice({ fileNames: duplicateNames })
             flashFiles(matchedExistingIds)
@@ -264,8 +296,15 @@ export default function DropZone() {
             )
           }
         }
-      } else if (unknownCount > 0 && !folderNameRef.current) {
-        addNotice(`${unknownCount} file${unknownCount === 1 ? '' : 's'} skipped. Only MP3, M4A, WAV, FLAC, OGG, and Opus audio are supported.`, true)
+      }
+
+      // Always report non-audio files that were dropped — including when the drop
+      // contained nothing else, which previously did nothing at all.
+      if (skippedNonAudio.length > 0) {
+        addNotice(
+          `Skipped ${skippedNonAudio.length} file${skippedNonAudio.length === 1 ? '' : 's'} that ${skippedNonAudio.length === 1 ? "isn't" : "aren't"} audio: ${formatNameList(skippedNonAudio)}.`,
+          true,
+        )
       }
 
       folderNameRef.current = null

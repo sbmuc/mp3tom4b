@@ -18,6 +18,12 @@ export interface AudioFile {
   sourceBitrateKbps?: number
   /** Whether the source codec is lossless (FLAC, WAV/PCM, etc.). */
   sourceLossless?: boolean
+  /**
+   * Set when neither the tags nor the browser could decode the file at drop
+   * time. Such a file would fail mid-conversion, so the row is flagged and
+   * converting is blocked until it's removed.
+   */
+  unreadable?: boolean
 }
 
 export interface ConversionMetadata {

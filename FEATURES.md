@@ -13,6 +13,8 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Folder drop — drop an entire audiobook folder; nested files are flattened, hidden files (`.DS_Store`, `__MACOSX`) are skipped, and the best image inside is picked as the cover.
 - Best-cover selection rules — when multiple images are dropped, the file named `cover.*` / `folder.*` / `front.*` / `album.*` wins, with file size as a tiebreaker.
 - Duplicate detection — files with matching size + duration are skipped silently, and the existing matching row briefly flashes to show what matched.
+- Skipped files are always reported by name — non-audio files (`.txt`, `.pdf`, cue sheets) and rejected audio alike, including when a drop contains nothing usable. Hidden files stay silent.
+- Unreadable files are caught on drop: when neither the tags nor the browser can decode a file, the row is flagged and converting is blocked until it's removed.
 - Mixed-album warning when dropped files appear to come from different audiobooks based on their `album` tags.
 - Per-file remove button.
 - Drag-to-reorder file list (each file becomes one chapter in list order).
@@ -122,6 +124,9 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Keyboard-accessible interactive elements; ARIA labels on icon-only buttons.
 - aria-live progress announcements during conversion.
 - Keeps the screen awake during conversion, compression, and splitting (while the tab is in the foreground) so a long job isn't interrupted by display sleep.
+- Estimated time remaining on every long-running tool, projected from the recent rate of progress.
+- The one-time ~31 MB engine download is named in the progress label on first use, rather than looking like a stall.
+- Touch-sized (44px) drag, reset, and remove controls.
 
 ## Pages
 

@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.9.1] — 2026-09-07
+
+### Added
+- **Estimated time remaining** in every tool (compress, split, edit, merge, add chapters), not just the main converter — so you can tell whether a long job is worth waiting for.
+- The one-time engine download is now stated plainly: the first run shows "Downloading converter (one-time, ~31 MB)…" instead of an unexplained pause, and just "Loading converter…" once it's cached.
+
+### Fixed
+- Chapter titles taken from filenames are no longer forced into English Title Case, which mangled Dutch and German names ("van der Meer"), deliberate capitals, and apostrophes, and left a triple space where a " - " separator was removed.
+- "Split evenly" in the chapter tool no longer produces duplicate times on a short file (which its own validation then rejected); it caps the split at what fits and says so.
+- Files that aren't audio are no longer discarded silently — they're listed by name, including when a drop contains nothing else (which previously did nothing at all). Rejected audio files are named too.
+- A file that can't be read is now caught when you add it: the row is flagged and converting is blocked until you remove it, instead of failing part-way through. Files whose tags lack a duration now show one anyway.
+- Invalid chapter rows are marked in place, with the reason on the row, instead of only a message next to the Save button.
+- The download card no longer vanishes without explanation when you change a setting after converting — it now says why and prompts you to convert again.
+- The cover preview is letterboxed on white in dark mode too, matching how the cover is actually embedded.
+- Drag, reset, and remove buttons are now full-size touch targets.
+
+---
+
 ## [1.9.0] — 2026-09-06
 
 ### Added

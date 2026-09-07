@@ -24,6 +24,7 @@ import { editM4B, type CoverMode } from '@/lib/ffmpeg/editM4b'
 import { probeChapters } from '@/lib/ffmpeg/splitChapters'
 import { terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
+import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { isDecodableImage } from '@/lib/image/validate'
 import { formatBytes } from '@/lib/audio/format'
@@ -108,6 +109,7 @@ export default function M4bEditor() {
   const isRunning = ACTIVE_STATUSES.has(progress.status)
 
   useWakeLock(isRunning)
+  const eta = useEta(progress.percent, isRunning)
 
   useEffect(() => {
     if (!isRunning) return
@@ -242,6 +244,30 @@ export default function M4bEditor() {
   }
 
   // ---- validation ----
+  // Per-row problems, so the offending chapter is marked in place rather than
+  // only summarised next to the Save button (hard to find in a long list).
+  const rowIssues = (() => {
+    const issues = new Map<string, string>()
+    const seen = new Set<number>()
+    for (const r of rows) {
+      const ms = parseTimecode(r.timeStr)
+      if (ms === null) {
+        issues.set(r.id, 'Not a valid time — use H:MM:SS')
+        continue
+      }
+      if (durationMs > 0 && ms >= durationMs) {
+        issues.set(r.id, `Past the end of the book (${formatTimecode(durationMs)})`)
+        continue
+      }
+      if (seen.has(ms)) {
+        issues.set(r.id, 'Another chapter already starts at this time')
+        continue
+      }
+      seen.add(ms)
+    }
+    return issues
+  })()
+
   const parsedStarts = rows.map((r) => parseTimecode(r.timeStr))
   const anyInvalidTime = parsedStarts.some((s) => s === null)
   const sortedStarts = parsedStarts.filter((s): s is number => s !== null).sort((a, b) => a - b)
@@ -411,7 +437,9 @@ export default function M4bEditor() {
           <section aria-label="Cover image" className="mt-6">
             <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Cover</h2>
             <div className="flex items-start gap-4">
-              <div className="flex h-[120px] w-[120px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+              {/* Always white: the embedded cover is letterboxed onto white, so a
+                  dark frame would misrepresent the actual output in dark mode. */}
+              <div className="flex h-[120px] w-[120px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800">
                 {coverPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={coverPreview} alt="Cover" className="h-full w-full object-contain" />
@@ -476,18 +504,23 @@ export default function M4bEditor() {
 
             <ul className="flex flex-col gap-2">
               {rows.map((r) => {
-                const valid = parseTimecode(r.timeStr) !== null
+                const issue = rowIssues.get(r.id)
                 return (
-                  <li key={r.id} className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+                  <li key={r.id} className={`rounded-lg border bg-zinc-50 px-3 py-2 dark:bg-zinc-900 ${
+                    issue ? 'border-rose-300 dark:border-rose-800' : 'border-zinc-200 dark:border-zinc-800'
+                  }`}>
+                    <div className="flex items-center gap-2">
                     <input
                       type="text"
                       value={r.timeStr}
                       onChange={(e) => updateRow(r.id, { timeStr: e.target.value })}
                       onBlur={sortRows}
                       aria-label="Chapter start time"
+                      aria-invalid={issue ? true : undefined}
+                      title={issue}
                       placeholder="0:00:00"
                       className={`w-24 shrink-0 rounded border bg-white px-2 py-1 text-center font-mono text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-accent-500/30 dark:bg-zinc-950 dark:text-zinc-100 ${
-                        valid ? 'border-zinc-300 dark:border-zinc-700' : 'border-rose-400 dark:border-rose-700'
+                        issue ? 'border-rose-400 dark:border-rose-700' : 'border-zinc-300 dark:border-zinc-700'
                       }`}
                     />
                     <input
@@ -499,9 +532,11 @@ export default function M4bEditor() {
                       className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm text-zinc-900 hover:border-zinc-300 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-500/30 dark:text-zinc-100 dark:hover:border-zinc-700 dark:focus:bg-zinc-950"
                     />
                     <button type="button" onClick={() => removeRow(r.id)} aria-label="Remove chapter"
-                      className="shrink-0 rounded p-1 text-zinc-400 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400">
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-400 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400">
                       <Trash2 size={15} aria-hidden="true" />
                     </button>
+                    </div>
+                    {issue && <p className="mt-1 pl-1 text-xs text-rose-600 dark:text-rose-400">{issue}</p>}
                   </li>
                 )
               })}
@@ -548,6 +583,7 @@ export default function M4bEditor() {
             className="mt-2 h-2 overflow-hidden rounded bg-zinc-200 dark:bg-zinc-800">
             <div className="h-full bg-accent-500 transition-all" style={{ width: `${progress.percent}%` }} />
           </div>
+          {eta && <p className="mt-1.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">{eta}</p>}
           <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
             Saving locally in your browser — no upload needed. Your screen stays awake; just keep this tab open until it finishes.
           </p>

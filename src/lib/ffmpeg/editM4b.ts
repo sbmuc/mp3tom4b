@@ -2,7 +2,7 @@
 
 import { fetchFile } from '@ffmpeg/util'
 import type { ConversionMetadata, ConversionProgress } from '@/types'
-import { getFFmpeg } from './client'
+import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
 import { buildFFMetadata } from './chapters'
 import type { ChapterMark } from './types'
@@ -117,7 +117,7 @@ export async function editM4B(opts: EditOptions): Promise<Blob> {
   const { file, chapters, metadata, cover, durationMs, onProgress } = opts
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
-  emit({ status: 'loading-ffmpeg', percent: 2, label: 'Loading converter…' })
+  emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
   const inputPath = `edit_in.${fileExtension(file.name)}`

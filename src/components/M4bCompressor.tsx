@@ -21,6 +21,7 @@ import { compressM4B } from '@/lib/ffmpeg/compress'
 import { probeM4bInfo, type M4bProbeInfo } from '@/lib/ffmpeg/probeM4b'
 import { terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
+import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { estimateOutputBytes, formatEstimatedSize } from '@/lib/audio/bitrate'
 import { formatBytes, formatDuration } from '@/lib/audio/format'
@@ -69,6 +70,7 @@ export default function M4bCompressor() {
 
   // Keep the screen awake so a long compression isn't paused by device sleep.
   useWakeLock(isRunning)
+  const eta = useEta(progress.percent, isRunning)
 
   // Warn before leaving while a compression is running — closing the tab
   // throws away all in-progress work.
@@ -382,6 +384,7 @@ export default function M4bCompressor() {
           >
             <div className="h-full bg-accent-500 transition-all" style={{ width: `${progress.percent}%` }} />
           </div>
+          {eta && <p className="mt-1.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">{eta}</p>}
           <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
             Compressing locally in your browser — no upload needed. Your screen stays awake; just keep this tab open until it finishes.
           </p>

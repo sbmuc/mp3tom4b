@@ -2,7 +2,7 @@
 
 import { fetchFile } from '@ffmpeg/util'
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
-import { getFFmpeg } from './client'
+import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
 import { buildFFMetadata } from './chapters'
 import type { ChapterMark } from './types'
@@ -235,7 +235,7 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
   } = opts
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
-  emit({ status: 'loading-ffmpeg', percent: 2, label: 'Loading converter…' })
+  emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
   const tempPaths: string[] = []

@@ -26,11 +26,18 @@ export default function ConvertButton() {
   const titleOk = metadata.title.trim().length > 0
   const authorOk = metadata.author.trim().length > 0
   const filesOk = files.length > 0
+  // A file we couldn't read at drop time would only fail mid-conversion, after
+  // the user has already waited — block until it's removed.
+  const unreadableCount = files.filter((f) => f.unreadable).length
+  const readableOk = unreadableCount === 0
   const isRunning = ACTIVE_STATUSES.has(progress.status)
-  const invalid = !filesOk || !titleOk || !authorOk
+  const invalid = !filesOk || !titleOk || !authorOk || !readableOk
 
   const missing: string[] = []
   if (!filesOk) missing.push('add at least one audio file')
+  if (!readableOk) {
+    missing.push(`remove ${unreadableCount} file${unreadableCount === 1 ? '' : 's'} that could not be read`)
+  }
   if (!titleOk) missing.push('enter a title')
   if (!authorOk) missing.push('enter an author')
 
@@ -40,7 +47,7 @@ export default function ConvertButton() {
       // Reveal hidden form errors and move focus to the first missing field
       // so screen-reader users get an immediate, clear signal.
       setSubmitAttempted(true)
-      if (!filesOk) {
+      if (!filesOk || !readableOk) {
         document.getElementById('dropzone')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       } else if (!titleOk) {
         document.getElementById('md-title')?.focus()

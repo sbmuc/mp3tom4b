@@ -3,7 +3,7 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile } from '@ffmpeg/util'
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
-import { createWorkerFFmpeg, getFFmpeg, releaseWorkerFFmpeg } from './client'
+import { createWorkerFFmpeg, ffmpegLoadingLabel, getFFmpeg, releaseWorkerFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
 import { buildEditMetadata, type EditChapter } from './editM4b'
 import { buildMergeMuxArgs } from './mergeM4b'
@@ -297,7 +297,7 @@ export async function detectSilenceChapters(
   const minGapSec = Math.max(0.1, (opts.minGapMs ?? 1500) / 1000)
   const durationMs = opts.durationMs ?? 0
 
-  emit({ status: 'probing', percent: 2, label: 'Loading converter…' })
+  emit({ status: 'probing', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
   const inputPath = `silence_in.${fileExtension(file.name)}`
@@ -358,7 +358,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
   const { file, chapters, metadata, cover, bitrate, durationMs, onProgress } = opts
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
-  emit({ status: 'loading-ffmpeg', percent: 2, label: 'Loading converter…' })
+  emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
   const inputExt = fileExtension(file.name)

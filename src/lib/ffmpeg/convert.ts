@@ -5,7 +5,7 @@ import { fetchFile } from '@ffmpeg/util'
 import type { AudioFile, Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { resizeCoverImage } from '@/lib/image/resize'
 import { buildChapters, buildFFMetadata } from './chapters'
-import { createWorkerFFmpeg, getFFmpeg, releaseWorkerFFmpeg } from './client'
+import { createWorkerFFmpeg, ffmpegLoadingLabel, getFFmpeg, releaseWorkerFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
 import { probeDurationMs } from './probe'
 
@@ -175,7 +175,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
 
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
-  emit({ status: 'loading-ffmpeg', percent: 2, label: 'Loading converter…' })
+  emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
   // Track all virtual paths created on the singleton FS so we can clean up.

@@ -3,7 +3,7 @@
 import { fetchFile } from '@ffmpeg/util'
 import { zip } from 'fflate'
 import type { Bitrate, ConversionProgress } from '@/types'
-import { getFFmpeg } from './client'
+import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
 import type { Chapter } from './splitChapters'
 
@@ -78,7 +78,7 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
   const { file, bitrate, chapters, meta, onProgress } = opts
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
-  emit({ status: 'loading-ffmpeg', percent: 2, label: 'Loading converter…' })
+  emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
   const inName = `split_in.${fileExtension(file.name)}`

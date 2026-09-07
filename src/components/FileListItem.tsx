@@ -56,16 +56,20 @@ export default function FileListItem({ file, index }: Props) {
     <li
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900 ${
-        isDragging ? 'ring-2 ring-accent-500 ring-offset-2 ring-offset-white dark:ring-offset-zinc-950' : ''
-      } ${isFlashing ? 'animate-flash' : ''}`}
+      className={`flex items-center gap-3 rounded-lg border bg-zinc-50 px-3 py-2 dark:bg-zinc-900 ${
+        file.unreadable
+          ? 'border-rose-300 dark:border-rose-800'
+          : 'border-zinc-200 dark:border-zinc-800'
+      } ${isDragging ? 'ring-2 ring-accent-500 ring-offset-2 ring-offset-white dark:ring-offset-zinc-950' : ''} ${
+        isFlashing ? 'animate-flash' : ''
+      }`}
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
         aria-label={`Reorder ${file.chapterTitle}`}
-        className="cursor-grab touch-none rounded p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 active:cursor-grabbing dark:text-zinc-500 dark:hover:text-zinc-200"
+        className="flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center rounded text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 active:cursor-grabbing dark:text-zinc-500 dark:hover:text-zinc-200"
       >
         <GripVertical size={18} aria-hidden="true" />
       </button>
@@ -92,13 +96,19 @@ export default function FileListItem({ file, index }: Props) {
             className="pointer-events-none absolute right-2 text-zinc-300 opacity-60 transition-opacity group-hover/title:opacity-100 group-focus-within/title:opacity-0 dark:text-zinc-600"
           />
         </div>
-        {showFilename && (
-          <p
-            className="truncate px-2 pt-0.5 font-mono text-[11px] leading-tight text-zinc-500 dark:text-zinc-400"
-            title={file.file.name}
-          >
-            {file.file.name}
+        {file.unreadable ? (
+          <p className="truncate px-2 pt-0.5 text-[11px] leading-tight text-rose-600 dark:text-rose-400">
+            Could not read this file — remove it to convert
           </p>
+        ) : (
+          showFilename && (
+            <p
+              className="truncate px-2 pt-0.5 font-mono text-[11px] leading-tight text-zinc-500 dark:text-zinc-400"
+              title={file.file.name}
+            >
+              {file.file.name}
+            </p>
+          )
         )}
       </div>
 
@@ -108,7 +118,7 @@ export default function FileListItem({ file, index }: Props) {
           onClick={() => updateChapterTitle(file.id, file.originalChapterTitle)}
           aria-label="Reset chapter title"
           title={`Reset to "${file.originalChapterTitle}"`}
-          className="rounded p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-zinc-500 dark:hover:text-zinc-200"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-zinc-500 dark:hover:text-zinc-200"
         >
           <RotateCcw size={14} aria-hidden="true" />
         </button>
@@ -126,7 +136,7 @@ export default function FileListItem({ file, index }: Props) {
         type="button"
         onClick={() => removeFile(file.id)}
         aria-label={`Remove ${file.chapterTitle}`}
-        className="rounded p-1 text-zinc-400 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-400 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400"
       >
         <Trash2 size={16} aria-hidden="true" />
       </button>

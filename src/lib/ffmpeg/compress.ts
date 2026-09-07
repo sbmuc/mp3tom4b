@@ -3,7 +3,7 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile } from '@ffmpeg/util'
 import type { Bitrate, ConversionProgress } from '@/types'
-import { createWorkerFFmpeg, getFFmpeg, releaseWorkerFFmpeg } from './client'
+import { createWorkerFFmpeg, ffmpegLoadingLabel, getFFmpeg, releaseWorkerFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
 import { parseChapters, type Chapter } from './splitChapters'
 
@@ -228,7 +228,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
   const { file, bitrate, hasCover, durationMs, onProgress } = opts
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
-  emit({ status: 'loading-ffmpeg', percent: 2, label: 'Loading converter…' })
+  emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
   const inputPath = `compress_in.${fileExtension(file.name)}`

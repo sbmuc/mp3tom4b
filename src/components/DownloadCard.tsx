@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, CheckCircle2, Download, RotateCcw } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { formatBytes } from '@/lib/audio/format'
@@ -16,11 +16,16 @@ function ensureM4bExtension(name: string): string {
 export default function DownloadCard() {
   const outputBlob = useConversionStore((s) => s.outputBlob)
   const metadata = useConversionStore((s) => s.metadata)
+  const fileCount = useConversionStore((s) => s.files.length)
   const reset = useConversionStore((s) => s.reset)
   const [url, setUrl] = useState<string | null>(null)
   const [override, setOverride] = useState<string>('')
   const [downloaded, setDownloaded] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  // Editing anything after a conversion clears the result, so the card would
+  // otherwise vanish with no explanation. Remember that there *was* one.
+  const [stale, setStale] = useState(false)
+  const hadOutputRef = useRef(false)
 
   useEffect(() => {
     if (!outputBlob) {
@@ -28,14 +33,39 @@ export default function DownloadCard() {
       setOverride('')
       setDownloaded(false)
       setShowConfirm(false)
+      if (hadOutputRef.current) setStale(true)
       return
     }
+    hadOutputRef.current = true
+    setStale(false)
     const objectUrl = URL.createObjectURL(outputBlob)
     setUrl(objectUrl)
     return () => URL.revokeObjectURL(objectUrl)
   }, [outputBlob])
 
-  if (!outputBlob || !url) return null
+  // "Start over" empties the list — nothing to explain any more.
+  useEffect(() => {
+    if (fileCount === 0) {
+      hadOutputRef.current = false
+      setStale(false)
+    }
+  }, [fileCount])
+
+  if (!outputBlob || !url) {
+    if (!stale) return null
+    return (
+      <div
+        role="status"
+        className="mt-6 flex items-start gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+      >
+        <RotateCcw size={16} className="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
+        <span>
+          Your settings changed, so the previous download no longer matches. Convert again to get an
+          updated audiobook.
+        </span>
+      </div>
+    )
+  }
 
   const safeAuthor = sanitizeFilename(metadata.author) || 'Unknown Author'
   const safeTitle = sanitizeFilename(metadata.title) || 'Untitled'
