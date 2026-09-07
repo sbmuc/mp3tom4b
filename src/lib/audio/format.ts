@@ -17,11 +17,21 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
-/** Strip file extension and clean up underscores/hyphens → title case */
+/**
+ * Turn a filename into a chapter title: drop the extension, turn separators into
+ * spaces, collapse whitespace, and capitalize only the first letter.
+ *
+ * Deliberately NOT Title Case: title-casing every word mangles non-English names
+ * (Dutch/German "van der", intentional capitals, ALL-CAPS), wrongly capitalizes
+ * after an apostrophe ("'s" → "'S"), and left a triple space where a " - "
+ * separator used to be. Sentence case keeps whatever the user typed; the title is
+ * click-to-edit anyway.
+ */
 export function fileNameToChapterTitle(filename: string): string {
-  const withoutExt = filename.replace(/\.[^.]+$/, '')
-  const spaced = withoutExt.replace(/[_-]+/g, ' ').trim()
-  return spaced.replace(/\w\S*/g, (word) =>
-    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-  )
+  const cleaned = filename
+    .replace(/\.[^.]+$/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
 }

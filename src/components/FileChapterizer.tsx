@@ -104,6 +104,7 @@ export default function FileChapterizer() {
   // Generators
   const [equalValue, setEqualValue] = useState('10')
   const [equalUnit, setEqualUnit] = useState<'chapters' | 'minutes'>('chapters')
+  const [equalNote, setEqualNote] = useState<string | null>(null)
   const [minGapSec, setMinGapSec] = useState('1.5')
 
   // Cover
@@ -176,6 +177,7 @@ export default function FileChapterizer() {
     setMetadata({ title: '', author: '', narrator: '', year: '', genre: 'Audiobook' })
     setDurationMs(0)
     setBitrate(64)
+    setEqualNote(null)
     setCoverMode('keep')
     setOriginalCoverFile(null)
     setReplaceFile(null)
@@ -195,6 +197,7 @@ export default function FileChapterizer() {
     setInputError(null)
     setProgress(idleProgress)
     setResultBlob(null)
+    setEqualNote(null)
     setCoverMode('keep')
     setReplaceFile(null)
     setCoverError(null)
@@ -246,10 +249,25 @@ export default function FileChapterizer() {
     if (durationMs <= 0) return
     const num = Number(equalValue)
     if (!Number.isFinite(num) || num <= 0) return
-    const starts =
-      equalUnit === 'chapters'
-        ? proposeEqualChapters(durationMs, { count: Math.floor(num) })
-        : proposeEqualChapters(durationMs, { intervalMs: Math.round(num * 60_000) })
+    // Chapter times are whole seconds, so two marks can't share a second.
+    // Cap the split accordingly, otherwise the generator would produce duplicate
+    // times that its own validation immediately rejects.
+    const maxChapters = Math.max(1, Math.floor(durationMs / 1000))
+    let starts: number[]
+    if (equalUnit === 'chapters') {
+      const requested = Math.floor(num)
+      const count = Math.min(requested, maxChapters)
+      starts = proposeEqualChapters(durationMs, { count })
+      setEqualNote(
+        count < requested
+          ? `This file is only ${Math.floor(durationMs / 1000)} s long, so it was split into ${count} chapters.`
+          : null,
+      )
+    } else {
+      const intervalMs = Math.max(Math.round(num * 60_000), 1000)
+      starts = proposeEqualChapters(durationMs, { intervalMs })
+      setEqualNote(null)
+    }
     setRows(rowsFromStarts(starts))
   }
 
@@ -472,6 +490,9 @@ export default function FileChapterizer() {
                 </button>
               </div>
             </div>
+            {equalNote && (
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">{equalNote}</p>
+            )}
             <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
               Silence detection scans the whole file, so it takes a while on long books. You can always tweak the result below.
             </p>
