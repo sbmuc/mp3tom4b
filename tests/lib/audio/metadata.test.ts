@@ -119,6 +119,27 @@ describe('extractMetadata — duration', () => {
   })
 })
 
+describe('extractMetadata — source audio format', () => {
+  it('captures sample rate, channel count and codec', async () => {
+    parseBlobMock.mockResolvedValue({
+      common: {},
+      format: { sampleRate: 22050, numberOfChannels: 1, codec: 'MPEG 2 Layer 3' },
+    } as never)
+    const result = await extractMetadata(dummyFile())
+    expect(result.sourceSampleRate).toBe(22050)
+    expect(result.sourceChannels).toBe(1)
+    expect(result.sourceCodec).toBe('MPEG 2 Layer 3')
+  })
+
+  it('leaves them undefined when the header does not report them', async () => {
+    parseBlobMock.mockResolvedValue({ common: {}, format: { sampleRate: 0 } } as never)
+    const result = await extractMetadata(dummyFile())
+    expect(result.sourceSampleRate).toBeUndefined()
+    expect(result.sourceChannels).toBeUndefined()
+    expect(result.sourceCodec).toBeUndefined()
+  })
+})
+
 describe('extractMetadata — cover art', () => {
   it('wraps embedded picture data into a File with the right MIME type', async () => {
     const data = new Uint8Array([0xff, 0xd8, 0xff, 0xe0])

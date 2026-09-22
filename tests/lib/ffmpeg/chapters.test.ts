@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildChapters, buildFFMetadata } from '@/lib/ffmpeg/chapters'
+import { buildChapters, buildFFMetadata, buildGlobalMetadata } from '@/lib/ffmpeg/chapters'
 
 describe('buildChapters', () => {
   it('produces a contiguous timeline starting at 0', () => {
@@ -68,5 +68,41 @@ describe('buildFFMetadata', () => {
 
   it('produces just the header for an empty list', () => {
     expect(buildFFMetadata([])).toBe(';FFMETADATA1\n')
+  })
+})
+
+describe('buildFFMetadata — fractional times', () => {
+  it('rounds measured (fractional) chapter times to whole ms', () => {
+    const body = buildFFMetadata(buildChapters([
+      { title: 'A', durationMs: 3343.6734 },
+      { title: 'B', durationMs: 2500.4 },
+    ]))
+    expect(body).toContain('START=0\nEND=3344\n')
+    expect(body).toContain('START=3344\nEND=5844\n')
+  })
+})
+
+describe('buildGlobalMetadata', () => {
+  const base = { title: 'The Book', author: 'An Author', narrator: '', year: '', genre: 'Audiobook' as const }
+
+  it('writes title/artist/album/album_artist/genre and skips empty optionals', () => {
+    expect(buildGlobalMetadata(base)).toEqual([
+      'title=The Book',
+      'artist=An Author',
+      'album=The Book',
+      'album_artist=An Author',
+      'genre=Audiobook',
+    ])
+  })
+
+  it('adds narrator as composer and year as date', () => {
+    const lines = buildGlobalMetadata({ ...base, narrator: 'A Narrator', year: '2024' })
+    expect(lines).toContain('composer=A Narrator')
+    expect(lines).toContain('date=2024')
+  })
+
+  it('escapes backslash, ;, =, # and newlines so they survive ffmpeg', () => {
+    const lines = buildGlobalMetadata({ ...base, title: 'AC\\DC Live; Part=1 #2\nx' })
+    expect(lines[0]).toBe('title=AC\\\\DC Live\\; Part\\=1 \\#2\\\nx')
   })
 })

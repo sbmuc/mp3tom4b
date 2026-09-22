@@ -18,7 +18,6 @@ These are small refinements that make the tool feel meaningfully more polished. 
 - **Optional content hash verification** for cases where size + duration coincidentally match but files are different. Only run on user request, not by default (hashing is slow).
 
 ### Code quality / testing
-- **Integration test** for the full conversion pipeline using a small fixture audio file.
 - **Better error messages** with specific failure modes (corrupt file, unsupported codec, memory exceeded, etc.) instead of generic errors.
 
 ### Accessibility

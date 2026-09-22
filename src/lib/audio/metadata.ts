@@ -43,6 +43,11 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
         ? Math.round(format.bitrate / 1000)
         : undefined
     const sourceLossless = typeof format.lossless === 'boolean' ? format.lossless : undefined
+    const sourceSampleRate =
+      typeof format.sampleRate === 'number' && format.sampleRate > 0 ? format.sampleRate : undefined
+    const sourceChannels =
+      typeof format.numberOfChannels === 'number' && format.numberOfChannels > 0 ? format.numberOfChannels : undefined
+    const sourceCodec = format.codec || undefined
 
     return {
       title,
@@ -55,6 +60,9 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
       durationMs,
       sourceBitrateKbps,
       sourceLossless,
+      sourceSampleRate,
+      sourceChannels,
+      sourceCodec,
     }
   } catch {
     return {}

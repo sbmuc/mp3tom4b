@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.9.2] — 2026-09-22
+
+### Fixed
+- **Files with different audio settings now join cleanly.** A chapter recorded at another sample rate (say one 48 kHz file among 44.1 kHz MP3s) used to play slightly low and slow, and a mono file among stereo ones could make Apple's player stop reading the audiobook partway. Every chapter is now encoded to one common format first.
+- **Chapter markers land where each chapter actually starts.** They used to slip a little further ahead of the audio with every chapter — roughly a second every 30 chapters — so skipping to a late chapter in a long book landed in the end of the previous one.
+- M4A files are only copied without re-encoding when they already match each other and the bitrate you picked. Otherwise they're re-encoded, so the result has the bitrate you chose and the size estimate holds (previously a set of 256 kbps M4As stayed at 256 kbps whatever you selected).
+- A backslash in the book title, author, or narrator (e.g. "AC\DC") is no longer dropped.
+
+---
+
 ## [1.9.1] — 2026-09-07
 
 ### Added

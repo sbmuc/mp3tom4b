@@ -258,6 +258,9 @@ export default function DropZone() {
               embeddedAlbum: extracted.title,
               sourceBitrateKbps: extracted.sourceBitrateKbps,
               sourceLossless: extracted.sourceLossless,
+              sourceSampleRate: extracted.sourceSampleRate,
+              sourceChannels: extracted.sourceChannels,
+              sourceCodec: extracted.sourceCodec,
               unreadable: durationMs == null,
             }
             if (durationMs == null) unreadableNames.push(file.name)

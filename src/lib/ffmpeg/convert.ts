@@ -4,9 +4,19 @@ import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile } from '@ffmpeg/util'
 import type { AudioFile, Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { resizeCoverImage } from '@/lib/image/resize'
-import { buildChapters, buildFFMetadata } from './chapters'
+import { buildChapters, buildFFMetadata, buildGlobalMetadata } from './chapters'
 import { createWorkerFFmpeg, ffmpegLoadingLabel, getFFmpeg, releaseWorkerFFmpeg } from './client'
+import {
+  audioStreamSignature,
+  buildEncodeArgs,
+  buildTimedConcatList,
+  canCopyStreams,
+  mayStreamCopy,
+  pickEncodeTarget,
+  type EncodeTarget,
+} from './concatPlan'
 import { humanizeFfmpegError } from './errors'
+import { decodedAudioSeconds } from './mp4Duration'
 import { probeDurationMs } from './probe'
 
 // Mutex for the singleton FFmpeg instance. Concurrent calls into the same
@@ -70,16 +80,20 @@ function encodeConcurrency(fileCount: number): number {
 /**
  * Encode all input files to AAC using a pool of parallel ffmpeg worker
  * instances. Each worker handles one file at a time from a shared queue.
- * Encoded outputs are written to the main singleton's virtual FS so that the
- * concat step can read them normally.
+ * Every part is encoded to the same sample rate + channel count, so the parts
+ * can be copy-joined. Encoded outputs are written to the main singleton's
+ * virtual FS so that the concat step can read them normally. Returns each
+ * part's decoded length in seconds (null if it couldn't be read).
  */
 async function encodeFilesParallel(
   files: AudioFile[],
   segments: Array<{ ext: string }>,
   bitrate: Bitrate,
+  target: EncodeTarget,
   emit: (p: ConversionProgress) => void,
-): Promise<void> {
+): Promise<Array<number | null>> {
   const total = files.length
+  const decodedSec = new Array<number | null>(total).fill(null)
   // Per-file encode progress (0–1). Updated by whichever worker holds the file.
   const perFileProgress = new Array<number>(total).fill(0)
   let completedCount = 0
@@ -131,11 +145,7 @@ async function encodeFilesParallel(
             await worker.writeFile(inPath, sourceBytes)
           })
           await tagged('encoding', () =>
-            worker.exec([
-              '-hide_banner', '-i', inPath,
-              '-vn', '-c:a', 'aac', '-b:a', `${bitrate}k`,
-              outPath,
-            ]),
+            worker.exec(buildEncodeArgs({ input: inPath, output: outPath, bitrate, target })),
           )
           const bytes = await tagged('reading encoded output of', async () => {
             const data = await worker.readFile(outPath)
@@ -144,6 +154,8 @@ async function encodeFilesParallel(
             buf.set(src)
             return buf
           })
+          // Measure before the write: writeFile transfers (detaches) the buffer.
+          decodedSec[idx] = decodedAudioSeconds(bytes)
           await tagged('writing encoded output of', () =>
             withSingleton((mainFFmpeg) => mainFFmpeg.writeFile(outPath, bytes)),
           )
@@ -163,6 +175,63 @@ async function encodeFilesParallel(
 
   const concurrency = encodeConcurrency(total)
   await Promise.all(Array.from({ length: concurrency }, () => runWorker()))
+  return decodedSec
+}
+
+/** ffmpeg's one-line description of a file's audio stream (see concatPlan). */
+async function probeStreamSignature(ffmpeg: FFmpeg, path: string): Promise<string | null> {
+  const lines: string[] = []
+  const onLog = ({ message }: { message: string }) => {
+    lines.push(message)
+  }
+  ffmpeg.on('log', onLog)
+  try {
+    // No output file → ffmpeg exits non-zero after printing the header, which
+    // is all we need. `-v info` explicitly: the log level persists across runs
+    // on one instance, and the stream line is only printed at info.
+    await ffmpeg.exec(['-hide_banner', '-v', 'info', '-i', path])
+  } catch {
+    // expected
+  } finally {
+    ffmpeg.off('log', onLog)
+  }
+  return audioStreamSignature(lines)
+}
+
+/**
+ * Skip the re-encode for AAC .m4a inputs: write each source straight to the
+ * singleton FS as its enc_N.m4a part and probe it. Copy-joining is only safe
+ * when every part has the exact same codec config, so on any mismatch the
+ * parts are removed again and null tells the caller to re-encode. Otherwise
+ * returns each part's decoded length in seconds.
+ */
+async function copyIfCompatible(
+  files: AudioFile[],
+  emit: (p: ConversionProgress) => void,
+): Promise<Array<number | null> | null> {
+  const decodedSec = new Array<number | null>(files.length).fill(null)
+  const signatures = new Array<string | null>(files.length).fill(null)
+  // Read source bytes in parallel, but write to (and probe on) the singleton serially.
+  let done = 0
+  await Promise.all(
+    files.map(async (f, i) => {
+      const bytes = await fetchFile(f.file)
+      decodedSec[i] = decodedAudioSeconds(bytes) // before the write detaches the buffer
+      signatures[i] = await withSingleton(async (mainFFmpeg) => {
+        await mainFFmpeg.writeFile(encodedName(i), bytes)
+        return probeStreamSignature(mainFFmpeg, encodedName(i))
+      })
+      done++
+      emit({
+        status: 'encoding',
+        percent: Math.min(80, 10 + Math.round((done / files.length) * 70)),
+        label: `Copying chapters (already AAC)… (${done} of ${files.length} done)`,
+      })
+    }),
+  )
+  if (canCopyStreams(signatures)) return decodedSec
+  for (let i = 0; i < files.length; i++) await safeDelete(encodedName(i))
+  return null
 }
 
 /**
@@ -203,53 +272,41 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     }
 
     // 2. Encode or stream-copy inputs to AAC, then register outputs for cleanup.
-    // If every input is already an M4A (AAC in MP4 container), skip re-encoding
-    // entirely — write the source file straight to the singleton FS under the
-    // enc_N.m4a name so the concat step can stream-copy them at no CPU cost.
-    // Any other format goes through the parallel AAC encoding workers.
-    const allM4A = segments.every((s) => s.ext === 'm4a')
-    if (allM4A) {
+    // AAC .m4a inputs already at the chosen bitrate are copied as-is when they
+    // share one codec config (no CPU cost, no quality loss); everything else
+    // goes through the parallel AAC encoding workers at one common target.
+    let decodedSec: Array<number | null> | null = null
+    if (mayStreamCopy(files, bitrate)) {
       emit({ status: 'encoding', percent: 10, label: 'Copying chapters (already AAC)…' })
-      // Read source bytes in parallel, but write to the singleton serially.
-      let done = 0
-      await Promise.all(
-        files.map(async (f, i) => {
-          const bytes = await fetchFile(f.file)
-          await withSingleton((mainFFmpeg) => mainFFmpeg.writeFile(encodedName(i), bytes))
-          done++
-          emit({
-            status: 'encoding',
-            percent: Math.min(80, 10 + Math.round((done / files.length) * 70)),
-            label: `Copying chapters (already AAC)… (${done} of ${files.length} done)`,
-          })
-        }),
-      )
-    } else {
+      decodedSec = await copyIfCompatible(files, emit)
+    }
+    if (!decodedSec) {
       emit({ status: 'encoding', percent: 10, label: 'Encoding chapters…' })
-      await encodeFilesParallel(files, segments, bitrate, emit)
+      decodedSec = await encodeFilesParallel(files, segments, bitrate, pickEncodeTarget(files), emit)
     }
     for (let i = 0; i < files.length; i++) {
       tempPaths.push(encodedName(i))
     }
 
-    // 3. Concat list file
+    // 3. Concat list file, with each part's real decoded length so the joined
+    // timeline (and the chapter markers below) line up with the audio.
     emit({ status: 'concatenating', percent: 82, label: 'Joining chapters…' })
-    const listBody = segments.map((_, i) => `file '${encodedName(i)}'`).join('\n') + '\n'
+    const listBody = buildTimedConcatList(
+      segments.map((_, i) => ({ name: encodedName(i), durationSec: decodedSec[i] })),
+    )
     await ffmpeg.writeFile(LIST_PATH, new TextEncoder().encode(listBody))
     tempPaths.push(LIST_PATH)
 
-    // 4. Chapter metadata
-    const chapters = buildChapters(segments.map((s) => ({ title: s.title, durationMs: s.durationMs })))
+    // 4. Chapter metadata — boundaries from the encoded parts' decoded lengths
+    // (source durations are ~20–45 ms short per part, which adds up).
+    const chapters = buildChapters(
+      segments.map((s, i) => {
+        const sec = decodedSec[i]
+        return { title: s.title, durationMs: sec != null ? sec * 1000 : s.durationMs }
+      }),
+    )
     const ffmetaBody = buildFFMetadata(chapters)
-    const containerMeta =
-      `;FFMETADATA1\n` +
-      `title=${metadata.title}\n` +
-      `artist=${metadata.author}\n` +
-      `album=${metadata.title}\n` +
-      `album_artist=${metadata.author}\n` +
-      (metadata.narrator ? `composer=${metadata.narrator}\n` : '') +
-      (metadata.year ? `date=${metadata.year}\n` : '') +
-      `genre=${metadata.genre}\n`
+    const containerMeta = [';FFMETADATA1', ...buildGlobalMetadata(metadata)].join('\n') + '\n'
     const ffmetaCombined = containerMeta + ffmetaBody.replace(/^;FFMETADATA1\n/, '')
     await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(ffmetaCombined))
     tempPaths.push(META_PATH)
@@ -284,7 +341,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     // 'time=HH:MM:SS.cc' from log lines instead — that fires for stream-copy
     // and gives us a real progress signal during the mux step (which is
     // otherwise invisible and reads like a hang for large audiobooks).
-    const totalMuxDurationMs = segments.reduce((acc, s) => acc + s.durationMs, 0)
+    const totalMuxDurationMs = chapters.length ? chapters[chapters.length - 1].endMs : 0
     const TIME_RE = /time=(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
 
     const updateMuxProgress = (ratio: number) => {

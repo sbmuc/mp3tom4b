@@ -4,7 +4,7 @@ import { fetchFile } from '@ffmpeg/util'
 import type { ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
-import { buildFFMetadata } from './chapters'
+import { buildFFMetadata, buildGlobalMetadata } from './chapters'
 import type { ChapterMark } from './types'
 import { resizeCoverImage } from '@/lib/image/resize'
 
@@ -19,11 +19,6 @@ export interface EditChapter {
 
 export type CoverMode = 'keep' | 'replace' | 'remove'
 
-/** ffmetadata escaping (=, ;, #, \, newline). Mirrors chapters.ts. */
-function esc(value: string): string {
-  return value.replace(/([\\=;#\n])/g, '\\$1')
-}
-
 /**
  * Build an ffmetadata file (global tags + [CHAPTER] blocks) from the edited
  * chapters + metadata. Chapters are sorted by start; each END is the next
@@ -34,14 +29,7 @@ export function buildEditMetadata(
   chapters: EditChapter[],
   durationMs: number,
 ): string {
-  const global: string[] = [';FFMETADATA1']
-  global.push(`title=${esc(metadata.title)}`)
-  global.push(`artist=${esc(metadata.author)}`)
-  global.push(`album=${esc(metadata.title)}`)
-  global.push(`album_artist=${esc(metadata.author)}`)
-  if (metadata.narrator) global.push(`composer=${esc(metadata.narrator)}`)
-  if (metadata.year) global.push(`date=${esc(metadata.year)}`)
-  global.push(`genre=${esc(metadata.genre)}`)
+  const global: string[] = [';FFMETADATA1', ...buildGlobalMetadata(metadata)]
 
   const sorted = [...chapters].sort((a, b) => a.startMs - b.startMs)
   const marks: ChapterMark[] = sorted.map((c, i) => ({

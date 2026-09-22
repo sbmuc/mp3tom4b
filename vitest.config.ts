@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     include: ['tests/**/*.test.ts'],
+    // Real-ffmpeg tests are slow; they run via `npm run test:integration`.
+    exclude: ['tests/integration/**', 'node_modules/**'],
     globals: false,
   },
   resolve: {

@@ -18,6 +18,12 @@ export interface AudioFile {
   sourceBitrateKbps?: number
   /** Whether the source codec is lossless (FLAC, WAV/PCM, etc.). */
   sourceLossless?: boolean
+  /** Source sample rate in Hz, from the container header at drop time. */
+  sourceSampleRate?: number
+  /** Source channel count at drop time. MP4 headers often report mono AAC as 2, so treat as a hint. */
+  sourceChannels?: number
+  /** Source codec as music-metadata names it ("MPEG-4/AAC", "ALAC", "MPEG 1 Layer 3", …). */
+  sourceCodec?: string
   /**
    * Set when neither the tags nor the browser could decode the file at drop
    * time. Such a file would fail mid-conversion, so the row is flagged and
@@ -60,6 +66,12 @@ export interface ExtractedMetadata {
   sourceBitrateKbps?: number
   /** Whether the source codec is lossless */
   sourceLossless?: boolean
+  /** Source sample rate in Hz */
+  sourceSampleRate?: number
+  /** Source channel count (a hint — see AudioFile.sourceChannels) */
+  sourceChannels?: number
+  /** Source codec name */
+  sourceCodec?: string
 }
 
 export interface DuplicateNotice {

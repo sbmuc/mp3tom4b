@@ -1,3 +1,4 @@
+import type { ConversionMetadata } from '@/types'
 import type { ChapterMark } from './types'
 
 /**
@@ -18,7 +19,7 @@ export function buildChapters(
   return chapters
 }
 
-function escapeMetadataValue(value: string): string {
+export function escapeMetadataValue(value: string): string {
   // ffmetadata escapes: =, ;, #, \, and newline must be backslash-escaped.
   return value.replace(/([\\=;#\n])/g, '\\$1')
 }
@@ -33,9 +34,27 @@ export function buildFFMetadata(chapters: ChapterMark[]): string {
     lines.push('')
     lines.push('[CHAPTER]')
     lines.push('TIMEBASE=1/1000')
-    lines.push(`START=${ch.startMs}`)
-    lines.push(`END=${ch.endMs}`)
+    // Durations measured from the encoded parts are fractional ms.
+    lines.push(`START=${Math.round(ch.startMs)}`)
+    lines.push(`END=${Math.round(ch.endMs)}`)
     lines.push(`title=${escapeMetadataValue(ch.title)}`)
   }
   return lines.join('\n') + '\n'
+}
+
+/**
+ * The book-level ffmetadata tags (no `;FFMETADATA1` header), escaped. Shared by
+ * the converter, editor and merger so a `\\`, `;` or `=` in a title survives.
+ */
+export function buildGlobalMetadata(metadata: ConversionMetadata): string[] {
+  const lines = [
+    `title=${escapeMetadataValue(metadata.title)}`,
+    `artist=${escapeMetadataValue(metadata.author)}`,
+    `album=${escapeMetadataValue(metadata.title)}`,
+    `album_artist=${escapeMetadataValue(metadata.author)}`,
+  ]
+  if (metadata.narrator) lines.push(`composer=${escapeMetadataValue(metadata.narrator)}`)
+  if (metadata.year) lines.push(`date=${escapeMetadataValue(metadata.year)}`)
+  lines.push(`genre=${escapeMetadataValue(metadata.genre)}`)
+  return lines
 }

@@ -52,6 +52,9 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Bitrate selector: 64 (default), 96, 128, 192, 256 kbps.
 - Smart bitrate default — suggested bitrate is bumped automatically when source files are lossless or above 256 kbps and the genre is non-audiobook.
 - Estimated output size preview that updates with bitrate changes ("~340 MB at 64 kbps").
+- Mixed sources join cleanly: every chapter is encoded to one common sample rate (the highest source rate, up to 48 kHz) and channel layout (mono only when every source is mono), so files from different rips, recorders, or formats can be combined.
+- AAC `.m4a` inputs that already share identical audio settings and are at or below the chosen bitrate are joined without re-encoding (no quality loss, near-instant); the audio settings are confirmed with ffmpeg first, not taken from the tags.
+- Chapter markers are placed from each encoded chapter's real length, so they stay aligned with the audio at every chapter of a long book.
 - Multi-stage progress bar with human-readable labels (loading ffmpeg, probing, encoding chapter X of Y, muxing, finalizing).
 - Estimated time remaining once conversion has settled into a stable phase.
 - ffmpeg.wasm runs entirely in-browser; nothing is uploaded.
@@ -160,5 +163,6 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 ## Quality
 
 - TypeScript strict mode across the codebase.
-- Vitest unit tests covering chapter generation, file validation, metadata extraction, image resize, bitrate logic, and ETA formatting.
+- Vitest unit tests covering chapter generation, file validation, metadata extraction, image resize, bitrate logic, ETA formatting, MP4 duration parsing, and how inputs are joined.
+- Integration test (`npm run test:integration`) that runs the real converter against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy, the M4A copy path, and metadata escaping — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
 - Lighthouse-targeted performance: instant first paint, ffmpeg.wasm loaded lazily on first conversion and cached thereafter.

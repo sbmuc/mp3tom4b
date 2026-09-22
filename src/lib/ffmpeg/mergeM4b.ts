@@ -4,7 +4,7 @@ import { fetchFile } from '@ffmpeg/util'
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
-import { buildFFMetadata } from './chapters'
+import { buildFFMetadata, buildGlobalMetadata } from './chapters'
 import type { ChapterMark } from './types'
 import type { Chapter } from './splitChapters'
 import type { AudioStreamInfo } from './probeM4b'
@@ -69,11 +69,6 @@ export function analyzeCompatibility(streams: AudioStreamInfo[]): Compatibility 
   return { canCopy, target }
 }
 
-/** ffmetadata escaping (=, ;, #, \, newline). Mirrors chapters.ts. */
-function esc(value: string): string {
-  return value.replace(/([\\=;#\n])/g, '\\$1')
-}
-
 /**
  * Build the merged ffmetadata (global tags + [CHAPTER] blocks). Each part's
  * chapters are shifted onto a continuous timeline by the cumulative duration of
@@ -90,14 +85,7 @@ export function buildMergeMetadata(
 ): string {
   const chapterMode = opts.chapterMode ?? 'keep'
 
-  const global: string[] = [';FFMETADATA1']
-  global.push(`title=${esc(metadata.title)}`)
-  global.push(`artist=${esc(metadata.author)}`)
-  global.push(`album=${esc(metadata.title)}`)
-  global.push(`album_artist=${esc(metadata.author)}`)
-  if (metadata.narrator) global.push(`composer=${esc(metadata.narrator)}`)
-  if (metadata.year) global.push(`date=${esc(metadata.year)}`)
-  global.push(`genre=${esc(metadata.genre)}`)
+  const global: string[] = [';FFMETADATA1', ...buildGlobalMetadata(metadata)]
 
   const starts: { title: string; startMs: number }[] = []
   let offset = 0
