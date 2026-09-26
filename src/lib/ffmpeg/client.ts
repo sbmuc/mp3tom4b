@@ -13,6 +13,28 @@ const ST_BASE_URL = `/ffmpeg/${CORE_VERSION}`
 let instance: FFmpeg | null = null
 let loadPromise: Promise<FFmpeg> | null = null
 
+// Remembers, per browser, that the core has loaded once. A later visit is
+// served from the HTTP cache (immutable header), so the loading label mustn't
+// claim a 31 MB download then. Only a convenience: if storage is blocked, the
+// label falls back to the first-visit wording.
+export const CORE_SEEN_KEY = `mp3tom4b:ffmpeg-core:${CORE_VERSION}`
+
+function coreSeenBefore(): boolean {
+  try {
+    return localStorage.getItem(CORE_SEEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function rememberCoreSeen(): void {
+  try {
+    localStorage.setItem(CORE_SEEN_KEY, '1')
+  } catch {
+    // storage blocked — label just stays conservative next time
+  }
+}
+
 // Single-threaded blob URLs — used for parallel encoder worker instances
 // regardless of whether the singleton is MT. Multiple MT instances conflict
 // over their pthread pools (each spawns its own pool against shared
@@ -74,6 +96,7 @@ export async function getFFmpeg(): Promise<FFmpeg> {
     }
 
     instance = ffmpeg
+    rememberCoreSeen()
     return ffmpeg
   })()
 
@@ -142,10 +165,11 @@ export function isFFmpegLoaded(): boolean {
 /**
  * Progress label for the load phase. On a first visit the core is a ~31 MB
  * one-time download, which otherwise looks like an unexplained stall; once it's
- * cached the same step is instant, so don't claim a download then.
+ * cached (this tab, or an earlier visit) the same step is quick, so don't
+ * claim a download then.
  */
 export function ffmpegLoadingLabel(): string {
-  return isFFmpegLoaded() ? 'Loading converter…' : 'Downloading converter (one-time, ~31 MB)…'
+  return isFFmpegLoaded() || coreSeenBefore() ? 'Loading converter…' : 'Downloading converter (one-time, ~31 MB)…'
 }
 
 /**

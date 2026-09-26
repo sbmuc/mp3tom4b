@@ -21,7 +21,6 @@ These are small refinements that make the tool feel meaningfully more polished. 
 - **Better error messages** with specific failure modes (corrupt file, unsupported codec, memory exceeded, etc.) instead of generic errors.
 
 ### Accessibility
-- **Keyboard support for drag-to-reorder** — arrow keys or up/down buttons on each file row to move chapters without using a pointer.
 - **Screen reader testing** with VoiceOver and NVDA. Fix any aria-live region issues found during conversion progress.
 
 ---
@@ -78,7 +77,6 @@ iTunes Search and Open Library already ship in V1.1. These would only land if re
 ### Advanced chapter handling
 - **Per-chapter cover art** — different image per chapter, embedded as MP4 chapter atoms.
 - **Chapter-title collision detection** — when multiple files have the same embedded title, warn and offer to deduplicate or rename.
-- **Parallelise the chapterizer re-encode** — the "add chapters to a single file" tool (`/add-chapters-to-mp3`) re-encodes the whole file in one serial pass. Since the chosen chapter times are natural split points, the compressor's worker-pool segment infra (`compress.ts`) could split → encode segments in parallel → concat, for a big speed-up on long files.
 
 ### File handling improvements
 - **Larger file support** — investigate ffmpeg.wasm-mt (multithreaded) for files > 1.5GB. Requires COOP/COEP headers (already configured) and SharedArrayBuffer support.

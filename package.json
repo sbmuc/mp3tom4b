@@ -16,7 +16,6 @@
     "@dnd-kit/sortable": "^8.0.0",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
-    "@next/third-parties": "^16.2.6",
     "@vercel/analytics": "^2.0.1",
     "fflate": "^0.8.3",
     "lucide-react": "^0.511.0",
