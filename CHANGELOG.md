@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.9.3] — 2026-09-26
+
+### Fixed
+- **Compressing an M4B and adding chapters to one long file now keep every chapter marker on its audio.** Both tools re-encode the book in pieces, and each piece comes out a few hundredths of a second longer. The markers used to stay at their old times, so they slipped further ahead of the audio with every chapter — roughly a second every 50 chapters — and skipping to a late chapter landed in the end of the one before.
+- The progress label no longer says "Downloading converter (one-time, ~31 MB)…" on every visit; once the converter has loaded in your browser, later visits just say "Loading converter…".
+
+### Changed
+- Every format page (FLAC, WAV, M4A, OGG, Opus to M4B) now links to all the M4B tools, and the compressor page lists them under their own heading.
+
+---
+
 ## [1.9.2] — 2026-09-22
 
 ### Fixed

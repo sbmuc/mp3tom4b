@@ -4,13 +4,17 @@ import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile } from '@ffmpeg/util'
 import type { Bitrate, ConversionProgress } from '@/types'
 import { createWorkerFFmpeg, ffmpegLoadingLabel, getFFmpeg, releaseWorkerFFmpeg } from './client'
+import { replaceChapters } from './chapters'
+import { allKnown, buildTimedConcatList, parseSegmentStarts, remapThroughSegments } from './concatPlan'
 import { humanizeFfmpegError } from './errors'
+import { decodedAudioSeconds } from './mp4Duration'
 import { parseChapters, type Chapter } from './splitChapters'
 
 const OUTPUT_PATH = 'compress_out.m4b'
 const META_PATH = 'compress_meta.ffmeta'
 const COVER_PATH = 'compress_cover.jpg'
 const LIST_PATH = 'compress_list.txt'
+const SEG_LIST_PATH = 'compress_segments.csv'
 
 const SEG_SRC_PATTERN = 'seg_src_%03d.m4a'
 const segSrc = (i: number) => `seg_src_${String(i).padStart(3, '0')}.m4a`
@@ -154,13 +158,15 @@ const TIME_RE = /time=(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
 /**
  * Re-encode already-split chapter segments to AAC across a pool of worker
  * instances. Each worker reads a segment from the singleton FS, encodes it, and
- * writes the result back. Encoding occupies the visible 15–90 range.
+ * writes the result back. Encoding occupies the visible 15–90 range. Returns
+ * each encoded segment's decoded length in seconds (null if unreadable).
  */
 async function encodeSegmentsParallel(
   count: number,
   bitrate: Bitrate,
   emit: (p: ConversionProgress) => void,
-): Promise<void> {
+): Promise<Array<number | null>> {
+  const decodedSec = new Array<number | null>(count).fill(null)
   const perSeg = new Array<number>(count).fill(0)
   let completed = 0
   const emitProgress = () => {
@@ -193,6 +199,7 @@ async function encodeSegmentsParallel(
           await worker.writeFile(workerIn, src)
           await worker.exec(buildSegmentEncodeArgs({ input: workerIn, output: workerOut, bitrate }))
           const enc = toBytes(await worker.readFile(workerOut))
+          decodedSec[idx] = decodedAudioSeconds(enc) // before the write detaches the buffer
           await withSingleton((m) => m.writeFile(encName(idx), enc))
         } finally {
           worker.off('progress', onProg)
@@ -211,6 +218,7 @@ async function encodeSegmentsParallel(
 
   const concurrency = encodeConcurrency(count)
   await Promise.all(Array.from({ length: concurrency }, () => runWorker()))
+  return decodedSec
 }
 
 async function readBlob(ffmpeg: FFmpeg, path: string, type: string): Promise<Blob> {
@@ -242,10 +250,11 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
     // Dump original global metadata + chapters once; drives the split decision
     // and is reused verbatim in the parallel final mux.
     let chapters: Chapter[] = []
+    let metaText = ''
     try {
       await ffmpeg.exec(['-hide_banner', '-i', inputPath, '-f', 'ffmetadata', META_PATH])
       tempPaths.push(META_PATH)
-      const metaText = new TextDecoder().decode(toBytes(await ffmpeg.readFile(META_PATH)))
+      metaText = new TextDecoder().decode(toBytes(await ffmpeg.readFile(META_PATH)))
       chapters = parseChapters(metaText)
     } catch {
       chapters = []
@@ -270,21 +279,40 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
       await ffmpeg.exec([
         '-hide_banner', '-i', inputPath, '-vn', '-c:a', 'copy',
         '-f', 'segment', '-segment_times', buildSegmentTimes(chapters),
+        '-segment_list', SEG_LIST_PATH, '-segment_list_type', 'csv',
         '-reset_timestamps', '1', SEG_SRC_PATTERN,
       ])
+      tempPaths.push(SEG_LIST_PATH)
       for (let i = 0; i < chapters.length; i++) {
         tempPaths.push(segSrc(i), encName(i))
+      }
+      // Where each piece really starts (the copy split cuts on a packet).
+      let segStarts: number[] | null = null
+      try {
+        segStarts = parseSegmentStarts(new TextDecoder().decode(toBytes(await ffmpeg.readFile(SEG_LIST_PATH))), chapters.length)
+      } catch {
+        segStarts = null
       }
 
       // The large input is no longer needed once segmented — free it before the
       // memory-heavy parallel stage.
       try { await ffmpeg.deleteFile(inputPath) } catch { /* ignore */ }
 
-      await encodeSegmentsParallel(chapters.length, bitrate, emit)
+      const decodedSec = await encodeSegmentsParallel(chapters.length, bitrate, emit)
 
-      const listBody = chapters.map((_, i) => `file '${encName(i)}'`).join('\n') + '\n'
+      // Join with each piece's real decoded length, and move every chapter
+      // marker by the same amount, so the markers stay on the audio.
+      const listBody = buildTimedConcatList(chapters.map((_, i) => ({ name: encName(i), durationSec: decodedSec[i] })))
       await ffmpeg.writeFile(LIST_PATH, new TextEncoder().encode(listBody))
       tempPaths.push(LIST_PATH)
+      const known = allKnown(decodedSec)
+      if (known) {
+        const boundaries = segStarts ?? [0, ...chapters.slice(1).map((c) => c.startMs)]
+        const starts = chapters.map((c) => remapThroughSegments(c.startMs, boundaries, known))
+        const totalMs = known.reduce((a, s) => a + s * 1000, 0)
+        const marks = chapters.map((c, i) => ({ title: c.title, startMs: starts[i], endMs: starts[i + 1] ?? totalMs }))
+        await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(replaceChapters(metaText, marks)))
+      }
 
       emit({ status: 'muxing', percent: 92, label: 'Finalizing audiobook…' })
       await ffmpeg.exec(buildParallelMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))

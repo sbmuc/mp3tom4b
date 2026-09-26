@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildChapters, buildFFMetadata, buildGlobalMetadata } from '@/lib/ffmpeg/chapters'
+import { buildChapters, buildFFMetadata, buildGlobalMetadata, replaceChapters } from '@/lib/ffmpeg/chapters'
 
 describe('buildChapters', () => {
   it('produces a contiguous timeline starting at 0', () => {
@@ -104,5 +104,42 @@ describe('buildGlobalMetadata', () => {
   it('escapes backslash, ;, =, # and newlines so they survive ffmpeg', () => {
     const lines = buildGlobalMetadata({ ...base, title: 'AC\\DC Live; Part=1 #2\nx' })
     expect(lines[0]).toBe('title=AC\\\\DC Live\\; Part\\=1 \\#2\\\nx')
+  })
+})
+
+describe('replaceChapters', () => {
+  const dump = [
+    ';FFMETADATA1',
+    'major_brand=M4A ',
+    'title=AC\\\\DC Live\\; Part 1',
+    'encoder=Lavf59.27.100',
+    '',
+    '[CHAPTER]',
+    'TIMEBASE=1/1000',
+    'START=0',
+    'END=3344',
+    'title=Old one',
+    '[CHAPTER]',
+    'TIMEBASE=1/1000',
+    'START=3344',
+    'END=8081',
+    'title=Old two',
+    '',
+  ].join('\n')
+
+  it('keeps the global tags verbatim and swaps in the new chapter blocks', () => {
+    const out = replaceChapters(dump, [
+      { title: 'One', startMs: 0, endMs: 3390.11 },
+      { title: 'Two; again', startMs: 3390.11, endMs: 8150.2 },
+    ])
+    expect(out.startsWith(';FFMETADATA1\nmajor_brand=M4A \ntitle=AC\\\\DC Live\\; Part 1\nencoder=Lavf59.27.100\n')).toBe(true)
+    expect(out).not.toContain('Old one')
+    expect(out).toContain('START=3390\nEND=8150\ntitle=Two\\; again\n')
+    expect(out.match(/\[CHAPTER\]/g)).toHaveLength(2)
+  })
+
+  it('adds chapter blocks to a dump that had none', () => {
+    const out = replaceChapters(';FFMETADATA1\ntitle=Book\n', [{ title: 'Only', startMs: 0, endMs: 1000 }])
+    expect(out).toBe(';FFMETADATA1\ntitle=Book\n\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=1000\ntitle=Only\n')
   })
 })

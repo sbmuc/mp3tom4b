@@ -118,3 +118,38 @@ export function buildTimedConcatList(parts: Array<{ name: string; durationSec: n
       .join('\n') + '\n'
   )
 }
+
+/**
+ * Actual segment start times (ms) from the segment muxer's CSV list
+ * (`-segment_list x.csv -segment_list_type csv`: "name,start,end" per line).
+ * A stream-copy split can only cut on a packet, so each piece starts up to one
+ * frame away from the time asked for — this is where it really starts. Null
+ * when the list doesn't have exactly `count` readable rows.
+ */
+export function parseSegmentStarts(csv: string, count: number): number[] | null {
+  const rows = csv.split('\n').map((l) => l.trim()).filter(Boolean)
+  if (rows.length !== count) return null
+  const starts = rows.map((row) => Number(row.split(',').at(-2)) * 1000)
+  return starts.every((s) => Number.isFinite(s) && s >= 0) ? starts : null
+}
+
+/**
+ * Where a source time lands once the source was split at `boundariesMs`
+ * (segment starts, first is 0), each segment re-encoded, and the results
+ * joined with `buildTimedConcatList`: the decoded lengths of the segments
+ * before it, plus its offset into its own segment. Re-encoding makes every
+ * segment ~20–45 ms longer, so markers kept at their source times would drift
+ * further from the audio with every segment.
+ */
+export function remapThroughSegments(tMs: number, boundariesMs: number[], decodedSec: number[]): number {
+  let j = 0
+  while (j + 1 < boundariesMs.length && boundariesMs[j + 1] <= tMs) j++
+  let before = 0
+  for (let k = 0; k < j; k++) before += decodedSec[k] * 1000
+  return before + (tMs - boundariesMs[j])
+}
+
+/** The decoded lengths when every one is known, else null (keep source timing). */
+export function allKnown(decodedSec: Array<number | null>): number[] | null {
+  return decodedSec.every((s): s is number => s != null) ? (decodedSec as number[]) : null
+}

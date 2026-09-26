@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  allKnown,
   audioStreamSignature,
   buildEncodeArgs,
   buildTimedConcatList,
   canCopyStreams,
   mayStreamCopy,
+  parseSegmentStarts,
   pickEncodeTarget,
+  remapThroughSegments,
 } from '@/lib/ffmpeg/concatPlan'
 
 const file = (name: string) => new File([new Uint8Array(0)], name)
@@ -111,5 +114,55 @@ describe('buildTimedConcatList', () => {
 
   it('leaves the duration out for a part whose length is unknown', () => {
     expect(buildTimedConcatList([{ name: 'enc_0.m4a', durationSec: null }])).toBe("file 'enc_0.m4a'\n")
+  })
+})
+
+describe('parseSegmentStarts', () => {
+  const csv = 'ch_seg_000.mp3,0.000000,3.317551\nch_seg_001.mp3,3.317551,8.019592\nch_seg_002.mp3,8.019592,10.031020\n'
+
+  it('reads where each piece really starts, in ms', () => {
+    const starts = parseSegmentStarts(csv, 3)!
+    expect(starts[0]).toBe(0)
+    expect(starts[1]).toBeCloseTo(3317.551, 6)
+    expect(starts[2]).toBeCloseTo(8019.592, 6)
+  })
+
+  it('copes with commas in the file name', () => {
+    expect(parseSegmentStarts('a,b.m4a,1.5,2.0\n', 1)).toEqual([1500])
+  })
+
+  it('returns null when the row count does not match or a time is unreadable', () => {
+    expect(parseSegmentStarts(csv, 4)).toBeNull()
+    expect(parseSegmentStarts('x.m4a,abc,1\n', 1)).toBeNull()
+    expect(parseSegmentStarts('', 1)).toBeNull()
+  })
+})
+
+describe('remapThroughSegments', () => {
+  // pieces start at 0 / 3000 / 5000 ms; after re-encoding they decode to
+  // 3.04 s / 2.03 s / 4.05 s
+  const boundaries = [0, 3000, 5000]
+  const decoded = [3.04, 2.03, 4.05]
+
+  it('puts a piece start after the decoded length of the pieces before it', () => {
+    expect(remapThroughSegments(0, boundaries, decoded)).toBe(0)
+    expect(remapThroughSegments(3000, boundaries, decoded)).toBeCloseTo(3040, 9)
+    expect(remapThroughSegments(5000, boundaries, decoded)).toBeCloseTo(5070, 9)
+  })
+
+  it('keeps the offset of a time inside its piece', () => {
+    expect(remapThroughSegments(4000, boundaries, decoded)).toBeCloseTo(4040, 9)
+  })
+
+  it('maps a mark just before a late cut into the previous piece, never past its sound', () => {
+    // the cut for a 3000 ms mark really happened at 3018 ms (next packet)
+    expect(remapThroughSegments(3000, [0, 3018, 5000], decoded)).toBe(3000)
+  })
+})
+
+describe('allKnown', () => {
+  it('passes a complete list through and rejects a list with a gap', () => {
+    expect(allKnown([1, 2])).toEqual([1, 2])
+    expect(allKnown([1, null])).toBeNull()
   })
 })

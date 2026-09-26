@@ -43,6 +43,16 @@ export function buildFFMetadata(chapters: ChapterMark[]): string {
 }
 
 /**
+ * Swap the [CHAPTER] blocks of an ffmetadata dump for `marks`, keeping its
+ * global tags exactly as they were. Pure.
+ */
+export function replaceChapters(ffmetadata: string, marks: ChapterMark[]): string {
+  const cut = ffmetadata.search(/^\[CHAPTER\]/m)
+  const head = (cut >= 0 ? ffmetadata.slice(0, cut) : ffmetadata).replace(/\s*$/, '\n')
+  return head + buildFFMetadata(marks).replace(/^;FFMETADATA1\n/, '')
+}
+
+/**
  * The book-level ffmetadata tags (no `;FFMETADATA1` header), escaped. Shared by
  * the converter, editor and merger so a `\\`, `;` or `=` in a title survives.
  */

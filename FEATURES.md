@@ -97,7 +97,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Editable chapter table (reused from the editor): first chapter pinned to 0:00:00, add/remove, auto-sort by time, live validation.
 - Metadata form (prefilled from the file) and cover (keep the file's own, upload a new image, or remove).
 - Bitrate 64 / 96 / 128 kbps; the audio stays one continuous stream with chapter markers added over it.
-- Long files are split into chapter-sized pieces and re-encoded in parallel (bounded memory + faster); short files use a single pass.
+- Long files are split into chapter-sized pieces and re-encoded in parallel (bounded memory + faster); short files use a single pass. Chapter markers are moved by each re-encoded piece's real length (measured from where the split actually cut), so they stay on the audio at every chapter.
 - Runs entirely in the browser via WebAssembly — the file is never uploaded.
 
 ## Download
@@ -111,7 +111,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Available on the `/compress-m4b` page via a mode toggle: "Shrink an existing M4B" (default) or "Build from separate files".
 - Drop a single finished `.m4b` / `.m4a`; the file is probed in-browser for its duration, chapter count, cover presence, and current bitrate.
 - Re-encodes only the audio stream to a lower AAC bitrate (64 / 96 / 128 kbps) while keeping the original chapters, cover art, and metadata untouched.
-- Chaptered books are split at chapter boundaries and re-encoded in parallel across workers (~2–3× faster); chapterless files use a single serial pass.
+- Chaptered books are split at chapter boundaries and re-encoded in parallel across workers (~2–3× faster); chapterless files use a single serial pass. The original chapter markers are moved by each re-encoded piece's real length, so they stay on the audio; titles and tags are kept as they were.
 - Estimated output size and expected space saving ("about 50% smaller") update with the chosen bitrate.
 - Compression is disabled when the chosen bitrate is not lower than the source's current bitrate (it wouldn't shrink the file).
 - Download filename derived from the file's embedded tags (`{Author} - {Title}.m4b`), falling back to the original name.
@@ -128,7 +128,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - aria-live progress announcements during conversion.
 - Keeps the screen awake during conversion, compression, and splitting (while the tab is in the foreground) so a long job isn't interrupted by display sleep.
 - Estimated time remaining on every long-running tool, projected from the recent rate of progress.
-- The one-time ~31 MB engine download is named in the progress label on first use, rather than looking like a stall.
+- The one-time ~31 MB engine download is named in the progress label on first use, rather than looking like a stall; later visits (served from the browser cache) just say "Loading converter…".
 - Touch-sized (44px) drag, reset, and remove controls.
 
 ## Pages
@@ -138,6 +138,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - `/faq` — common questions about M4B, audiobooks, and the conversion process.
 - `/privacy` — privacy policy.
 - Five SEO sister landing pages with format-specific hero copy and FAQ: `/flac-to-m4b`, `/wav-to-m4b`, `/m4a-to-m4b`, `/ogg-to-m4b`, `/opus-to-m4b`.
+- Every landing page cross-links the other formats and the M4B tools ("More M4B tools").
 - `/compress-m4b` — landing page for shrinking or building a compact M4B, with the compressor and build tool behind a mode toggle.
 - `/m4b-to-mp3` — landing page for splitting an M4B into per-chapter MP3s.
 - `/edit-m4b-chapters` — landing page for editing chapters, metadata, and cover art in an existing M4B.
@@ -164,5 +165,5 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - TypeScript strict mode across the codebase.
 - Vitest unit tests covering chapter generation, file validation, metadata extraction, image resize, bitrate logic, ETA formatting, MP4 duration parsing, and how inputs are joined.
-- Integration test (`npm run test:integration`) that runs the real converter against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy, the M4A copy path, and metadata escaping — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
+- Integration tests (`npm run test:integration`) that run the real converter, compressor, and chapterizer against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy (never after the sound, no drift), the M4A copy path, and metadata escaping — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
 - Lighthouse-targeted performance: instant first paint, ffmpeg.wasm loaded lazily on first conversion and cached thereafter.
