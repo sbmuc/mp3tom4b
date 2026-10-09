@@ -71,6 +71,7 @@ const RELATED = [
   { label: 'Edit M4B chapters', href: '/edit-m4b-chapters' },
   { label: 'Merge M4Bs', href: '/merge-m4b' },
   { label: 'Add chapters to MP3', href: '/add-chapters-to-mp3' },
+  { label: 'M4B player', href: '/m4b-player' },
   { label: 'FLAC to M4B', href: '/flac-to-m4b' },
   { label: 'WAV to M4B', href: '/wav-to-m4b' },
 ]

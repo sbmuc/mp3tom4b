@@ -71,6 +71,7 @@ const RELATED = [
   { label: 'M4B to MP3', href: '/m4b-to-mp3' },
   { label: 'Merge M4Bs', href: '/merge-m4b' },
   { label: 'Add chapters to MP3', href: '/add-chapters-to-mp3' },
+  { label: 'M4B player', href: '/m4b-player' },
 ]
 
 export default function EditM4bPage() {

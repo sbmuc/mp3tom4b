@@ -35,6 +35,7 @@ import { extractMetadata } from '@/lib/audio/metadata'
 import { isDecodableImage } from '@/lib/image/validate'
 import { formatBytes } from '@/lib/audio/format'
 import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
+import OutputPreview from '@/components/OutputPreview'
 
 const ACCEPTED_EXTENSIONS = ['.mp3', '.m4a', '.m4b', '.wav', '.flac', '.ogg', '.opus']
 const BUSY_STATUSES = new Set(['loading-ffmpeg', 'probing', 'encoding'])
@@ -744,8 +745,8 @@ export default function FileChapterizer() {
       )}
 
       {resultBlob && downloadUrl && (
-        <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30" role="status">
-          <div className="flex items-start gap-3">
+        <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
+          <div className="flex items-start gap-3" role="status">
             <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             <div className="flex-1">
               <p className="font-semibold text-emerald-900 dark:text-emerald-100">Your chaptered audiobook is ready</p>
@@ -769,6 +770,7 @@ export default function FileChapterizer() {
               <RotateCcw size={14} aria-hidden="true" /> Do another
             </button>
           </div>
+          <OutputPreview file={resultBlob} fileName={downloadName} />
         </div>
       )}
     </div>

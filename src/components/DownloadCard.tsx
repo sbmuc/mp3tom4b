@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, CheckCircle2, Download, RotateCcw } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { formatBytes } from '@/lib/audio/format'
+import OutputPreview from '@/components/OutputPreview'
 
 function sanitizeFilename(value: string): string {
   return value.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim()
@@ -80,9 +81,8 @@ export default function DownloadCard() {
   return (
     <div
       className="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30"
-      role="status"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3" role="status">
         <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
         <div className="flex-1">
           <p className="font-semibold text-emerald-900 dark:text-emerald-100">
@@ -182,6 +182,8 @@ export default function DownloadCard() {
           </div>
         </div>
       )}
+
+      <OutputPreview file={outputBlob} fileName={resolved} />
     </div>
   )
 }

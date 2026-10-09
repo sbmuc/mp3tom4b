@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.10.0] — 2026-10-09
+
+### Added
+- **Preview before you download.** Every tool that makes an M4B (the converter, compressor, chapter editor, merger, and "Add chapters") now has a preview under the download button. Play the result right in the page, see its chapter list, and jump between chapters to check they start where they should, before the file goes to your phone.
+- **M4B player** at `/m4b-player`: drop an M4B, M4A, or MP3 and play it in the browser with its cover, chapter list, chapter skipping, 15 s back / 30 s forward, and 0.75×–2× speed. Media keys and the phone lock screen control it too. The file plays from your device; nothing is uploaded or stored.
+
+### Changed
+- Every page's list of M4B tools now links to the player.
+
+---
+
 ## [1.9.3] — 2026-09-26
 
 ### Fixed

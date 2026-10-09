@@ -71,6 +71,7 @@ const RELATED = [
   { label: 'Edit M4B chapters', href: '/edit-m4b-chapters' },
   { label: 'Merge M4Bs', href: '/merge-m4b' },
   { label: 'M4B to MP3', href: '/m4b-to-mp3' },
+  { label: 'M4B player', href: '/m4b-player' },
 ]
 
 export default function AddChaptersPage() {

@@ -28,6 +28,7 @@ import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { isDecodableImage } from '@/lib/image/validate'
 import { formatBytes } from '@/lib/audio/format'
+import OutputPreview from '@/components/OutputPreview'
 import type { ConversionMetadata, ConversionProgress, Genre } from '@/types'
 
 const ACCEPTED_EXTENSIONS = ['.m4b', '.m4a']
@@ -605,8 +606,8 @@ export default function M4bEditor() {
       )}
 
       {resultBlob && downloadUrl && (
-        <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30" role="status">
-          <div className="flex items-start gap-3">
+        <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
+          <div className="flex items-start gap-3" role="status">
             <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             <div className="flex-1">
               <p className="font-semibold text-emerald-900 dark:text-emerald-100">Your edited audiobook is ready</p>
@@ -630,6 +631,7 @@ export default function M4bEditor() {
               <RotateCcw size={14} aria-hidden="true" /> Edit another
             </button>
           </div>
+          <OutputPreview file={resultBlob} fileName={downloadName} />
         </div>
       )}
     </div>

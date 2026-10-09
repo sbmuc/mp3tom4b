@@ -105,6 +105,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Auto-generated filename in `{Author} - {Title}.m4b` format.
 - Custom filename input — override the auto-generated name; the `.m4b` extension is added if missing, and a "reset" button restores the auto name.
 - "Start over" button to clear all state and begin a new conversion.
+- Preview: play the result in the page before downloading (chapter list, chapter skipping, speed) to check the chapters land on the audio. Offered on every tool that produces an M4B: converter, compressor, chapter editor, merger, and add-chapters.
 
 ## Compress an existing M4B
 
@@ -116,6 +117,16 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Compression is disabled when the chosen bitrate is not lower than the source's current bitrate (it wouldn't shrink the file).
 - Download filename derived from the file's embedded tags (`{Author} - {Title}.m4b`), falling back to the original name.
 - Like the main converter, everything runs in the browser — the file is never uploaded.
+
+## M4B player
+
+- Available at `/m4b-player`: drop an `.m4b`, `.m4a`, or `.mp3` and it plays in the browser's own audio element from a local `blob:` URL — nothing is uploaded or stored.
+- Shows the cover, title, author, narrator, chapter count, and length from the file's tags.
+- Chapter list with the playing chapter highlighted and kept in view; click a chapter to play from its start. Chapters come from the MP4 chapter track (falling back to the Nero `chpl` box) or from MP3 ID3 chapters, read without loading ffmpeg.
+- Previous / next chapter ("previous" restarts the current chapter after its first 3 seconds), 15 s back, 30 s forward, a seek bar over the whole book, time left in the chapter, and 0.75×–2× speed.
+- Lock-screen, headset, and media-key controls via the Media Session API, with the chapter title and cover shown.
+- Files without chapters get a pointer to the chapter editor (M4B) or "Add chapters to MP3" (MP3).
+- The same player powers the download preview on every M4B tool.
 
 ## UI / UX
 
@@ -144,6 +155,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - `/edit-m4b-chapters` — landing page for editing chapters, metadata, and cover art in an existing M4B.
 - `/merge-m4b` — landing page for merging several M4B files into one audiobook.
 - `/add-chapters-to-mp3` — landing page for turning a single audio file into a chaptered M4B.
+- `/m4b-player` — landing page for playing an M4B audiobook in the browser.
 
 ## SEO
 
@@ -164,6 +176,6 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 ## Quality
 
 - TypeScript strict mode across the codebase.
-- Vitest unit tests covering chapter generation, file validation, metadata extraction, image resize, bitrate logic, ETA formatting, MP4 duration parsing, and how inputs are joined.
+- Vitest unit tests covering chapter generation, file validation, metadata extraction, image resize, bitrate logic, ETA formatting, MP4 duration parsing, MP4 chapter reading (chapter track and `chpl`), player chapter navigation, and how inputs are joined.
 - Integration tests (`npm run test:integration`) that run the real converter, compressor, and chapterizer against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy (never after the sound, no drift), the M4A copy path, and metadata escaping — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
 - Lighthouse-targeted performance: instant first paint, ffmpeg.wasm loaded lazily on first conversion and cached thereafter.
