@@ -35,6 +35,10 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Genre dropdown: Audiobook (default), Podcast, Lecture, Other.
 - Auto-fill from the first dropped file's embedded tags — title, author, narrator, year, genre, and cover art populate any empty/untouched fields.
 - "Verify metadata → Look up online" — searches iTunes Search first, then falls back to Open Library when iTunes has no match. Only title, author, and narrator are sent over the network; audio files never leave the browser.
+  - People are searched by surname, so "Joanne K. Rowling" finds books listed under "J.K. Rowling".
+  - A search only counts when a result has most of the title's words; otherwise the next search runs (narrator, then title alone, then Open Library), so a search that finds only other books (biographies of the author, say) doesn't hide the book.
+  - Results are listed best first: the title's words and little else, by the author searched for. A study guide or summary of the book comes after the book itself.
+  - When the author picked is the person in the narrator field (however each spells the name) and the author field held someone else, Author and Narrator are swapped back.
 - Per-source result badges ("from iTunes" / "from Open Library") on fields populated from a verified lookup.
 - One-click cover apply from an iTunes match.
 

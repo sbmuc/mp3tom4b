@@ -22,6 +22,7 @@ import {
   type SearchStage as OLStage,
 } from '../openlibrary/client'
 import type { MetadataSource } from '@/types'
+import { rankResults } from './match'
 
 export type CascadeStageId =
   | 'itunes-1'
@@ -95,7 +96,9 @@ export async function searchAllSources(opts: UnifiedCascadeOpts): Promise<Unifie
     throw new MetadataSearchError('unknown', 'Need at least a title, author, or narrator to search.')
   }
 
-  // 1) iTunes cascade. Treat its no-results as "fall through to Open Library".
+  // 1) iTunes cascade. Treat its no-results — and results that don't look like
+  // the book — as "fall through to Open Library".
+  let itunes: { result: UnifiedResult; stage: CascadeStageId }[] = []
   try {
     const it = await searchItunesCascade({
       title,
@@ -105,15 +108,16 @@ export async function searchAllSources(opts: UnifiedCascadeOpts): Promise<Unifie
       fetchImpl: opts.fetchImpl,
       onStageStart: (s: ItunesStage) => opts.onStageStart?.(`itunes-${s}` as CascadeStageId),
     })
-    return {
-      results: it.results.map(itunesToUnified),
-      stage: `itunes-${it.stage}` as CascadeStageId,
-    }
+    const results = it.results.map(itunesToUnified)
+    if (it.matched) return { results, stage: `itunes-${it.stage}` as CascadeStageId }
+    // Each iTunes result's own stage is gone after ranking; the best one's stands for all.
+    itunes = results.map((result) => ({ result, stage: `itunes-${it.stage}` as CascadeStageId }))
   } catch (err) {
     if (!(err instanceof ItunesError && err.kind === 'no-results')) throw err
   }
 
-  // 2) Open Library cascade — left exactly as it was, just chained.
+  // 2) Open Library cascade, then everything found, best first.
+  let openLibrary: { result: UnifiedResult; stage: CascadeStageId }[] = []
   try {
     const ol = await searchBooksCascade({
       title,
@@ -123,17 +127,20 @@ export async function searchAllSources(opts: UnifiedCascadeOpts): Promise<Unifie
       fetchImpl: opts.fetchImpl,
       onStageStart: (s: OLStage) => opts.onStageStart?.(`openlibrary-${s}` as CascadeStageId),
     })
-    return {
-      results: ol.results.map(openLibraryToUnified),
-      stage: `openlibrary-${ol.stage}` as CascadeStageId,
-    }
+    const results = ol.results.map(openLibraryToUnified)
+    const stage = `openlibrary-${ol.stage}` as CascadeStageId
+    if (ol.matched || itunes.length === 0) return { results, stage }
+    openLibrary = results.map((result) => ({ result, stage }))
   } catch (err) {
-    if (err instanceof OpenLibraryError && err.kind === 'no-results') {
-      throw new MetadataSearchError(
-        'no-results',
-        'No matches on iTunes or Open Library. You can fill the fields manually below.'
-      )
-    }
-    throw err
+    if (!(err instanceof OpenLibraryError && err.kind === 'no-results')) throw err
   }
+
+  const ranked = rankResults([...itunes, ...openLibrary], title, [author, narrator])
+  if (ranked.length === 0) {
+    throw new MetadataSearchError(
+      'no-results',
+      'No matches on iTunes or Open Library. You can fill the fields manually below.'
+    )
+  }
+  return { results: ranked.map((item) => item.result), stage: ranked[0].stage }
 }

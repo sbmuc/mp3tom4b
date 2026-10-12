@@ -16,6 +16,7 @@ import {
   type CascadeStageId,
   type UnifiedResult,
 } from '@/lib/metadata-search/cascade'
+import { samePerson } from '@/lib/metadata-search/match'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import type { ConversionMetadata } from '@/types'
 
@@ -54,15 +55,6 @@ function stageResultsHint(stage: CascadeStageId, title: string): string | null {
     return 'Found via narrator search. Pick the right edition.'
   }
   return `Showing all books titled “${title}”. Pick the right edition.`
-}
-
-/**
- * Was this result returned by a Stage 2 (narrator) search? If so, picking
- * a result whose author matches the user's narrator field implies the
- * user typed Author/Narrator into swapped slots.
- */
-function isStage2(stage: CascadeStageId): boolean {
-  return stage === 'itunes-2' || stage === 'openlibrary-2'
 }
 
 async function fetchCoverAsFile(url: string): Promise<File> {
@@ -144,13 +136,18 @@ export default function MetadataLookup() {
     if (r.year) olPatch.year = r.year
     if (r.narrator) olPatch.narrator = r.narrator
 
+    // The author found is the person in the narrator field (however each spells the name), and
+    // the author field held someone else: the two were typed (or tagged) the wrong way round.
+    // Not only after a narrator search: searching people by surname often finds the book at once.
+    const typedAuthor = metadata.author.trim()
     const isSwap =
-      resultStage !== null &&
-      isStage2(resultStage) &&
+      pickedAuthor !== '' &&
       narrator !== '' &&
-      pickedAuthor.toLowerCase() === narrator.toLowerCase()
+      typedAuthor !== '' &&
+      samePerson(pickedAuthor, narrator) &&
+      !samePerson(pickedAuthor, typedAuthor)
 
-    olPatch.author = isSwap ? narrator : pickedAuthor || metadata.author
+    olPatch.author = pickedAuthor || metadata.author
     applyVerifiedMetadata(olPatch, r.source)
 
     if (isSwap) {
@@ -158,7 +155,7 @@ export default function MetadataLookup() {
       // marks it as user-touched (no source badge), which is correct —
       // that string was never on the external source.
       setMetadata({ narrator: metadata.author })
-      setToast('Swapped Author and Narrator based on Open Library match.')
+      setToast(`Swapped Author and Narrator to match ${r.source === 'itunes' ? 'iTunes' : 'Open Library'}.`)
     }
 
     // Surface the cover prompt instead of immediately closing the panel.

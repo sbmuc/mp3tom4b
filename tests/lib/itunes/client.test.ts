@@ -17,7 +17,8 @@ function makeStagedFetch(stages: Response[]): ReturnType<typeof vi.fn<typeof fet
   return vi.fn<typeof fetch>(async () => {
     const r = stages[i] ?? stages[stages.length - 1]
     i++
-    return r
+    // A copy: the last answer repeats, and a body can only be read once.
+    return r.clone()
   })
 }
 
@@ -82,7 +83,7 @@ describe('searchItunesCascade — cascade behaviour', () => {
   it('falls through to stage 2 when stage 1 has no results, and uses narrator in the term', async () => {
     const fetchImpl = makeStagedFetch([
       jsonResponse({ resultCount: 0, results: [] }),
-      jsonResponse({ resultCount: 1, results: [baseDoc] }),
+      jsonResponse({ resultCount: 1, results: [{ ...baseDoc, collectionName: 'T' }] }),
     ])
     const stages: ItunesStage[] = []
     const out = await searchItunesCascade({
@@ -141,5 +142,62 @@ describe('searchItunesCascade — cascade behaviour', () => {
       searchItunesCascade({ title: '', author: '', narrator: '', fetchImpl })
     ).rejects.toBeInstanceOf(ItunesError)
     expect(fetchImpl).not.toHaveBeenCalled()
+  })
+})
+
+describe('searchItunesCascade — finding the book', () => {
+  // What iTunes answered on 2026-10-12 for the title with "Joanne K. Rowling" (iTunes knows her
+  // as "J.K. Rowling"), and for the title alone.
+  const withFullName = jsonResponse({
+    resultCount: 3,
+    results: [
+      { collectionId: 11, collectionName: 'A Pen to Change the World: The Life of J.K. Rowling (Unabridged)', artistName: 'Solomon Schmidt' },
+      { collectionId: 12, collectionName: 'Joanne K. Rowling: Kurzbiografie kompakt', artistName: '5 Minuten Biografien' },
+      { collectionId: 13, collectionName: 'Still I Rise: The Persistence of Phenomenal Women', artistName: 'Marlene Wagman-Geller' },
+    ],
+  })
+  const titleAlone = jsonResponse({
+    resultCount: 4,
+    results: [
+      { collectionId: 21, collectionName: 'Harry Potter and the Half-Blood Prince by J.K. Rowling (Book Analysis)', artistName: 'Bright Summaries' },
+      { collectionId: 22, collectionName: 'Harry Windzor and the Magic of Monarchy: A Potter Parody', artistName: 'Sid Ishun' },
+      { collectionId: 23, collectionName: 'Harry Potter et le Prince de Sang-Mêlé', artistName: 'J.K. Rowling' },
+      { collectionId: 24, collectionName: 'Harry Potter and the Half-Blood Prince', artistName: 'J.K. Rowling' },
+    ],
+  })
+
+  it('searches people by surname', async () => {
+    const fetchImpl = makeStagedFetch([titleAlone])
+    await searchItunesCascade({ title: 'Harry Potter and the Half-Blood Prince', author: 'Joanne K. Rowling', fetchImpl })
+    expect(String(fetchImpl.mock.calls[0][0])).toContain('term=Harry+Potter+and+the+Half-Blood+Prince+Rowling')
+  })
+
+  it('goes on when a stage finds only other books, and puts the book first', async () => {
+    const fetchImpl = makeStagedFetch([withFullName, titleAlone])
+    const stages: ItunesStage[] = []
+    const out = await searchItunesCascade({
+      title: 'Harry Potter and the Half-Blood Prince',
+      author: 'Joanne K. Rowling',
+      fetchImpl,
+      onStageStart: (s) => stages.push(s),
+    })
+    expect(stages).toEqual([1, 3])
+    expect(out.matched).toBe(true)
+    expect(out.stage).toBe(3)
+    expect(out.results.slice(0, 3).map((r) => r.title)).toEqual([
+      'Harry Potter and the Half-Blood Prince',
+      'Harry Potter et le Prince de Sang-Mêlé',
+      'Harry Potter and the Half-Blood Prince by J.K. Rowling (Book Analysis)',
+    ])
+    expect(out.results.slice(-3).map((r) => r.title)).toContain('A Pen to Change the World: The Life of J.K. Rowling (Unabridged)')
+  })
+
+  it('stops at the first stage that looks like the book; part of the title is enough', async () => {
+    const fetchImpl = makeStagedFetch([
+      jsonResponse({ resultCount: 1, results: [{ collectionId: 1, collectionName: 'Harry Potter and the Goblet of Fire', artistName: 'J.K. Rowling' }] }),
+    ])
+    const out = await searchItunesCascade({ title: 'Goblet of Fire', fetchImpl })
+    expect(out.matched).toBe(true)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 })

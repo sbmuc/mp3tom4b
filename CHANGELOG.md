@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.10.1] — 2026-10-12
+
+### Fixed
+- **"Look up online" finds the book when the author is written another way.** Searching "Harry Potter and the Half-Blood Prince" by "Joanne K. Rowling" listed only biographies of her, because iTunes knows her as "J.K. Rowling", and the search stopped there. Authors and narrators are now searched by surname, a search that finds only other books makes way for the next one, and the likeliest book comes first, ahead of summaries and study guides of it.
+- Author and Narrator are swapped back whenever the book found names the narrator field's person as its author, however the name is spelled, not only after a narrator search.
+
+---
+
 ## [1.10.0] — 2026-10-09
 
 ### Added

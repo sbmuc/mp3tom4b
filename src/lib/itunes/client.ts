@@ -7,6 +7,8 @@
  * no user identifiers. Country forced to US for the deepest catalog.
  */
 
+import { looksLikeTheBook, rankResults, surname } from '../metadata-search/match'
+
 const BASE_URL = 'https://itunes.apple.com/search'
 const RESULT_LIMIT = 10
 const COUNTRY = 'US'
@@ -45,7 +47,10 @@ export interface ItunesCascadeOpts {
 
 export interface ItunesCascadeResult {
   results: ItunesResult[]
+  /** The stage that found the best result. */
   stage: ItunesStage
+  /** A result has most of the searched title's words: the book is likely among them. */
+  matched: boolean
 }
 
 interface ApiDoc {
@@ -147,8 +152,10 @@ async function searchITunesOnce({
  *   1. title + author
  *   2. title + narrator (skipped when narrator empty)
  *   3. title alone
- * Stops at the first stage that returns results. Throws no-results if
- * every applicable stage is empty.
+ * People are searched by surname ("Joanne K. Rowling" → "Rowling"), since iTunes may spell the
+ * rest differently ("J.K. Rowling"). Stops at the first stage whose results look like the book
+ * (one has most of the title's words); otherwise every stage runs and all results are returned,
+ * `matched: false`. Results come best first. Throws no-results if every stage is empty.
  */
 export async function searchItunesCascade(opts: ItunesCascadeOpts): Promise<ItunesCascadeResult> {
   const title = opts.title?.trim() ?? ''
@@ -157,6 +164,12 @@ export async function searchItunesCascade(opts: ItunesCascadeOpts): Promise<Itun
 
   if (!title && !author && !narrator) {
     throw new ItunesError('unknown', 'Need at least a title, author, or narrator to search.')
+  }
+
+  const found: { result: ItunesResult; stage: ItunesStage }[] = []
+  const finish = (matched: boolean): ItunesCascadeResult => {
+    const ranked = rankResults(found, title, [author, narrator])
+    return { results: ranked.map((item) => item.result), stage: ranked[0].stage, matched }
   }
 
   const tryStage = async (stage: ItunesStage, term: string): Promise<ItunesResult[] | null> => {
@@ -170,24 +183,21 @@ export async function searchItunesCascade(opts: ItunesCascadeOpts): Promise<Itun
     }
   }
 
+  const stages: [ItunesStage, string][] = []
   // Stage 1: title + author
-  if (title || author) {
-    const term = [title, author].filter(Boolean).join(' ').trim()
-    const r = await tryStage(1, term)
-    if (r) return { results: r, stage: 1 }
-  }
-
+  if (title || author) stages.push([1, [title, surname(author)].filter(Boolean).join(' ').trim()])
   // Stage 2: title + narrator (requires both)
-  if (title && narrator) {
-    const r = await tryStage(2, `${title} ${narrator}`)
-    if (r) return { results: r, stage: 2 }
-  }
-
+  if (title && narrator) stages.push([2, `${title} ${surname(narrator)}`])
   // Stage 3: title alone
-  if (title) {
-    const r = await tryStage(3, title)
-    if (r) return { results: r, stage: 3 }
+  if (title) stages.push([3, title])
+
+  for (const [stage, term] of stages) {
+    const r = await tryStage(stage, term)
+    if (!r) continue
+    found.push(...r.map((result) => ({ result, stage })))
+    if (looksLikeTheBook(r.map((result) => result.title), title)) return finish(true)
   }
+  if (found.length > 0) return finish(false)
 
   throw new ItunesError('no-results', 'No matches found on iTunes.')
 }

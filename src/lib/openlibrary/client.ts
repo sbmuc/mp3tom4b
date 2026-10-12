@@ -7,6 +7,8 @@
  * straight from the browser to openlibrary.org — we don't proxy it.
  */
 
+import { looksLikeTheBook, rankResults, surname } from '../metadata-search/match'
+
 const BASE_URL = 'https://openlibrary.org/search.json'
 const RESULT_LIMIT = 5
 
@@ -58,15 +60,19 @@ export interface CascadeOptions {
 
 export interface CascadeResult {
   results: OpenLibraryResult[]
-  /** Which stage produced the returned results. */
+  /** Which stage found the best result. */
   stage: SearchStage
+  /** A result has most of the searched title's words: the book is likely among them. */
+  matched: boolean
 }
 
 /**
  * Multi-stage Open Library search. Stages run sequentially and stop at the
- * first stage that returns matches.
- *   1. title + author (the originally typed pair)
- *   2. title + narrator (only if narrator is non-empty)
+ * first stage whose results look like the book (one has most of the title's
+ * words); otherwise every stage runs and all results are returned, best
+ * first, `matched: false`.
+ *   1. title + author (the author's surname)
+ *   2. title + narrator (only if narrator is non-empty; the surname)
  *   3. title alone
  * If every applicable stage returns no-results, throws OpenLibraryError(no-results).
  */
@@ -89,23 +95,28 @@ export async function searchBooksCascade(opts: CascadeOptions): Promise<CascadeR
     }
   }
 
-  // Stage 1 — runs whenever we have title or author.
-  if (title || author) {
-    const results = await tryStage(1, { title, author })
-    if (results) return { results, stage: 1 }
+  const found: { result: OpenLibraryResult; stage: SearchStage }[] = []
+  const finish = (matched: boolean): CascadeResult => {
+    const ranked = rankResults(found, title, [author, narrator])
+    return { results: ranked.map((item) => item.result), stage: ranked[0].stage, matched }
   }
+  /** Keeps a stage's results; true when they look like the book. */
+  const take = (stage: SearchStage, results: OpenLibraryResult[] | null): boolean => {
+    if (!results) return false
+    found.push(...results.map((result) => ({ result, stage })))
+    return looksLikeTheBook(results.map((result) => result.title), title)
+  }
+
+  // Stage 1 — runs whenever we have title or author.
+  if ((title || author) && take(1, await tryStage(1, { title, author: surname(author) }))) return finish(true)
 
   // Stage 2 — title + narrator. Skipped when narrator empty or title empty.
-  if (title && narrator) {
-    const results = await tryStage(2, { title, author: narrator })
-    if (results) return { results, stage: 2 }
-  }
+  if (title && narrator && take(2, await tryStage(2, { title, author: surname(narrator) }))) return finish(true)
 
   // Stage 3 — title alone. Skipped if no title (Stage 1 was the only chance).
-  if (title) {
-    const results = await tryStage(3, { title })
-    if (results) return { results, stage: 3 }
-  }
+  if (title && take(3, await tryStage(3, { title }))) return finish(true)
+
+  if (found.length > 0) return finish(false)
 
   throw new OpenLibraryError(
     'no-results',
