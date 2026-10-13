@@ -6,7 +6,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'OGG to M4B: Convert OGG Vorbis Audio to Audiobook',
   description:
-    'Convert OGG Vorbis files to a chaptered M4B audiobook in your browser. No upload, no signup, no limits. OGG re-encoded to AAC with chapter markers, cover art, and embedded metadata.',
+    'Convert OGG Vorbis files to a chaptered M4B audiobook in your browser, with cover art and tags. Free, no upload, no signup, no limits.',
   alternates: { canonical: '/ogg-to-m4b' },
   openGraph: {
     title: 'OGG to M4B Converter: Free, Private, No Upload',

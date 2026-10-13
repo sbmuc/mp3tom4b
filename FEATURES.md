@@ -166,7 +166,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Open Graph and Twitter Card metadata on every page.
 - JSON-LD `SoftwareApplication` schema on the homepage.
 - JSON-LD `FAQPage` schema on the FAQ page and each sister landing page.
-- Sitemap.xml covering all routes.
+- Sitemap.xml covering all routes, each with the date its content last changed.
 - robots.txt.
 
 ## Privacy

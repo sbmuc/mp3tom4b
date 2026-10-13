@@ -5,7 +5,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Merge M4B Files: Combine Audiobooks Into One',
   description:
-    'Combine several M4B/M4A files into one audiobook in your browser — perfect for multi-part books. Chapters are placed on a continuous timeline, with cover and tags kept. No upload, no signup.',
+    'Merge several M4B or M4A files into one audiobook in your browser, ideal for multi-part books. Chapters, cover, and tags are kept. No upload, no signup.',
   alternates: { canonical: '/merge-m4b' },
   openGraph: {
     title: 'Merge M4B Files: Combine Audiobooks Into One, Free and Private',

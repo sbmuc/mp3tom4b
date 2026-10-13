@@ -5,7 +5,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Edit M4B Chapters & Metadata',
   description:
-    'Edit an M4B audiobook in your browser: rename, add, remove, or re-time chapters, fix the title/author/narrator tags, and swap the cover. No upload, no re-encode — the audio is untouched.',
+    'Edit M4B chapters in your browser: rename, add, or re-time them, fix title, author, and narrator tags, and swap the cover. No upload, no re-encode.',
   alternates: { canonical: '/edit-m4b-chapters' },
   openGraph: {
     title: 'M4B Chapter & Metadata Editor: Free, Private, No Upload',

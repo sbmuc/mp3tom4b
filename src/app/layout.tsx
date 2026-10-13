@@ -6,7 +6,7 @@ import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: {
-    default: 'mp3tom4b: Convert MP3 to M4B Audiobook Online, Without Uploading',
+    default: 'Convert MP3 to M4B Audiobook Online — Free, No Upload',
     template: '%s · mp3tom4b',
   },
   description:

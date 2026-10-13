@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.10.2] — 2026-10-13
+
+### Changed
+- The homepage's title in search results is shorter, so "Free, No Upload" is no longer cut off. It now reads "Convert MP3 to M4B Audiobook Online — Free, No Upload".
+- The sitemap now gives each page the date its content last changed, instead of stamping every page with the date of the latest deploy.
+- The search-result descriptions of the tool and format pages are shorter (under 160 characters), so search engines show them in full instead of cutting them off.
+
+---
+
 ## [1.10.1] — 2026-10-12
 
 ### Fixed

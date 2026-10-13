@@ -5,7 +5,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'M4B to MP3: Split an Audiobook into Chapter MP3s',
   description:
-    'Split an M4B audiobook into per-chapter MP3 files in your browser — or convert it to a single MP3. No upload, no signup. Chapters become separate, tagged MP3s in a ZIP.',
+    'Split an M4B audiobook into per-chapter MP3 files in your browser, or convert it to one MP3. Tagged MP3s in a ZIP. No upload, no signup.',
   alternates: { canonical: '/m4b-to-mp3' },
   openGraph: {
     title: 'M4B to MP3 Converter: Split by Chapter, Free and Private',

@@ -6,7 +6,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'M4A to M4B: Convert M4A Audio to Audiobook',
   description:
-    'Convert M4A files to a chaptered M4B audiobook in your browser. No upload, no signup, no limits. M4A re-encoded with chapter markers, cover art, and embedded metadata.',
+    'Convert M4A files to a chaptered M4B audiobook in your browser, with cover art and tags. Free, no upload, no signup, no limits.',
   alternates: { canonical: '/m4a-to-m4b' },
   openGraph: {
     title: 'M4A to M4B Converter: Free, Private, No Upload',

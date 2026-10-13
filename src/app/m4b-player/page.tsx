@@ -5,7 +5,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'M4B Player Online: Play Audiobooks in Your Browser',
   description:
-    'Play an M4B audiobook right in your browser, with its chapters, cover art, and playback speed. Nothing to install, works on Windows, Mac, Linux, and Chromebook. No upload — the file never leaves your device.',
+    'Play an M4B audiobook in your browser with its chapters, cover art, and speed control. Nothing to install. No upload: the file never leaves your device.',
   alternates: { canonical: '/m4b-player' },
   openGraph: {
     title: 'M4B Player Online: Free, Private, Nothing to Install',

@@ -5,7 +5,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Compress M4B: Shrink Audiobook File Size',
   description:
-    'Make your M4B audiobook smaller in your browser. Re-encode to AAC at audiobook bitrates — 64 kbps mono is the sweet spot — for a compact, chaptered M4B. No upload, no signup, no limits.',
+    'Shrink your M4B audiobook in your browser. Re-encode to an audiobook bitrate (64 kbps mono is the sweet spot), chapters kept. No upload, no signup.',
   alternates: { canonical: '/compress-m4b' },
   openGraph: {
     title: 'Compress M4B: Shrink Your Audiobook File Size, Free and Private',

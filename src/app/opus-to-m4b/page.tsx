@@ -6,7 +6,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Opus to M4B: Convert Opus Audio to Audiobook',
   description:
-    'Convert Opus audio files to a chaptered M4B audiobook in your browser. No upload, no signup, no limits. Opus re-encoded to AAC with chapter markers, cover art, and embedded metadata.',
+    'Convert Opus files to a chaptered M4B audiobook in your browser, with cover art and tags. Free, no upload, no signup, no limits.',
   alternates: { canonical: '/opus-to-m4b' },
   openGraph: {
     title: 'Opus to M4B Converter: Free, Private, No Upload',

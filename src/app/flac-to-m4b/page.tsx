@@ -6,7 +6,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'FLAC to M4B: Convert Lossless Audio to Audiobook',
   description:
-    'Convert FLAC files to a chaptered M4B audiobook in your browser. No upload, no signup, no limits. Lossless input re-encoded to AAC with chapter markers, cover art, and embedded metadata.',
+    'Convert FLAC files to a chaptered M4B audiobook in your browser. Lossless audio in, compact AAC out, with cover art and tags. No upload, no signup.',
   alternates: { canonical: '/flac-to-m4b' },
   openGraph: {
     title: 'FLAC to M4B Converter: Free, Private, No Upload',

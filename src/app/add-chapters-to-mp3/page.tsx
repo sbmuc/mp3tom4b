@@ -5,7 +5,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Add Chapters to an MP3: Make a Chaptered M4B',
   description:
-    'Turn a single long MP3 (or M4A, WAV, FLAC, OGG, Opus) into a chaptered M4B audiobook in your browser. Split evenly, auto-detect chapters from silence, or set your own times. No upload, no signup.',
+    'Turn one long MP3, M4A, WAV, or FLAC file into a chaptered M4B audiobook in your browser. Split evenly, by silence, or by hand. No upload, no signup.',
   alternates: { canonical: '/add-chapters-to-mp3' },
   openGraph: {
     title: 'Add Chapters to an MP3 — Make a Chaptered M4B, Free and Private',
