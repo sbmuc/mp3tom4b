@@ -4,6 +4,8 @@ const BASE = 'https://www.mp3tom4b.com'
 
 // lastModified is the date a page's content last changed. Bump it when you edit
 // that page; a date that moves on every build teaches search engines to ignore it.
+// After a production deploy, scripts/indexnow.mjs submits the pages dated today
+// or yesterday to IndexNow.
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${BASE}`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 1.0 },

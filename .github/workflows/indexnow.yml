@@ -1,0 +1,21 @@
+name: IndexNow
+
+# Vercel reports every production deploy to GitHub as a deployment. Once one
+# succeeds, submit the pages it changed to IndexNow (see scripts/indexnow.mjs).
+on: deployment_status
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.deployment.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: node scripts/indexnow.mjs

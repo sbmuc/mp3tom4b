@@ -167,6 +167,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - JSON-LD `SoftwareApplication` schema on the homepage.
 - JSON-LD `FAQPage` schema on the FAQ page and each sister landing page.
 - Sitemap.xml covering all routes, each with the date its content last changed.
+- IndexNow: after each successful production deploy, a GitHub Action submits the pages whose sitemap date is today or yesterday, so Bing (and DuckDuckGo, Yahoo, Ecosia) recrawl them right away.
 - robots.txt.
 
 ## Privacy
