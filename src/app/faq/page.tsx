@@ -27,7 +27,11 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   },
   {
     q: 'Are there file size limits?',
-    a: 'There are no artificial limits, only what your browser can hold in memory. On modern desktop browsers, audiobooks up to roughly 12 hours / 1.5 GB of input usually convert without trouble. Larger jobs may run out of memory; in that case, split into shorter sessions.',
+    a: 'There are no artificial limits, only what your browser can hold in memory. When you convert to M4B, your source files are read from your disk as they are needed, so their size hardly matters. What counts is the finished audiobook: putting it together takes two to three times its size in memory. At 64 kbps an hour of audio is about 29 MB, so a 20-hour book (about 580 MB) needs around 1.5 GB, which desktop browsers handle. At 128 kbps the same book needs about twice as much.',
+  },
+  {
+    q: 'What if my browser runs out of memory?',
+    a: 'Close other tabs and apps, then convert again. If it still fails, choose 64 kbps (half the memory of 128 kbps, and the usual bitrate for spoken word), use a desktop browser rather than a phone or tablet, or convert the book in two parts. How many files you drop in makes no difference; only the length of the book and the bitrate do.',
   },
   {
     q: 'Which browsers are supported?',

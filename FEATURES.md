@@ -59,6 +59,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Mixed sources join cleanly: every chapter is encoded to one common sample rate (the highest source rate, up to 48 kHz) and channel layout (mono only when every source is mono), so files from different rips, recorders, or formats can be combined.
 - AAC `.m4a` inputs that already share identical audio settings and are at or below the chosen bitrate are joined without re-encoding (no quality loss, near-instant); the audio settings are confirmed with ffmpeg first, not taken from the tags.
 - Chapter markers are placed from each encoded chapter's real length, so they stay aligned with the audio at every chapter of a long book.
+- Memory use follows the finished audiobook, not the sources: source files are read straight from disk as ffmpeg needs them, each encoded chapter is handed to the browser as soon as it is done, and the result is copied out once. Joining takes two to three times the size of the finished M4B.
 - Multi-stage progress bar with human-readable labels (loading ffmpeg, probing, encoding chapter X of Y, muxing, finalizing).
 - Estimated time remaining once conversion has settled into a stable phase.
 - ffmpeg.wasm runs entirely in-browser; nothing is uploaded.
@@ -182,5 +183,6 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - TypeScript strict mode across the codebase.
 - Vitest unit tests covering chapter generation, file validation, metadata extraction, image resize, bitrate logic, ETA formatting, MP4 duration parsing, MP4 chapter reading (chapter track and `chpl`), player chapter navigation, and how inputs are joined.
-- Integration tests (`npm run test:integration`) that run the real converter, compressor, and chapterizer against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy (never after the sound, no drift), the M4A copy path, and metadata escaping — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
+- Integration tests (`npm run test:integration`) that run the real converter, compressor, chapterizer, and MP3 splitter against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy (never after the sound, no drift), the M4A copy path, metadata escaping, a 120-chapter split on one instance, and nothing left behind after a failed join — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
+- The ffmpeg-core JS is patched (`scripts/patch-ffmpeg-core.mjs`) so one instance can run any number of commands; the stock core crashed after about 65 MP3 encodes.
 - Lighthouse-targeted performance: instant first paint, ffmpeg.wasm loaded lazily on first conversion and cached thereafter.

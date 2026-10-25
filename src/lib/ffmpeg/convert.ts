@@ -1,8 +1,8 @@
 'use client'
 
-import type { FFmpeg } from '@ffmpeg/ffmpeg'
-import { fetchFile } from '@ffmpeg/util'
+import type { FFFSType, FFmpeg } from '@ffmpeg/ffmpeg'
 import type { AudioFile, Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
+import { readMoov } from '@/lib/audio/mp4Chapters'
 import { resizeCoverImage } from '@/lib/image/resize'
 import { buildChapters, buildFFMetadata, buildGlobalMetadata } from './chapters'
 import { createWorkerFFmpeg, ffmpegLoadingLabel, getFFmpeg, releaseWorkerFFmpeg } from './client'
@@ -50,6 +50,13 @@ export interface ConvertOptions {
 
 const inputName = (i: number, ext: string) => `input_${i}.${ext}`
 const encodedName = (i: number) => `enc_${i}.m4a`
+// Sources and encoded parts are mounted, never copied in. WORKERFS reads a File
+// or Blob in small pieces as ffmpeg asks for them, so neither has to fit in this
+// page's memory as a whole; the browser can keep a large Blob on disk.
+const WORKERFS = 'WORKERFS' as FFFSType
+const SOURCE_DIR = '/mnt_source' // in an encoder worker: the file it is encoding
+const PARTS_DIR = '/mnt_parts' // on the singleton: the AAC parts to join
+const partPath = (i: number) => `${PARTS_DIR}/${encodedName(i)}`
 const LIST_PATH = 'concat_list.txt'
 const META_PATH = 'chapters.ffmeta'
 const COVER_PATH = 'cover.jpg'
@@ -69,6 +76,29 @@ async function safeDelete(path: string) {
   }
 }
 
+async function safeUnmount(ffmpeg: FFmpeg, dir: string) {
+  try {
+    await ffmpeg.unmount(dir)
+  } catch {
+    // not mounted
+  }
+}
+
+/**
+ * readFile's result as bytes a Blob accepts. It already owns a whole
+ * ArrayBuffer (the worker transfers it), so no copy is made: for the finished
+ * audiobook a copy would be another few hundred MB at the worst moment.
+ */
+function ownedBytes(data: Uint8Array | string): Uint8Array<ArrayBuffer> {
+  if (typeof data === 'string') return new TextEncoder().encode(data)
+  if (data.buffer instanceof ArrayBuffer && data.byteOffset === 0 && data.byteLength === data.buffer.byteLength) {
+    return data as Uint8Array<ArrayBuffer>
+  }
+  const copy = new Uint8Array(data.byteLength)
+  copy.set(data)
+  return copy
+}
+
 /** How many files to encode in parallel. Scales with logical CPU count. */
 function encodeConcurrency(fileCount: number): number {
   const cores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency ?? 4) : 4
@@ -81,9 +111,8 @@ function encodeConcurrency(fileCount: number): number {
  * Encode all input files to AAC using a pool of parallel ffmpeg worker
  * instances. Each worker handles one file at a time from a shared queue.
  * Every part is encoded to the same sample rate + channel count, so the parts
- * can be copy-joined. Encoded outputs are written to the main singleton's
- * virtual FS so that the concat step can read them normally. Returns each
- * part's decoded length in seconds (null if it couldn't be read).
+ * can be copy-joined. Returns the encoded parts as Blobs, for the join to
+ * mount, and each part's decoded length in seconds (null if unreadable).
  */
 async function encodeFilesParallel(
   files: AudioFile[],
@@ -91,8 +120,9 @@ async function encodeFilesParallel(
   bitrate: Bitrate,
   target: EncodeTarget,
   emit: (p: ConversionProgress) => void,
-): Promise<Array<number | null>> {
+): Promise<{ parts: Blob[]; decodedSec: Array<number | null> }> {
   const total = files.length
+  const parts = new Array<Blob>(total)
   const decodedSec = new Array<number | null>(total).fill(null)
   // Per-file encode progress (0–1). Updated by whichever worker holds the file.
   const perFileProgress = new Array<number>(total).fill(0)
@@ -113,6 +143,7 @@ async function encodeFilesParallel(
   async function runWorker() {
     const worker = await createWorkerFFmpeg()
     try {
+      await worker.createDir(SOURCE_DIR)
       while (true) {
         const idx = queue.shift()
         if (idx === undefined) break
@@ -140,31 +171,24 @@ async function encodeFilesParallel(
         }
 
         try {
-          await tagged('reading', async () => {
-            const sourceBytes = await fetchFile(f.file)
-            await worker.writeFile(inPath, sourceBytes)
-          })
-          await tagged('encoding', () =>
-            worker.exec(buildEncodeArgs({ input: inPath, output: outPath, bitrate, target })),
+          await tagged('reading', () =>
+            worker.mount(WORKERFS, { blobs: [{ name: inPath, data: f.file }] }, SOURCE_DIR),
           )
-          const bytes = await tagged('reading encoded output of', async () => {
-            const data = await worker.readFile(outPath)
-            const src = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
-            const buf = new Uint8Array(src.byteLength)
-            buf.set(src)
-            return buf
-          })
-          // Measure before the write: writeFile transfers (detaches) the buffer.
+          try {
+            await tagged('encoding', () =>
+              worker.exec(buildEncodeArgs({ input: `${SOURCE_DIR}/${inPath}`, output: outPath, bitrate, target })),
+            )
+          } finally {
+            await safeUnmount(worker, SOURCE_DIR)
+          }
+          const bytes = await tagged('reading encoded output of', async () => ownedBytes(await worker.readFile(outPath)))
           decodedSec[idx] = decodedAudioSeconds(bytes)
-          await tagged('writing encoded output of', () =>
-            withSingleton((mainFFmpeg) => mainFFmpeg.writeFile(outPath, bytes)),
-          )
+          parts[idx] = new Blob([bytes], { type: 'audio/mp4' })
         } finally {
           worker.off('progress', onProgress)
           perFileProgress[idx] = 1
           completedCount++
           emitProgress()
-          try { await worker.deleteFile(inPath) } catch { /* ignore */ }
           try { await worker.deleteFile(outPath) } catch { /* ignore */ }
         }
       }
@@ -175,7 +199,7 @@ async function encodeFilesParallel(
 
   const concurrency = encodeConcurrency(total)
   await Promise.all(Array.from({ length: concurrency }, () => runWorker()))
-  return decodedSec
+  return { parts, decodedSec }
 }
 
 /** ffmpeg's one-line description of a file's audio stream (see concatPlan). */
@@ -199,11 +223,10 @@ async function probeStreamSignature(ffmpeg: FFmpeg, path: string): Promise<strin
 }
 
 /**
- * Skip the re-encode for AAC .m4a inputs: write each source straight to the
- * singleton FS as its enc_N.m4a part and probe it. Copy-joining is only safe
- * when every part has the exact same codec config, so on any mismatch the
- * parts are removed again and null tells the caller to re-encode. Otherwise
- * returns each part's decoded length in seconds.
+ * Skip the re-encode for AAC .m4a inputs: the sources themselves are the
+ * parts. Copy-joining is only safe when every part has the exact same codec
+ * config, so each is probed; on any mismatch null tells the caller to
+ * re-encode. Otherwise returns each part's decoded length in seconds.
  */
 async function copyIfCompatible(
   files: AudioFile[],
@@ -211,27 +234,34 @@ async function copyIfCompatible(
 ): Promise<Array<number | null> | null> {
   const decodedSec = new Array<number | null>(files.length).fill(null)
   const signatures = new Array<string | null>(files.length).fill(null)
-  // Read source bytes in parallel, but write to (and probe on) the singleton serially.
-  let done = 0
-  await Promise.all(
-    files.map(async (f, i) => {
-      const bytes = await fetchFile(f.file)
-      decodedSec[i] = decodedAudioSeconds(bytes) // before the write detaches the buffer
-      signatures[i] = await withSingleton(async (mainFFmpeg) => {
-        await mainFFmpeg.writeFile(encodedName(i), bytes)
-        return probeStreamSignature(mainFFmpeg, encodedName(i))
-      })
-      done++
-      emit({
-        status: 'encoding',
-        percent: Math.min(80, 10 + Math.round((done / files.length) * 70)),
-        label: `Copying chapters (already AAC)… (${done} of ${files.length} done)`,
-      })
-    }),
-  )
+  await mountParts(files.map((f) => f.file))
+  for (let i = 0; i < files.length; i++) {
+    // Only the moov box is read; the audio stays where it is.
+    const moov = await readMoov(files[i].file)
+    decodedSec[i] = moov ? decodedAudioSeconds(moov) : null
+    signatures[i] = await withSingleton((mainFFmpeg) => probeStreamSignature(mainFFmpeg, partPath(i)))
+    emit({
+      status: 'encoding',
+      percent: Math.min(80, 10 + Math.round(((i + 1) / files.length) * 70)),
+      label: `Copying chapters (already AAC)… (${i + 1} of ${files.length} done)`,
+    })
+  }
   if (canCopyStreams(signatures)) return decodedSec
-  for (let i = 0; i < files.length; i++) await safeDelete(encodedName(i))
+  await withSingleton((mainFFmpeg) => safeUnmount(mainFFmpeg, PARTS_DIR))
   return null
+}
+
+/** Mount the parts on the singleton as PARTS_DIR/enc_N.m4a, ready to join. */
+async function mountParts(parts: Blob[]): Promise<void> {
+  await withSingleton(async (mainFFmpeg) => {
+    await safeUnmount(mainFFmpeg, PARTS_DIR)
+    try {
+      await mainFFmpeg.createDir(PARTS_DIR)
+    } catch {
+      // left over from an earlier run
+    }
+    await mainFFmpeg.mount(WORKERFS, { blobs: parts.map((data, i) => ({ name: encodedName(i), data })) }, PARTS_DIR)
+  })
 }
 
 /**
@@ -282,17 +312,16 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     }
     if (!decodedSec) {
       emit({ status: 'encoding', percent: 10, label: 'Encoding chapters…' })
-      decodedSec = await encodeFilesParallel(files, segments, bitrate, pickEncodeTarget(files), emit)
-    }
-    for (let i = 0; i < files.length; i++) {
-      tempPaths.push(encodedName(i))
+      const encoded = await encodeFilesParallel(files, segments, bitrate, pickEncodeTarget(files), emit)
+      decodedSec = encoded.decodedSec
+      await mountParts(encoded.parts)
     }
 
     // 3. Concat list file, with each part's real decoded length so the joined
     // timeline (and the chapter markers below) line up with the audio.
     emit({ status: 'concatenating', percent: 82, label: 'Joining chapters…' })
     const listBody = buildTimedConcatList(
-      segments.map((_, i) => ({ name: encodedName(i), durationSec: decodedSec[i] })),
+      segments.map((_, i) => ({ name: partPath(i), durationSec: decodedSec[i] })),
     )
     await ffmpeg.writeFile(LIST_PATH, new TextEncoder().encode(listBody))
     tempPaths.push(LIST_PATH)
@@ -367,6 +396,8 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
       const ratio = Math.max(0, Math.min(1, elapsedMs / totalMuxDurationMs))
       updateMuxProgress(ratio)
     }
+    // Registered before the mux so a half-written output is removed if it fails.
+    tempPaths.push(OUTPUT_PATH)
     ffmpeg.on('progress', muxProgress)
     ffmpeg.on('log', muxLog)
     try {
@@ -375,13 +406,12 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
       ffmpeg.off('progress', muxProgress)
       ffmpeg.off('log', muxLog)
     }
-    tempPaths.push(OUTPUT_PATH)
 
+    // Free everything but the output before reading it out: this is the peak.
+    await safeUnmount(ffmpeg, PARTS_DIR)
     const data = await ffmpeg.readFile(OUTPUT_PATH)
-    const source = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
-    const bytes = new Uint8Array(source.byteLength)
-    bytes.set(source)
-    const blob = new Blob([bytes], { type: 'audio/mp4' })
+    await safeDelete(OUTPUT_PATH)
+    const blob = new Blob([ownedBytes(data)], { type: 'audio/mp4' })
 
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
@@ -390,6 +420,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err
   } finally {
+    await safeUnmount(ffmpeg, PARTS_DIR)
     for (const path of tempPaths) {
       await safeDelete(path)
     }

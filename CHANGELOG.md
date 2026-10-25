@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.10.3] — 2026-10-26
+
+### Fixed
+- **No more "Ran out of memory" after many steps.** The FFmpeg engine didn't fully clean up after each step it ran, and after about 65 MP3 encodes it crashed, even with hardly any memory in use. Splitting a book with more than about 60 chapters into MP3s failed this way every time, and converting several books in a row, or a book made of hundreds of files, could fail too. The engine now cleans up after every step; a 120-chapter book splits fine.
+- **Long audiobooks need much less memory to convert.** The converter used to load every source file into memory and keep every finished chapter, the whole audiobook, and two extra copies of it there at once, so long books (and especially one long MP3) could end in "Ran out of memory". Source files are now read from your disk as they're needed, finished chapters are handed to the browser straight away, and the audiobook is copied out once. Converting a 10-hour book now keeps about half as much in memory while it's joined, and a single long file no longer has to fit in memory before converting starts.
+- The out-of-memory message now says what helps: close other tabs, pick a lower bitrate, or convert a shorter audiobook. How many files you drop in makes no difference.
+- A conversion that fails while joining no longer leaves its half-written audiobook in memory.
+
+### Changed
+- The FAQ explains what the memory needed depends on (the length of the finished book and the bitrate) and what to do if a conversion runs out of memory.
+
+---
+
 ## [1.10.2] — 2026-10-13
 
 ### Changed

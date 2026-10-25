@@ -11,6 +11,8 @@ interface Core {
     writeFile(p: string, d: Uint8Array | string): void
     readFile(p: string): Uint8Array
     unlink(p: string): void
+    mkdir(p: string): void
+    rmdir(p: string): void
   }
   exec(...args: string[]): number
   ret: number
@@ -20,8 +22,13 @@ interface Core {
   setTimeout(ms: number): void
 }
 
-const CORE_JS = path.resolve(__dirname, '../../public/ffmpeg/0.12.6/ffmpeg-core.js')
-const createCore = createRequire(__filename)(CORE_JS) as (opts?: object) => Promise<Core>
+// The patched JS with the stock wasm, as client.ts loads them in the browser.
+const CORE_JS = path.resolve(__dirname, '../../public/ffmpeg/0.12.6-p1/ffmpeg-core.js')
+const CORE_WASM = path.resolve(__dirname, '../../public/ffmpeg/0.12.6/ffmpeg-core.wasm')
+const loadCore = createRequire(__filename)(CORE_JS) as (opts?: object) => Promise<Core>
+// The core takes the wasm location from the hash of mainScriptUrlOrBlob.
+const createCore = () =>
+  loadCore({ mainScriptUrlOrBlob: `${CORE_JS}#${Buffer.from(JSON.stringify({ wasmURL: CORE_WASM })).toString('base64')}` })
 
 type LogCb = (e: { type: string; message: string }) => void
 type ProgressCb = (e: { progress: number; time: number }) => void
@@ -88,6 +95,41 @@ export class NodeFFmpeg {
 
   async deleteFile(p: string) {
     this.core.FS.unlink(p)
+    return true
+  }
+
+  async createDir(p: string) {
+    this.core.FS.mkdir(p)
+    return true
+  }
+
+  async deleteDir(p: string) {
+    this.core.FS.rmdir(p)
+    return true
+  }
+
+  // WORKERFS reads through FileReaderSync, which only browser workers have.
+  // Copying the files in gives ffmpeg the same paths and bytes.
+  private mounts = new Map<string, string[]>()
+
+  async mount(_type: string, opts: { files?: File[]; blobs?: { name: string; data: Blob }[] }, mountPoint: string) {
+    if (this.mounts.has(mountPoint)) throw new Error(`${mountPoint} is already mounted`)
+    const entries = [...(opts.files ?? []).map((f) => ({ name: f.name, data: f as Blob })), ...(opts.blobs ?? [])]
+    const paths: string[] = []
+    for (const e of entries) {
+      const p = `${mountPoint}/${e.name}`
+      this.core.FS.writeFile(p, new Uint8Array(await e.data.arrayBuffer()))
+      paths.push(p)
+    }
+    this.mounts.set(mountPoint, paths)
+    return true
+  }
+
+  async unmount(mountPoint: string) {
+    const paths = this.mounts.get(mountPoint)
+    if (!paths) throw new Error(`${mountPoint} is not mounted`)
+    for (const p of paths) this.core.FS.unlink(p)
+    this.mounts.delete(mountPoint)
     return true
   }
 

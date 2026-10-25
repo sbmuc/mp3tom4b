@@ -7,8 +7,12 @@ const CORE_VERSION = '0.12.6'
 // Self-hosted ffmpeg-core to keep the privacy promise airtight: no third-party
 // origin is contacted during conversion. Files live in public/ffmpeg/<ver>/
 // and are served with a long immutable cache header (see next.config.js).
-const MT_BASE_URL = `/ffmpeg/${CORE_VERSION}`
-const ST_BASE_URL = `/ffmpeg/${CORE_VERSION}`
+// The JS is patched so one instance survives many runs (see
+// scripts/patch-ffmpeg-core.mjs); it has its own path so the cache picks it up.
+// The wasm is the stock one, so returning visitors don't download it again.
+const CORE_JS_URL = `/ffmpeg/${CORE_VERSION}-p1/ffmpeg-core.js`
+const CORE_WASM_URL = `/ffmpeg/${CORE_VERSION}/ffmpeg-core.wasm`
+const MT_WORKER_URL = `/ffmpeg/${CORE_VERSION}/ffmpeg-core.worker.js`
 
 let instance: FFmpeg | null = null
 let loadPromise: Promise<FFmpeg> | null = null
@@ -78,15 +82,14 @@ export async function getFFmpeg(): Promise<FFmpeg> {
   loadPromise = (async () => {
     const ffmpeg = new FFmpeg()
     const useMt = canUseMultiThreaded()
-    const baseUrl = useMt ? MT_BASE_URL : ST_BASE_URL
 
     const [coreURL, wasmURL] = await Promise.all([
-      toBlobURL(`${baseUrl}/ffmpeg-core.js`, 'text/javascript'),
-      toBlobURL(`${baseUrl}/ffmpeg-core.wasm`, 'application/wasm'),
+      toBlobURL(CORE_JS_URL, 'text/javascript'),
+      toBlobURL(CORE_WASM_URL, 'application/wasm'),
     ])
 
     if (useMt) {
-      const workerURL = await toBlobURL(`${baseUrl}/ffmpeg-core.worker.js`, 'text/javascript')
+      const workerURL = await toBlobURL(MT_WORKER_URL, 'text/javascript')
       await ffmpeg.load({ coreURL, wasmURL, workerURL })
     } else {
       // When MT isn't available, the singleton is ST — reuse its blobs for workers.
@@ -112,8 +115,8 @@ async function ensureStBlobs(): Promise<void> {
   if (stLoadPromise) return stLoadPromise
   stLoadPromise = (async () => {
     const [coreURL, wasmURL] = await Promise.all([
-      toBlobURL(`${ST_BASE_URL}/ffmpeg-core.js`, 'text/javascript'),
-      toBlobURL(`${ST_BASE_URL}/ffmpeg-core.wasm`, 'application/wasm'),
+      toBlobURL(CORE_JS_URL, 'text/javascript'),
+      toBlobURL(CORE_WASM_URL, 'application/wasm'),
     ])
     stCoreURL = coreURL
     stWasmURL = wasmURL

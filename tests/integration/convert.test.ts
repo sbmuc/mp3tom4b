@@ -13,6 +13,7 @@ vi.mock('@ffmpeg/util', () => ({
 }))
 
 import { convertToM4B } from '@/lib/ffmpeg/convert'
+import { clientMock } from './nodeFFmpeg'
 import {
   META,
   TEN_ODD_CHAPTERS,
@@ -145,3 +146,51 @@ describe('convertToM4B — AAC .m4a inputs', () => {
     expect(out.byteLength).toBeLessThan(75_000)
   })
 })
+
+describe('convertToM4B — memory', () => {
+  // What the shared instance still holds after a run: files, plus anything
+  // left inside the mount points.
+  async function leftovers(): Promise<string[]> {
+    const ff = (await clientMock.getFFmpeg()) as unknown as { core: { FS: NodeFS } }
+    const fs = ff.core.FS
+    const names = (dir: string) => fs.readdir(dir).filter((n) => n !== '.' && n !== '..')
+    return names('/').flatMap((n) => {
+      const path = `/${n}`
+      if (!fs.isDir(fs.stat(path).mode)) return [path]
+      return n.startsWith('mnt_') ? names(path).map((m) => `${path}/${m}`) : []
+    })
+  }
+
+  it('leaves nothing on the shared instance, also when the join fails', async () => {
+    const specs = [mp3(440), mp3(880)]
+    await convert(specs)
+    expect(await leftovers()).toEqual([])
+
+    // An allocation failure while the output grows is what a browser running
+    // out of memory looks like from inside ffmpeg.
+    const ff = (await clientMock.getFFmpeg()) as unknown as { core: { FS: NodeFS } }
+    const memfs = ff.core.FS.filesystems.MEMFS
+    const expand = memfs.expandFileStorage
+    memfs.expandFileStorage = function (node: { name: string }, capacity: number) {
+      if (node.name === 'output.m4b' && capacity > 20_000) throw new RangeError('Array buffer allocation failed')
+      return expand.call(this, node, capacity)
+    }
+    try {
+      await expect(convert(specs)).rejects.toThrow(/allocation failed/)
+    } finally {
+      memfs.expandFileStorage = expand
+    }
+    expect(await leftovers()).toEqual([])
+
+    // …and the next conversion on the same instance works.
+    const { out } = await convert(specs)
+    expectChaptersMatchAudio(await analyze(out), specs)
+  })
+})
+
+interface NodeFS {
+  readdir(p: string): string[]
+  stat(p: string): { mode: number }
+  isDir(mode: number): boolean
+  filesystems: { MEMFS: { expandFileStorage(this: unknown, node: { name: string }, capacity: number): void } }
+}

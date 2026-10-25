@@ -189,7 +189,7 @@ async function readBytes(file: Blob, start: number, end: number): Promise<Uint8A
 }
 
 /** The top-level `moov` box, found by walking box headers so the audio is never read. */
-async function readMoov(file: Blob): Promise<Uint8Array | null> {
+export async function readMoov(file: Blob): Promise<Uint8Array | null> {
   let offset = 0
   for (let n = 0; n < MAX_TOP_LEVEL_BOXES && offset + 8 <= file.size; n++) {
     const head = await readBytes(file, offset, offset + 16)

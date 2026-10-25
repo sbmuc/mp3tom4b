@@ -1,9 +1,11 @@
 'use client'
 
-import { fetchFile } from '@ffmpeg/util'
+import type { FFFSType } from '@ffmpeg/ffmpeg'
 import { getFFmpeg } from './client'
 
 const DURATION_RE = /Duration:\s*(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
+// The file is mounted, not copied into memory (see convert.ts).
+const PROBE_DIR = '/mnt_probe'
 
 /**
  * Decode just enough of the file to read its duration via the browser's
@@ -58,18 +60,23 @@ export async function probeDurationMs(file: File, virtualName: string): Promise<
   ffmpeg.on('log', handler)
 
   try {
-    await ffmpeg.writeFile(virtualName, await fetchFile(file))
     try {
-      await ffmpeg.exec(['-hide_banner', '-i', virtualName, '-f', 'null', '-'])
+      await ffmpeg.createDir(PROBE_DIR)
+    } catch {
+      // left over from an earlier probe
+    }
+    await ffmpeg.mount('WORKERFS' as FFFSType, { blobs: [{ name: virtualName, data: file }] }, PROBE_DIR)
+    try {
+      await ffmpeg.exec(['-hide_banner', '-i', `${PROBE_DIR}/${virtualName}`, '-f', 'null', '-'])
     } catch {
       // expected — we only care about the log
     }
   } finally {
     ffmpeg.off('log', handler)
     try {
-      await ffmpeg.deleteFile(virtualName)
+      await ffmpeg.unmount(PROBE_DIR)
     } catch {
-      // ignore
+      // not mounted
     }
   }
 

@@ -1,3 +1,6 @@
+export const OUT_OF_MEMORY =
+  'Your browser ran out of memory. Close other tabs and try again; a lower bitrate or a shorter audiobook needs less memory.'
+
 /**
  * Map a raw error from ffmpeg.wasm into a user-readable label.
  * ffmpeg.wasm throws numbers (POSIX codes), bare strings, or Error objects
@@ -7,8 +10,10 @@ export function humanizeFfmpegError(err: unknown): string {
   const raw = extractMessage(err)
 
   // Memory exhaustion — by far the most common failure on large audiobooks.
+  // What it takes is about twice the finished file, so the bitrate and length
+  // matter; the number of files doesn't.
   if (/memory access out of bounds|out of memory|allocation failed/i.test(raw)) {
-    return 'Ran out of memory while converting. Try fewer files at once, a shorter audiobook, or a lower bitrate.'
+    return OUT_OF_MEMORY
   }
 
   // Wasm aborted (instance terminated mid-execution — often a cancel).
@@ -18,7 +23,7 @@ export function humanizeFfmpegError(err: unknown): string {
 
   // POSIX-style error codes thrown as plain numbers by ffmpeg.wasm.
   if (typeof err === 'number') {
-    if (err === 28) return 'Ran out of memory. Try fewer files or a shorter audiobook.'
+    if (err === 28) return OUT_OF_MEMORY
     if (err === 1) return "Couldn't read one of the input files. It may be corrupt or in an unsupported codec."
     return `Conversion failed with code ${err}.`
   }
