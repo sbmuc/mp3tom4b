@@ -1,15 +1,17 @@
 'use client'
 
-import { fetchFile } from '@ffmpeg/util'
 import type { ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
+import { mountBlobs, takeBlob, unmount } from './files'
 import { buildFFMetadata, buildGlobalMetadata } from './chapters'
 import type { ChapterMark } from './types'
 import { resizeCoverImage } from '@/lib/image/resize'
 
 const OUTPUT_PATH = 'edit_out.m4b'
 const META_PATH = 'edit_meta.ffmeta'
+// The source is mounted, not copied in (see files.ts).
+const INPUT_DIR = '/mnt_edit_in'
 const COVER_PATH = 'edit_cover.jpg'
 
 export interface EditChapter {
@@ -108,13 +110,13 @@ export async function editM4B(opts: EditOptions): Promise<Blob> {
   emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
-  const inputPath = `edit_in.${fileExtension(file.name)}`
+  const inputName = `edit_in.${fileExtension(file.name)}`
+  const inputPath = `${INPUT_DIR}/${inputName}`
   const tempPaths: string[] = []
 
   try {
     emit({ status: 'muxing', percent: 8, label: 'Reading file…' })
-    await ffmpeg.writeFile(inputPath, await fetchFile(file))
-    tempPaths.push(inputPath)
+    await mountBlobs(ffmpeg, INPUT_DIR, [{ name: inputName, data: file }])
 
     if (cover.mode === 'replace' && cover.file) {
       const resized = await resizeCoverImage(cover.file)
@@ -148,19 +150,16 @@ export async function editM4B(opts: EditOptions): Promise<Blob> {
         label: 'Saving changes…',
       })
     }
+    tempPaths.push(OUTPUT_PATH)
     ffmpeg.on('log', onLog)
     try {
       await ffmpeg.exec(args)
     } finally {
       ffmpeg.off('log', onLog)
     }
-    tempPaths.push(OUTPUT_PATH)
+    await unmount(ffmpeg, INPUT_DIR)
 
-    const data = await ffmpeg.readFile(OUTPUT_PATH)
-    const src = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
-    const bytes = new Uint8Array(src.byteLength)
-    bytes.set(src)
-    const blob = new Blob([bytes], { type: 'audio/mp4' })
+    const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
 
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
@@ -169,11 +168,12 @@ export async function editM4B(opts: EditOptions): Promise<Blob> {
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err
   } finally {
+    await unmount(ffmpeg, INPUT_DIR)
     for (const path of tempPaths) {
       try {
         await ffmpeg.deleteFile(path)
       } catch {
-        // instance may have been terminated (cancel) — ignore
+        // already taken, or the instance was terminated (cancel) — ignore
       }
     }
   }

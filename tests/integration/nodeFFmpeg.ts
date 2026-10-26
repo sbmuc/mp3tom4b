@@ -23,7 +23,7 @@ interface Core {
 }
 
 // The patched JS with the stock wasm, as client.ts loads them in the browser.
-const CORE_JS = path.resolve(__dirname, '../../public/ffmpeg/0.12.6-p1/ffmpeg-core.js')
+const CORE_JS = path.resolve(__dirname, '../../public/ffmpeg/0.12.6-p2/ffmpeg-core.js')
 const CORE_WASM = path.resolve(__dirname, '../../public/ffmpeg/0.12.6/ffmpeg-core.wasm')
 const loadCore = createRequire(__filename)(CORE_JS) as (opts?: object) => Promise<Core>
 // The core takes the wasm location from the hash of mainScriptUrlOrBlob.

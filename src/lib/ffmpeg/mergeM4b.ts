@@ -1,10 +1,10 @@
 'use client'
 
-import { fetchFile } from '@ffmpeg/util'
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
 import { buildFFMetadata, buildGlobalMetadata } from './chapters'
+import { mountBlobs, takeBlob, unmount } from './files'
 import type { ChapterMark } from './types'
 import type { Chapter } from './splitChapters'
 import type { AudioStreamInfo } from './probeM4b'
@@ -15,6 +15,9 @@ const META_PATH = 'merge_meta.ffmeta'
 const COVER_PATH = 'merge_cover.jpg'
 const LIST_PATH = 'merge_list.txt'
 const partName = (i: number) => `merge_part_${String(i).padStart(3, '0')}.m4a`
+// Inputs and parts are mounted, not copied in (see files.ts).
+const INPUT_DIR = '/mnt_merge_in'
+const PARTS_DIR = '/mnt_merge_parts'
 
 export type MergeChapterMode = 'keep' | 'perFile'
 export type MergeCoverMode = 'keep' | 'replace' | 'remove'
@@ -182,13 +185,6 @@ function fileExtension(name: string): string {
   return ext === 'm4b' || ext === 'm4a' ? ext : 'm4a'
 }
 
-function toBytes(data: unknown): Uint8Array<ArrayBuffer> {
-  const u = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
-  const b = new Uint8Array(u.byteLength)
-  b.set(u)
-  return b
-}
-
 const TIME_RE = /time=(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
 
 export interface MergeOptions {
@@ -227,7 +223,7 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
   const ffmpeg = await getFFmpeg()
 
   const tempPaths: string[] = []
-  const partNames: string[] = []
+  const partBlobs: Blob[] = []
 
   try {
     // Cover: a user replacement is resized up front; a kept cover is extracted
@@ -240,12 +236,13 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
       tempPaths.push(COVER_PATH)
     }
 
-    // Per-file intermediates. Write → prepare → delete each input to keep memory
-    // down; only the (smaller) intermediates accumulate for the final concat.
+    // Per-file intermediates: mount each input, make its part, and hand the
+    // part to the browser as a Blob, so neither stays in this page's memory.
     const slice = 78 / Math.max(1, files.length)
     for (let i = 0; i < files.length; i++) {
-      const inputPath = `merge_in_${i}.${fileExtension(files[i].name)}`
-      await ffmpeg.writeFile(inputPath, await fetchFile(files[i]))
+      const inputName = `in_${i}.${fileExtension(files[i].name)}`
+      const inputPath = `${INPUT_DIR}/${inputName}`
+      await mountBlobs(ffmpeg, INPUT_DIR, [{ name: inputName, data: files[i] }])
 
       if (cover.mode === 'keep' && coverSourceIndex === i && coverPath === null) {
         try {
@@ -276,6 +273,7 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
           ? `Re-encoding part ${i + 1} of ${files.length}…`
           : `Preparing part ${i + 1} of ${files.length}…`,
       })
+      tempPaths.push(out)
       ffmpeg.on('progress', onProg)
       try {
         await ffmpeg.exec(
@@ -286,12 +284,15 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
       } finally {
         ffmpeg.off('progress', onProg)
       }
-      partNames.push(out)
-      tempPaths.push(out)
-      try { await ffmpeg.deleteFile(inputPath) } catch { /* ignore */ }
+      partBlobs.push(await takeBlob(ffmpeg, out))
     }
+    await unmount(ffmpeg, INPUT_DIR)
+    await mountBlobs(ffmpeg, PARTS_DIR, partBlobs.map((data, i) => ({ name: partName(i), data })))
 
-    await ffmpeg.writeFile(LIST_PATH, new TextEncoder().encode(buildConcatList(partNames)))
+    await ffmpeg.writeFile(
+      LIST_PATH,
+      new TextEncoder().encode(buildConcatList(partBlobs.map((_, i) => `${PARTS_DIR}/${partName(i)}`))),
+    )
     tempPaths.push(LIST_PATH)
     await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildMergeMetadata(metadata, parts, { chapterMode })))
     tempPaths.push(META_PATH)
@@ -309,15 +310,16 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
         label: 'Joining into one audiobook…',
       })
     }
+    tempPaths.push(OUTPUT_PATH)
     ffmpeg.on('log', onLog)
     try {
       await ffmpeg.exec(buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
     } finally {
       ffmpeg.off('log', onLog)
     }
-    tempPaths.push(OUTPUT_PATH)
+    await unmount(ffmpeg, PARTS_DIR)
 
-    const blob = new Blob([toBytes(await ffmpeg.readFile(OUTPUT_PATH))], { type: 'audio/mp4' })
+    const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
@@ -325,11 +327,13 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err
   } finally {
+    await unmount(ffmpeg, INPUT_DIR)
+    await unmount(ffmpeg, PARTS_DIR)
     for (const path of tempPaths) {
       try {
         await ffmpeg.deleteFile(path)
       } catch {
-        // instance may have been terminated (cancel) — ignore
+        // already taken, or the instance was terminated (cancel) — ignore
       }
     }
   }

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.10.5] — 2026-10-26
+
+### Fixed
+- **The M4B tools need much less memory too.** The compressor, chapter editor, merger, M4B-to-MP3 splitter, and "Add chapters" loaded the whole audiobook into memory before starting, and some kept extra copies along the way. They now read your files from disk as they're needed and hand finished pieces to the browser straight away. With a 233 MB audiobook, the file data held at once roughly halves: editing 466 → 233 MB, compressing 485 → 252 MB, merging two copies 939 → 473 MB, and splitting into MP3s 248 → 16 MB. Speed is unchanged.
+- Dropping a large M4B into a tool no longer loads the whole file just to read its chapters and length, so its details show up sooner.
+
+---
+
 ## [1.10.4] — 2026-10-26
 
 ### Fixed

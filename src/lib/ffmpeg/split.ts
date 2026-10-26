@@ -1,11 +1,14 @@
 'use client'
 
-import { fetchFile } from '@ffmpeg/util'
 import { zip } from 'fflate'
 import type { Bitrate, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
+import { mountBlobs, takeBytes, unmount } from './files'
 import type { Chapter } from './splitChapters'
+
+// The source is mounted, not copied in (see files.ts).
+const INPUT_DIR = '/mnt_split_in'
 
 export interface SplitArgsOptions {
   input: string
@@ -81,7 +84,8 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
   emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
-  const inName = `split_in.${fileExtension(file.name)}`
+  const inputName = `split_in.${fileExtension(file.name)}`
+  const inName = `${INPUT_DIR}/${inputName}`
   const temp: string[] = []
   const album = meta.album ? sanitize(meta.album) : ''
   const artist = meta.artist ? sanitize(meta.artist) : ''
@@ -89,8 +93,7 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
 
   try {
     emit({ status: 'encoding', percent: 5, label: 'Reading file…' })
-    await ffmpeg.writeFile(inName, await fetchFile(file))
-    temp.push(inName)
+    await mountBlobs(ffmpeg, INPUT_DIR, [{ name: inputName, data: file }])
 
     // No chapters → one whole-file MP3.
     const segments: Chapter[] =
@@ -113,6 +116,7 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
         label: total > 1 ? `Encoding chapter ${i + 1} of ${total}…` : 'Encoding audio…',
       })
 
+      temp.push(outName)
       await ffmpeg.exec(
         buildSplitChapterArgs({
           input: inName,
@@ -124,19 +128,12 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
         }),
       )
 
-      const data = await ffmpeg.readFile(outName)
-      const src = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
-      const bytes = new Uint8Array(src.byteLength)
-      bytes.set(src)
+      const bytes = await takeBytes(ffmpeg, outName)
       const displayName =
         total > 1 ? `${String(i + 1).padStart(padWidth, '0')} - ${sanitize(titleText)}.mp3` : `${bookBase}.mp3`
       outputs.push({ name: displayName, bytes })
-      try {
-        await ffmpeg.deleteFile(outName)
-      } catch {
-        /* ignore */
-      }
     }
+    await unmount(ffmpeg, INPUT_DIR)
 
     if (outputs.length === 1) {
       emit({ status: 'done', percent: 100, label: 'Done.' })
@@ -166,6 +163,7 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err
   } finally {
+    await unmount(ffmpeg, INPUT_DIR)
     for (const path of temp) {
       try {
         await ffmpeg.deleteFile(path)

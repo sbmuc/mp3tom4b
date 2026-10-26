@@ -1,13 +1,12 @@
 'use client'
 
-import type { FFmpeg } from '@ffmpeg/ffmpeg'
-import { fetchFile } from '@ffmpeg/util'
 import type { Bitrate, ConversionProgress } from '@/types'
-import { createWorkerFFmpeg, ffmpegLoadingLabel, getFFmpeg, releaseWorkerFFmpeg } from './client'
+import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { replaceChapters } from './chapters'
 import { allKnown, buildTimedConcatList, parseSegmentStarts, remapThroughSegments } from './concatPlan'
 import { humanizeFfmpegError } from './errors'
-import { decodedAudioSeconds } from './mp4Duration'
+import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
+import { encodeConcurrency, encodeSegmentsInWorkers } from './segments'
 import { parseChapters, type Chapter } from './splitChapters'
 
 const OUTPUT_PATH = 'compress_out.m4b'
@@ -15,6 +14,9 @@ const META_PATH = 'compress_meta.ffmeta'
 const COVER_PATH = 'compress_cover.jpg'
 const LIST_PATH = 'compress_list.txt'
 const SEG_LIST_PATH = 'compress_segments.csv'
+// The source and the re-encoded pieces are mounted, not copied in (see files.ts).
+const INPUT_DIR = '/mnt_compress_in'
+const PARTS_DIR = '/mnt_compress_parts'
 
 const SEG_SRC_PATTERN = 'seg_src_%03d.m4a'
 const segSrc = (i: number) => `seg_src_${String(i).padStart(3, '0')}.m4a`
@@ -122,109 +124,7 @@ function fileExtension(name: string): string {
   return ext === 'm4b' || ext === 'm4a' ? ext : 'm4b'
 }
 
-/** How many segments to encode in parallel — scales with CPU, capped at 3. */
-function encodeConcurrency(count: number): number {
-  const cores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency ?? 4) : 4
-  return Math.min(3, count, Math.max(1, Math.floor(cores / 2)))
-}
-
-// Serialize writes to the singleton FS from the parallel workers. Concurrent
-// writes into one ffmpeg.wasm instance corrupt its heap.
-let singletonOpLock: Promise<void> = Promise.resolve()
-async function withSingleton<T>(op: (ffmpeg: FFmpeg) => Promise<T>): Promise<T> {
-  const previous = singletonOpLock
-  let release!: () => void
-  singletonOpLock = new Promise<void>((r) => {
-    release = r
-  })
-  try {
-    await previous
-    const ffmpeg = await getFFmpeg()
-    return await op(ffmpeg)
-  } finally {
-    release()
-  }
-}
-
-function toBytes(data: unknown): Uint8Array<ArrayBuffer> {
-  const u = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
-  const b = new Uint8Array(u.byteLength)
-  b.set(u)
-  return b
-}
-
 const TIME_RE = /time=(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
-
-/**
- * Re-encode already-split chapter segments to AAC across a pool of worker
- * instances. Each worker reads a segment from the singleton FS, encodes it, and
- * writes the result back. Encoding occupies the visible 15–90 range. Returns
- * each encoded segment's decoded length in seconds (null if unreadable).
- */
-async function encodeSegmentsParallel(
-  count: number,
-  bitrate: Bitrate,
-  emit: (p: ConversionProgress) => void,
-): Promise<Array<number | null>> {
-  const decodedSec = new Array<number | null>(count).fill(null)
-  const perSeg = new Array<number>(count).fill(0)
-  let completed = 0
-  const emitProgress = () => {
-    const sum = perSeg.reduce((a, b) => a + b, 0)
-    emit({
-      status: 'encoding',
-      percent: Math.min(90, 15 + Math.round((sum / count) * 75)),
-      label: `Compressing chapters… (${completed} of ${count} done)`,
-    })
-  }
-
-  const queue = Array.from({ length: count }, (_, i) => i)
-
-  async function runWorker() {
-    const worker = await createWorkerFFmpeg()
-    try {
-      while (true) {
-        const idx = queue.shift()
-        if (idx === undefined) break
-
-        const workerIn = `w_in_${idx}.m4a`
-        const workerOut = `w_out_${idx}.m4a`
-        const onProg = ({ progress }: { progress: number }) => {
-          perSeg[idx] = Math.max(0, Math.min(1, progress))
-          emitProgress()
-        }
-        worker.on('progress', onProg)
-        try {
-          const src = await withSingleton(async (m) => toBytes(await m.readFile(segSrc(idx))))
-          await worker.writeFile(workerIn, src)
-          await worker.exec(buildSegmentEncodeArgs({ input: workerIn, output: workerOut, bitrate }))
-          const enc = toBytes(await worker.readFile(workerOut))
-          decodedSec[idx] = decodedAudioSeconds(enc) // before the write detaches the buffer
-          await withSingleton((m) => m.writeFile(encName(idx), enc))
-        } finally {
-          worker.off('progress', onProg)
-          perSeg[idx] = 1
-          completed++
-          emitProgress()
-          try { await worker.deleteFile(workerIn) } catch { /* ignore */ }
-          try { await worker.deleteFile(workerOut) } catch { /* ignore */ }
-          try { await withSingleton((m) => m.deleteFile(segSrc(idx))) } catch { /* ignore */ }
-        }
-      }
-    } finally {
-      releaseWorkerFFmpeg(worker)
-    }
-  }
-
-  const concurrency = encodeConcurrency(count)
-  await Promise.all(Array.from({ length: concurrency }, () => runWorker()))
-  return decodedSec
-}
-
-async function readBlob(ffmpeg: FFmpeg, path: string, type: string): Promise<Blob> {
-  const bytes = toBytes(await ffmpeg.readFile(path))
-  return new Blob([bytes], { type })
-}
 
 /**
  * Shrink an existing M4B/M4A to a lower bitrate, preserving chapters, metadata,
@@ -239,13 +139,13 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
   emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await getFFmpeg()
 
-  const inputPath = `compress_in.${fileExtension(file.name)}`
+  const inputName = `in.${fileExtension(file.name)}`
+  const inputPath = `${INPUT_DIR}/${inputName}`
   const tempPaths: string[] = []
 
   try {
     emit({ status: 'encoding', percent: 4, label: 'Reading file…' })
-    await ffmpeg.writeFile(inputPath, await fetchFile(file))
-    tempPaths.push(inputPath)
+    await mountBlobs(ffmpeg, INPUT_DIR, [{ name: inputName, data: file }])
 
     // Dump original global metadata + chapters once; drives the split decision
     // and is reused verbatim in the parallel final mux.
@@ -254,7 +154,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
     try {
       await ffmpeg.exec(['-hide_banner', '-i', inputPath, '-f', 'ffmetadata', META_PATH])
       tempPaths.push(META_PATH)
-      metaText = new TextDecoder().decode(toBytes(await ffmpeg.readFile(META_PATH)))
+      metaText = new TextDecoder().decode(ownedBytes(await ffmpeg.readFile(META_PATH)))
       chapters = parseChapters(metaText)
     } catch {
       chapters = []
@@ -283,26 +183,39 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
         '-reset_timestamps', '1', SEG_SRC_PATTERN,
       ])
       tempPaths.push(SEG_LIST_PATH)
-      for (let i = 0; i < chapters.length; i++) {
-        tempPaths.push(segSrc(i), encName(i))
-      }
+      for (let i = 0; i < chapters.length; i++) tempPaths.push(segSrc(i))
       // Where each piece really starts (the copy split cuts on a packet).
       let segStarts: number[] | null = null
       try {
-        segStarts = parseSegmentStarts(new TextDecoder().decode(toBytes(await ffmpeg.readFile(SEG_LIST_PATH))), chapters.length)
+        segStarts = parseSegmentStarts(new TextDecoder().decode(ownedBytes(await ffmpeg.readFile(SEG_LIST_PATH))), chapters.length)
       } catch {
         segStarts = null
       }
 
-      // The large input is no longer needed once segmented — free it before the
-      // memory-heavy parallel stage.
-      try { await ffmpeg.deleteFile(inputPath) } catch { /* ignore */ }
+      // Hand the pieces to the browser as Blobs, so none stays in this page's
+      // memory while the workers encode them.
+      const segments: Blob[] = []
+      for (let i = 0; i < chapters.length; i++) segments.push(await takeBlob(ffmpeg, segSrc(i)))
+      await unmount(ffmpeg, INPUT_DIR)
 
-      const decodedSec = await encodeSegmentsParallel(chapters.length, bitrate, emit)
+      const count = segments.length
+      const { parts, decodedSec } = await encodeSegmentsInWorkers(segments, {
+        ext: 'm4a',
+        args: (input, output) => buildSegmentEncodeArgs({ input, output, bitrate }),
+        onProgress: (sum, done) =>
+          emit({
+            status: 'encoding',
+            percent: Math.min(90, 15 + Math.round((sum / count) * 75)),
+            label: `Compressing chapters… (${done} of ${count} done)`,
+          }),
+      })
+      await mountBlobs(ffmpeg, PARTS_DIR, parts.map((data, i) => ({ name: encName(i), data })))
 
       // Join with each piece's real decoded length, and move every chapter
       // marker by the same amount, so the markers stay on the audio.
-      const listBody = buildTimedConcatList(chapters.map((_, i) => ({ name: encName(i), durationSec: decodedSec[i] })))
+      const listBody = buildTimedConcatList(
+        chapters.map((_, i) => ({ name: `${PARTS_DIR}/${encName(i)}`, durationSec: decodedSec[i] })),
+      )
       await ffmpeg.writeFile(LIST_PATH, new TextEncoder().encode(listBody))
       tempPaths.push(LIST_PATH)
       const known = allKnown(decodedSec)
@@ -315,10 +228,11 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
       }
 
       emit({ status: 'muxing', percent: 92, label: 'Finalizing audiobook…' })
-      await ffmpeg.exec(buildParallelMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
       tempPaths.push(OUTPUT_PATH)
+      await ffmpeg.exec(buildParallelMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
+      await unmount(ffmpeg, PARTS_DIR)
 
-      const blob = await readBlob(ffmpeg, OUTPUT_PATH, 'audio/mp4')
+      const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
       emit({ status: 'done', percent: 100, label: 'Done.' })
       return blob
     }
@@ -338,6 +252,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
         ((Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 100 + Number(m[4].padEnd(2, '0'))) * 10
       emit({ status: 'encoding', percent: encPercent(elapsedMs / durationMs), label: 'Compressing audio…' })
     }
+    tempPaths.push(OUTPUT_PATH)
     ffmpeg.on('progress', onProg)
     ffmpeg.on('log', onLog)
     try {
@@ -346,9 +261,9 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
       ffmpeg.off('progress', onProg)
       ffmpeg.off('log', onLog)
     }
-    tempPaths.push(OUTPUT_PATH)
+    await unmount(ffmpeg, INPUT_DIR)
 
-    const blob = await readBlob(ffmpeg, OUTPUT_PATH, 'audio/mp4')
+    const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
@@ -356,11 +271,13 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err
   } finally {
+    await unmount(ffmpeg, INPUT_DIR)
+    await unmount(ffmpeg, PARTS_DIR)
     for (const path of tempPaths) {
       try {
         await ffmpeg.deleteFile(path)
       } catch {
-        // instance may have been terminated (cancel) — ignore
+        // already taken, or the instance was terminated (cancel) — ignore
       }
     }
   }

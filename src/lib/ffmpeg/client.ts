@@ -10,7 +10,7 @@ const CORE_VERSION = '0.12.6'
 // The JS is patched so one instance survives many runs (see
 // scripts/patch-ffmpeg-core.mjs); it has its own path so the cache picks it up.
 // The wasm is the stock one, so returning visitors don't download it again.
-const CORE_JS_URL = `/ffmpeg/${CORE_VERSION}-p1/ffmpeg-core.js`
+const CORE_JS_URL = `/ffmpeg/${CORE_VERSION}-p2/ffmpeg-core.js`
 const CORE_WASM_URL = `/ffmpeg/${CORE_VERSION}/ffmpeg-core.wasm`
 const MT_WORKER_URL = `/ffmpeg/${CORE_VERSION}/ffmpeg-core.worker.js`
 

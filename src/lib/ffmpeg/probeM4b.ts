@@ -1,8 +1,10 @@
 'use client'
 
-import { fetchFile } from '@ffmpeg/util'
 import { getFFmpeg } from './client'
+import { mountBlobs, unmount } from './files'
 import { oneAtATime } from './serial'
+
+const PROBE_DIR = '/mnt_probe_m4b'
 
 export interface AudioStreamInfo {
   /** Codec name, lower-cased (e.g. "aac"), or null if not found. */
@@ -105,23 +107,20 @@ async function probeM4bInfoNow(file: File): Promise<M4bProbeInfo> {
   }
   ffmpeg.on('log', handler)
 
+  // Mounted, not copied in: only the header is read (see files.ts).
   const virtualName = `probe_m4b_${++probeSeq}`
   try {
-    await ffmpeg.writeFile(virtualName, await fetchFile(file))
+    await mountBlobs(ffmpeg, PROBE_DIR, [{ name: virtualName, data: file }])
     try {
       // No output file → ffmpeg exits with an error after printing the header.
       // We only care about the log it emits along the way.
-      await ffmpeg.exec(['-hide_banner', '-i', virtualName])
+      await ffmpeg.exec(['-hide_banner', '-i', `${PROBE_DIR}/${virtualName}`])
     } catch {
       // expected
     }
   } finally {
     ffmpeg.off('log', handler)
-    try {
-      await ffmpeg.deleteFile(virtualName)
-    } catch {
-      // ignore
-    }
+    await unmount(ffmpeg, PROBE_DIR)
   }
 
   return parseM4bProbe(lines)

@@ -1,8 +1,10 @@
 'use client'
 
-import { fetchFile } from '@ffmpeg/util'
 import { getFFmpeg } from './client'
+import { mountBlobs, unmount } from './files'
 import { oneAtATime } from './serial'
+
+const PROBE_DIR = '/mnt_probe_chapters'
 
 export interface Chapter {
   title: string
@@ -67,9 +69,10 @@ async function probeChaptersNow(file: File): Promise<Chapter[]> {
   const inName = `chapsrc_${id}`
   const outName = `chapmeta_${id}.txt`
   try {
-    await ffmpeg.writeFile(inName, await fetchFile(file))
+    // Mounted, not copied in: only the header is read (see files.ts).
+    await mountBlobs(ffmpeg, PROBE_DIR, [{ name: inName, data: file }])
     try {
-      await ffmpeg.exec(['-hide_banner', '-i', inName, '-f', 'ffmetadata', outName])
+      await ffmpeg.exec(['-hide_banner', '-i', `${PROBE_DIR}/${inName}`, '-f', 'ffmetadata', outName])
     } catch {
       // ignore — we read whatever metadata file was produced
     }
@@ -82,11 +85,7 @@ async function probeChaptersNow(file: File): Promise<Chapter[]> {
     }
     return parseChapters(text)
   } finally {
-    try {
-      await ffmpeg.deleteFile(inName)
-    } catch {
-      /* ignore */
-    }
+    await unmount(ffmpeg, PROBE_DIR)
     try {
       await ffmpeg.deleteFile(outName)
     } catch {

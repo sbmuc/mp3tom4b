@@ -1,14 +1,14 @@
 'use client'
 
-import type { FFmpeg } from '@ffmpeg/ffmpeg'
-import { fetchFile } from '@ffmpeg/util'
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
-import { createWorkerFFmpeg, ffmpegLoadingLabel, getFFmpeg, releaseWorkerFFmpeg } from './client'
+import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { allKnown, buildTimedConcatList, parseSegmentStarts, remapThroughSegments } from './concatPlan'
 import { humanizeFfmpegError } from './errors'
 import { buildEditMetadata, type EditChapter } from './editM4b'
+import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
 import { buildMergeMuxArgs } from './mergeM4b'
-import { decodedAudioSeconds } from './mp4Duration'
+import { encodeConcurrency, encodeSegmentsInWorkers } from './segments'
+import { oneAtATime } from './serial'
 import { resizeCoverImage } from '@/lib/image/resize'
 
 const OUTPUT_PATH = 'chapterize_out.m4b'
@@ -16,6 +16,10 @@ const META_PATH = 'chapterize_meta.ffmeta'
 const COVER_PATH = 'chapterize_cover.jpg'
 const LIST_PATH = 'chapterize_list.txt'
 const SEG_LIST_PATH = 'chapterize_segments.csv'
+// The source and the re-encoded pieces are mounted, not copied in (see files.ts).
+const INPUT_DIR = '/mnt_chapterize_in'
+const PARTS_DIR = '/mnt_chapterize_parts'
+const SILENCE_DIR = '/mnt_silence'
 
 // Cap on how long one physical segment can be. Bounds peak memory (the whole
 // file is never re-encoded in one pass) regardless of how few chapters the user
@@ -184,109 +188,12 @@ function segmentExtension(inputExt: string): string {
   return inputExt === 'm4b' ? 'm4a' : inputExt
 }
 
-function toBytes(data: unknown): Uint8Array<ArrayBuffer> {
-  const u = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
-  const b = new Uint8Array(u.byteLength)
-  b.set(u)
-  return b
-}
-
 const TIME_RE = /time=(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
 
 function elapsedMsFromLog(message: string): number | null {
   const m = message.match(TIME_RE)
   if (!m) return null
   return ((Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 100 + Number(m[4].padEnd(2, '0'))) * 10
-}
-
-/** How many segments to encode in parallel — scales with CPU, capped at 3. */
-function encodeConcurrency(count: number): number {
-  const cores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency ?? 4) : 4
-  return Math.min(3, count, Math.max(1, Math.floor(cores / 2)))
-}
-
-// Serialize writes to the singleton FS from the parallel workers. Concurrent
-// writes into one ffmpeg.wasm instance corrupt its heap.
-let singletonOpLock: Promise<void> = Promise.resolve()
-async function withSingleton<T>(op: (ffmpeg: FFmpeg) => Promise<T>): Promise<T> {
-  const previous = singletonOpLock
-  let release!: () => void
-  singletonOpLock = new Promise<void>((r) => {
-    release = r
-  })
-  try {
-    await previous
-    const ffmpeg = await getFFmpeg()
-    return await op(ffmpeg)
-  } finally {
-    release()
-  }
-}
-
-/**
- * Re-encode already-split segments to AAC across a pool of worker instances.
- * Each worker reads a segment from the singleton FS, encodes it, and writes the
- * result back. Occupies the visible 10–85 progress range.
- */
-async function encodeSegmentsParallel(
-  count: number,
-  segExt: string,
-  bitrate: Bitrate,
-  emit: (p: ConversionProgress) => void,
-): Promise<Array<number | null>> {
-  const decodedSec = new Array<number | null>(count).fill(null)
-  const perSeg = new Array<number>(count).fill(0)
-  let completed = 0
-  const emitProgress = () => {
-    const sum = perSeg.reduce((a, b) => a + b, 0)
-    emit({
-      status: 'encoding',
-      percent: Math.min(85, 10 + Math.round((sum / count) * 75)),
-      label: `Encoding chapters… (${completed} of ${count} done)`,
-    })
-  }
-
-  const queue = Array.from({ length: count }, (_, i) => i)
-
-  async function runWorker() {
-    const worker = await createWorkerFFmpeg()
-    try {
-      while (true) {
-        const idx = queue.shift()
-        if (idx === undefined) break
-
-        const workerIn = `w_in_${idx}.${segExt}`
-        const workerOut = `w_out_${idx}.m4a`
-        const onProg = ({ progress }: { progress: number }) => {
-          perSeg[idx] = Math.max(0, Math.min(1, progress))
-          emitProgress()
-        }
-        worker.on('progress', onProg)
-        try {
-          const src = await withSingleton(async (m) => toBytes(await m.readFile(segSrc(idx, segExt))))
-          await worker.writeFile(workerIn, src)
-          await worker.exec(buildSegmentEncodeArgs({ input: workerIn, output: workerOut, bitrate }))
-          const enc = toBytes(await worker.readFile(workerOut))
-          decodedSec[idx] = decodedAudioSeconds(enc) // before the write detaches the buffer
-          await withSingleton((m) => m.writeFile(encName(idx), enc))
-        } finally {
-          worker.off('progress', onProg)
-          perSeg[idx] = 1
-          completed++
-          emitProgress()
-          try { await worker.deleteFile(workerIn) } catch { /* ignore */ }
-          try { await worker.deleteFile(workerOut) } catch { /* ignore */ }
-          try { await withSingleton((m) => m.deleteFile(segSrc(idx, segExt))) } catch { /* ignore */ }
-        }
-      }
-    } finally {
-      releaseWorkerFFmpeg(worker)
-    }
-  }
-
-  const concurrency = encodeConcurrency(count)
-  await Promise.all(Array.from({ length: concurrency }, () => runWorker()))
-  return decodedSec
 }
 
 /**
@@ -304,9 +211,22 @@ export async function detectSilenceChapters(
   const durationMs = opts.durationMs ?? 0
 
   emit({ status: 'probing', percent: 2, label: ffmpegLoadingLabel() })
+  // It reads the log, so it takes its turn with the other probes (serial.ts).
+  const lines = await oneAtATime(() => scanForSilence(file, minGapSec, durationMs, emit))
+  emit({ status: 'done', percent: 100, label: 'Done.' })
+  return proposeChaptersFromSilence(parseSilences(lines), durationMs, { minChapterMs: opts.minChapterMs })
+}
+
+/** One silencedetect decode pass; returns the log lines it printed. */
+async function scanForSilence(
+  file: File,
+  minGapSec: number,
+  durationMs: number,
+  emit: (p: ConversionProgress) => void,
+): Promise<string[]> {
   const ffmpeg = await getFFmpeg()
 
-  const inputPath = `silence_in.${fileExtension(file.name)}`
+  const inputName = `silence_in.${fileExtension(file.name)}`
   const lines: string[] = []
   const onLog = ({ message }: { message: string }) => {
     lines.push(message)
@@ -324,23 +244,18 @@ export async function detectSilenceChapters(
 
   try {
     emit({ status: 'probing', percent: 4, label: 'Scanning for silence…' })
-    await ffmpeg.writeFile(inputPath, await fetchFile(file))
+    await mountBlobs(ffmpeg, SILENCE_DIR, [{ name: inputName, data: file }])
     ffmpeg.on('log', onLog)
     try {
-      await ffmpeg.exec(['-hide_banner', '-i', inputPath, '-af', `silencedetect=noise=-30dB:d=${minGapSec}`, '-f', 'null', '-'])
+      await ffmpeg.exec(['-hide_banner', '-i', `${SILENCE_DIR}/${inputName}`, '-af', `silencedetect=noise=-30dB:d=${minGapSec}`, '-f', 'null', '-'])
     } catch {
       // silencedetect always exits after the decode pass; we only need the log
     } finally {
       ffmpeg.off('log', onLog)
     }
-    emit({ status: 'done', percent: 100, label: 'Done.' })
-    return proposeChaptersFromSilence(parseSilences(lines), durationMs, { minChapterMs: opts.minChapterMs })
+    return lines
   } finally {
-    try {
-      await ffmpeg.deleteFile(inputPath)
-    } catch {
-      // ignore
-    }
+    await unmount(ffmpeg, SILENCE_DIR)
   }
 }
 
@@ -369,13 +284,13 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
 
   const inputExt = fileExtension(file.name)
   const segExt = segmentExtension(inputExt)
-  const inputPath = `chapterize_in.${inputExt}`
+  const inputName = `in.${inputExt}`
+  const inputPath = `${INPUT_DIR}/${inputName}`
   const tempPaths: string[] = []
 
   try {
     emit({ status: 'encoding', percent: 4, label: 'Reading file…' })
-    await ffmpeg.writeFile(inputPath, await fetchFile(file))
-    tempPaths.push(inputPath)
+    await mountBlobs(ffmpeg, INPUT_DIR, [{ name: inputName, data: file }])
 
     // Cover (resized JPEG) — both "keep" and "replace" supply a File.
     let coverPath: string | null = null
@@ -404,26 +319,41 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
         '-reset_timestamps', '1', `ch_seg_%03d.${segExt}`,
       ])
       tempPaths.push(SEG_LIST_PATH)
-      for (let i = 0; i < segCount; i++) tempPaths.push(segSrc(i, segExt), encName(i))
+      for (let i = 0; i < segCount; i++) tempPaths.push(segSrc(i, segExt))
       // Where each piece really starts (the copy split cuts on a packet, up to
       // one frame from the time asked for).
       let segStarts: number[] | null = null
       try {
-        segStarts = parseSegmentStarts(new TextDecoder().decode(toBytes(await ffmpeg.readFile(SEG_LIST_PATH))), segCount)
+        segStarts = parseSegmentStarts(new TextDecoder().decode(ownedBytes(await ffmpeg.readFile(SEG_LIST_PATH))), segCount)
       } catch {
         segStarts = null
       }
 
-      // 2. Free the big input before the memory-heavy encode stage.
-      try { await ffmpeg.deleteFile(inputPath) } catch { /* ignore */ }
+      // 2. Hand the pieces to the browser as Blobs, so none stays in this
+      // page's memory while the workers encode them.
+      const segments: Blob[] = []
+      for (let i = 0; i < segCount; i++) segments.push(await takeBlob(ffmpeg, segSrc(i, segExt)))
+      await unmount(ffmpeg, INPUT_DIR)
 
       // 3. Re-encode each piece to AAC across workers.
-      const decodedSec = await encodeSegmentsParallel(segCount, segExt, bitrate, emit)
+      const { parts, decodedSec } = await encodeSegmentsInWorkers(segments, {
+        ext: segExt,
+        args: (input, output) => buildSegmentEncodeArgs({ input, output, bitrate }),
+        onProgress: (sum, done) =>
+          emit({
+            status: 'encoding',
+            percent: Math.min(85, 10 + Math.round((sum / segCount) * 75)),
+            label: `Encoding chapters… (${done} of ${segCount} done)`,
+          }),
+      })
+      await mountBlobs(ffmpeg, PARTS_DIR, parts.map((data, i) => ({ name: encName(i), data })))
 
       // 4. Concat the pieces with their real decoded lengths + attach our
       // chapters/cover. Re-encoding makes each piece slightly longer, so the
       // markers are moved through the pieces to stay on the audio.
-      const listBody = buildTimedConcatList(boundaries.map((_, i) => ({ name: encName(i), durationSec: decodedSec[i] })))
+      const listBody = buildTimedConcatList(
+        boundaries.map((_, i) => ({ name: `${PARTS_DIR}/${encName(i)}`, durationSec: decodedSec[i] })),
+      )
       await ffmpeg.writeFile(LIST_PATH, new TextEncoder().encode(listBody))
       tempPaths.push(LIST_PATH)
       const known = allKnown(decodedSec)
@@ -434,10 +364,11 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
       }
 
       emit({ status: 'muxing', percent: 88, label: 'Finalizing audiobook…' })
-      await ffmpeg.exec(buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
       tempPaths.push(OUTPUT_PATH)
+      await ffmpeg.exec(buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
+      await unmount(ffmpeg, PARTS_DIR)
 
-      const blob = new Blob([toBytes(await ffmpeg.readFile(OUTPUT_PATH))], { type: 'audio/mp4' })
+      const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
       emit({ status: 'done', percent: 100, label: 'Done.' })
       return blob
     }
@@ -453,6 +384,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
       const elapsed = elapsedMsFromLog(message)
       if (elapsed != null) emit({ status: 'encoding', percent: pct(elapsed / durationMs), label: 'Encoding audiobook…' })
     }
+    tempPaths.push(OUTPUT_PATH)
     ffmpeg.on('progress', onProg)
     ffmpeg.on('log', onLog)
     try {
@@ -461,9 +393,9 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
       ffmpeg.off('progress', onProg)
       ffmpeg.off('log', onLog)
     }
-    tempPaths.push(OUTPUT_PATH)
+    await unmount(ffmpeg, INPUT_DIR)
 
-    const blob = new Blob([toBytes(await ffmpeg.readFile(OUTPUT_PATH))], { type: 'audio/mp4' })
+    const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
@@ -471,11 +403,13 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err
   } finally {
+    await unmount(ffmpeg, INPUT_DIR)
+    await unmount(ffmpeg, PARTS_DIR)
     for (const path of tempPaths) {
       try {
         await ffmpeg.deleteFile(path)
       } catch {
-        // instance may have been terminated (cancel) — ignore
+        // already taken, or the instance was terminated (cancel) — ignore
       }
     }
   }

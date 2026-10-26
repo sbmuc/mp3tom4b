@@ -1,7 +1,7 @@
 'use client'
 
-import type { FFFSType } from '@ffmpeg/ffmpeg'
 import { getFFmpeg } from './client'
+import { mountBlobs, unmount } from './files'
 import { oneAtATime } from './serial'
 
 const DURATION_RE = /Duration:\s*(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
@@ -64,12 +64,7 @@ async function probeDurationWithFFmpeg(file: File, virtualName: string): Promise
   ffmpeg.on('log', handler)
 
   try {
-    try {
-      await ffmpeg.createDir(PROBE_DIR)
-    } catch {
-      // left over from an earlier probe
-    }
-    await ffmpeg.mount('WORKERFS' as FFFSType, { blobs: [{ name: virtualName, data: file }] }, PROBE_DIR)
+    await mountBlobs(ffmpeg, PROBE_DIR, [{ name: virtualName, data: file }])
     try {
       await ffmpeg.exec(['-hide_banner', '-i', `${PROBE_DIR}/${virtualName}`, '-f', 'null', '-'])
     } catch {
@@ -77,11 +72,7 @@ async function probeDurationWithFFmpeg(file: File, virtualName: string): Promise
     }
   } finally {
     ffmpeg.off('log', handler)
-    try {
-      await ffmpeg.unmount(PROBE_DIR)
-    } catch {
-      // not mounted
-    }
+    await unmount(ffmpeg, PROBE_DIR)
   }
 
   for (const line of lines) {
