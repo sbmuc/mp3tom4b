@@ -47,6 +47,7 @@ import { probeM4bInfo } from '@/lib/ffmpeg/probeM4b'
 import { terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
+import { guessType, isZipFile, unzipFiles } from '@/lib/archive/zip'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { isDecodableImage } from '@/lib/image/validate'
 import { fileNameToChapterTitle, formatBytes, formatDuration } from '@/lib/audio/format'
@@ -160,6 +161,7 @@ function SortablePartRow({
 export default function M4bMerger() {
   const [rows, setRows] = useState<PartRow[]>([])
   const [inputError, setInputError] = useState<string | null>(null)
+  const [unpacking, setUnpacking] = useState<string | null>(null)
   const [showConverterHint, setShowConverterHint] = useState(false)
 
   const [metadata, setMetadata] = useState<ConversionMetadata>({
@@ -291,10 +293,30 @@ export default function M4bMerger() {
   }, [])
 
   const onDrop = useCallback(
-    (accepted: File[]) => {
-      const files = accepted.filter((f) => !f.name.startsWith('.'))
+    async (accepted: File[]) => {
+      // ZIPs are unpacked right here in the page; the M4B/M4A files inside join
+      // the drop as if they'd been dropped loose.
+      const zips = accepted.filter(isZipFile)
+      const fromZips: File[] = []
+      let skippedInZips = 0
+      const unpackFailures: string[] = []
+      if (zips.length > 0) {
+        const what = zips.length === 1 ? `"${zips[0].name}"` : `${zips.length} ZIP files`
+        setUnpacking(`Unpacking ${what}…`)
+        const unpacked = await unzipFiles(zips, {
+          keep: hasAcceptedExtension,
+          typeOf: guessType,
+          onProgress: (done, total) => setUnpacking(`Unpacking ${what}… ${Math.round((done / Math.max(1, total)) * 100)}%`),
+        })
+        setUnpacking(null)
+        fromZips.push(...unpacked.files)
+        skippedInZips = unpacked.skipped.length
+        unpackFailures.push(...unpacked.failed.map((f) => `${f.name} (${f.reason})`))
+      }
+
+      const files = [...accepted.filter((f) => !f.name.startsWith('.') && !isZipFile(f)), ...fromZips]
       const supported = files.filter((f) => hasAcceptedExtension(f.name))
-      const unsupported = files.length - supported.length
+      const unsupported = files.length - supported.length + skippedInZips
 
       // Skip files already in the list (and repeats within this drop). A file is
       // treated as the same when its name and size match — the same audio twice
@@ -315,7 +337,11 @@ export default function M4bMerger() {
       const notices: string[] = []
       if (duplicates > 0) notices.push(`${duplicates} already in the list`)
       if (unsupported > 0) notices.push(`${unsupported} not an M4B or M4A file`)
-      setInputError(notices.length ? `Skipped ${notices.join(' and ')}.` : null)
+      const messages = [
+        ...(unpackFailures.length ? [`Couldn't unpack ${unpackFailures.join(', ')}.`] : []),
+        ...(notices.length ? [`Skipped ${notices.join(' and ')}.`] : []),
+      ]
+      setInputError(messages.length ? messages.join(' ') : null)
       setShowConverterHint(unsupported > 0)
       if (good.length === 0) return
 
@@ -497,15 +523,21 @@ export default function M4bMerger() {
             : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
-        <input {...getInputProps()} accept=".m4b,.m4a,audio/mp4,audio/x-m4a" />
+        <input {...getInputProps()} accept=".m4b,.m4a,audio/mp4,audio/x-m4a,.zip,application/zip" />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your M4B files here' : rows.length > 0 ? 'Add more files, or click to browse' : 'Drop your M4B files to merge, or click to browse'}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-          M4B · M4A · two or more files · combined in the order below
+          M4B · M4A · ZIP · two or more files · combined in the order below
         </p>
       </div>
+
+      {unpacking && (
+        <p role="status" className="mt-2 rounded-md bg-zinc-100 px-3 py-1.5 text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+          {unpacking}
+        </p>
+      )}
 
       {inputError && (
         <div

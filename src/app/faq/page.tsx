@@ -26,6 +26,10 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
     a: 'MP3, M4A, WAV, FLAC, OGG, and Opus. Mixed formats in a single audiobook are fine, because each file is re-encoded to AAC at the bitrate you choose before being joined.',
   },
   {
+    q: 'Can I drop a ZIP file?',
+    a: 'Yes. Drop the ZIP as you downloaded it, from Google Drive, Dropbox, LibriVox or elsewhere, and the audio files inside are unpacked right in your browser, in folder and name order, with a cover image if there is one. Google Drive splits big downloads into several ZIPs; drop them all at once. The merge tool takes ZIPs of M4B files the same way. Unpacking happens on your device, so nothing is uploaded for this either.',
+  },
+  {
     q: 'Are there file size limits?',
     a: 'There are no artificial limits, only what your browser can hold in memory. When you convert to M4B, your source files are read from your disk as they are needed, so their size hardly matters. What counts is the finished audiobook: putting it together takes two to three times its size in memory. At 64 kbps an hour of audio is about 29 MB, so a 20-hour book (about 580 MB) needs around 1.5 GB, which desktop browsers handle. At 128 kbps the same book needs about twice as much.',
   },

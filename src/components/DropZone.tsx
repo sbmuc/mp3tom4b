@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useDropzone } from 'react-dropzone'
 import { Bookmark, BookOpen, Image as ImageIcon, Upload, X } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
+import { guessType, isZipFile, unzipFiles } from '@/lib/archive/zip'
 import { validateFiles } from '@/lib/audio/validate'
 import { fileNameToChapterTitle } from '@/lib/audio/format'
 import { extractMetadata } from '@/lib/audio/metadata'
@@ -33,8 +34,12 @@ function getExt(name: string): string {
 type FileClass = 'audio' | 'image' | 'junk' | 'unknown'
 
 function classifyFile(file: File): FileClass {
-  if (file.name.startsWith('.')) return 'junk'
-  const ext = getExt(file.name)
+  return classifyName(file.name)
+}
+
+function classifyName(name: string): FileClass {
+  if (name.startsWith('.')) return 'junk'
+  const ext = getExt(name)
   if (AUDIO_EXTENSIONS.has(ext)) return 'audio'
   if (IMAGE_EXTENSIONS.has(ext)) return 'image'
   if (JUNK_EXTENSIONS.has(ext)) return 'junk'
@@ -108,7 +113,7 @@ export default function DropZone() {
   const noticeTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const folderNameRef = useRef<string | null>(null)
 
-  const addNotice = useCallback((message: string, persist = false) => {
+  const addNotice = useCallback((message: string, persist = false): string => {
     const id = crypto.randomUUID()
     setNotices((prev) => [...prev, { id, message }])
     // "Skipped" / "couldn't read" notices persist until dismissed so they aren't
@@ -120,6 +125,11 @@ export default function DropZone() {
       }, 6000)
       noticeTimersRef.current.set(id, timer)
     }
+    return id
+  }, [])
+
+  const updateNotice = useCallback((id: string, message: string) => {
+    setNotices((prev) => prev.map((n) => (n.id === id ? { ...n, message } : n)))
   }, [])
 
   const dismissNotice = useCallback((id: string) => {
@@ -145,13 +155,35 @@ export default function DropZone() {
   const onDrop = useCallback(
     async (accepted: File[]) => {
       // Filter hidden files that come through in folder drops (.DS_Store, ._filename, etc.)
-      const allFiles = accepted.filter((f) => !f.name.startsWith('.'))
+      const allFiles = accepted.filter((f) => !f.name.startsWith('.') && !isZipFile(f))
+      const skippedNonAudio: string[] = []
+
+      // ZIPs are unpacked right here in the page; their audio and images join
+      // the drop as if they'd been dropped loose.
+      const zips = accepted.filter(isZipFile)
+      if (zips.length > 0) {
+        const what = zips.length === 1 ? `"${zips[0].name}"` : `${zips.length} ZIP files`
+        const progressId = addNotice(`Unpacking ${what}…`, true)
+        const unpacked = await unzipFiles(zips, {
+          keep: (name) => ['audio', 'image'].includes(classifyName(name)),
+          typeOf: guessType,
+          onProgress: (done, total) =>
+            updateNotice(progressId, `Unpacking ${what}… ${Math.round((done / Math.max(1, total)) * 100)}%`),
+        })
+        dismissNotice(progressId)
+        allFiles.push(...unpacked.files)
+        skippedNonAudio.push(...unpacked.skipped)
+        if (unpacked.failed.length > 0) {
+          addNotice(`Couldn't unpack ${formatNameList(unpacked.failed.map((f) => `${f.name} (${f.reason})`))}.`, true)
+        }
+        if (!folderNameRef.current) folderNameRef.current = unpacked.folderName ?? (zips.length === 1 ? zips[0].name : null)
+      }
 
       const audioFiles: File[] = []
       const imageFiles: File[] = []
-      // Everything that is neither audio nor a usable image. Reported by name so
-      // a folder drop never silently swallows a file the user can see.
-      const skippedNonAudio: string[] = []
+      // Everything that is neither audio nor a usable image goes in
+      // skippedNonAudio (above), reported by name so a folder or ZIP drop never
+      // silently swallows a file the user can see.
 
       for (const file of allFiles) {
         switch (classifyFile(file)) {
@@ -302,17 +334,27 @@ export default function DropZone() {
       }
 
       // Always report non-audio files that were dropped — including when the drop
-      // contained nothing else, which previously did nothing at all.
-      if (skippedNonAudio.length > 0) {
+      // contained nothing else, which previously did nothing at all. An M4B is
+      // already an audiobook (often next to the MP3s in a downloaded ZIP), so
+      // point to the tools that take one instead of calling it "not audio".
+      const m4bs = skippedNonAudio.filter((n) => getExt(n) === '.m4b')
+      const others = skippedNonAudio.filter((n) => getExt(n) !== '.m4b')
+      if (m4bs.length > 0) {
         addNotice(
-          `Skipped ${skippedNonAudio.length} file${skippedNonAudio.length === 1 ? '' : 's'} that ${skippedNonAudio.length === 1 ? "isn't" : "aren't"} audio: ${formatNameList(skippedNonAudio)}.`,
+          `Skipped ${formatNameList(m4bs)}: ${m4bs.length === 1 ? "it's already an M4B audiobook" : 'they are already M4B audiobooks'}. To shrink, edit, split or merge an M4B, use one of the M4B tools.`,
+          true,
+        )
+      }
+      if (others.length > 0) {
+        addNotice(
+          `Skipped ${others.length} file${others.length === 1 ? '' : 's'} that ${others.length === 1 ? "isn't" : "aren't"} audio: ${formatNameList(others)}.`,
           true,
         )
       }
 
       folderNameRef.current = null
     },
-    [addFiles, applyAutoMetadata, applySmartBitrate, setDuplicateNotice, flashFiles, setCoverFileDrop, addNotice]
+    [addFiles, applyAutoMetadata, applySmartBitrate, setDuplicateNotice, flashFiles, setCoverFileDrop, addNotice, updateNotice, dismissNotice]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -338,14 +380,14 @@ export default function DropZone() {
             delivers everything so the skip/classify notices keep working. */}
         <input
           {...getInputProps()}
-          accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.opus,image/jpeg,image/png,.jpg,.jpeg,.png"
+          accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.opus,image/jpeg,image/png,.jpg,.jpeg,.png,.zip,application/zip"
         />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your files here' : 'Drop audio files + cover image, or click to browse'}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-          MP3 · M4A · WAV · FLAC · OGG · Opus · JPG · PNG
+          MP3 · M4A · WAV · FLAC · OGG · Opus · JPG · PNG · ZIP
         </p>
       </div>
 

@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.11.0] — 2026-10-26
+
+### Added
+- **Drop a ZIP.** The converter and the merge tool take ZIP files as you downloaded them, from Google Drive, Dropbox, LibriVox or elsewhere. The audio inside is unpacked in your browser, in folder and name order, and a cover image in the ZIP becomes the cover. Several ZIPs can be dropped at once, so a book that Google Drive split across downloads comes together again. A 1 GB ZIP unpacks in about ten seconds, without being loaded into memory.
+
+### Changed
+- Dropping an M4B on the converter now says it's already an audiobook and points to the M4B tools, instead of calling it "not audio".
+
+---
+
 ## [1.10.5] — 2026-10-26
 
 ### Fixed

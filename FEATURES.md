@@ -6,7 +6,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## File handling
 
-- Drag-and-drop input for MP3, M4A, WAV, FLAC, OGG, and Opus files.
+- Drag-and-drop input for MP3, M4A, WAV, FLAC, OGG, and Opus files, or ZIP archives of them (unpacked in the browser, in folder and name order; a cover image inside is used as the cover; several ZIPs, like Google Drive's split downloads, can be dropped at once).
 - Click-to-browse fallback for users who prefer the OS file picker.
 - Multi-file drop in a single action.
 - Mixed drop — drop audio files and a cover image together; each is routed automatically.
@@ -87,7 +87,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## Merge multiple M4Bs
 
-- Available at `/merge-m4b`: drop two or more `.m4b` / `.m4a` files and each is probed in-browser for its chapters, length, audio settings, and cover.
+- Available at `/merge-m4b`: drop two or more `.m4b` / `.m4a` files (loose or in ZIPs) and each is probed in-browser for its chapters, length, audio settings, and cover.
 - Drag-to-reorder the files (keyboard-accessible); they are joined top-to-bottom.
 - Each file's chapters are shifted onto one continuous timeline, or optionally collapsed to a single chapter per file. A chapterless file becomes one chapter titled after it.
 - Compatible files (same codec/sample rate/channels) are stream-copied together — no re-encode, no quality loss, near-instant; mismatched files are re-encoded to a common AAC target (with a notice and a bitrate choice).
@@ -183,6 +183,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - TypeScript strict mode across the codebase.
 - Vitest unit tests covering chapter generation, file validation, metadata extraction, image resize, bitrate logic, ETA formatting, MP4 duration parsing, MP4 chapter reading (chapter track and `chpl`), player chapter navigation, and how inputs are joined.
+- Real-file tests (`npm run test:real`, `REAL_FULL=1` for whole books) that run every tool on the owner's own audiobooks, kept outside the repo and skipped when absent: two very different MP3 rips, 9- and 27-hour M4Bs from other tools, an 11-hour single MP3, and Google Drive ZIPs.
 - Integration tests (`npm run test:integration`) that run the real converter, compressor, chapterizer, and MP3 splitter against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy (never after the sound, no drift), the M4A copy path, metadata escaping, a 120-chapter split on one instance, nothing left behind after a failed join, and files dropped together each read correctly — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
 - The ffmpeg-core JS is patched (`scripts/patch-ffmpeg-core.mjs`): one instance can run any number of commands (the stock core crashed after about 65 MP3 encodes), and mounted files are read 1 MB at a time instead of 32 KB, so reading from disk is as fast as reading from memory.
 - Every tool mounts its inputs instead of copying them in (`src/lib/ffmpeg/files.ts`): ffmpeg reads them from disk as it needs them, intermediate pieces go to the browser as Blobs, and each output is read out once.
