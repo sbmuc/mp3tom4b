@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.10.4] — 2026-10-26
+
+### Fixed
+- **Merging M4B files dropped in together keeps each file's own chapters.** When several files were dropped at once, they were read at the same moment and could pick up each other's details: every part could show the last file's chapter titles, chapter count, or length, so the merged book got the wrong chapter names and, with parts of different lengths, chapters in the wrong place. Files are now read one after another.
+
+---
+
 ## [1.10.3] — 2026-10-26
 
 ### Fixed

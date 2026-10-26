@@ -2,6 +2,7 @@
 
 import type { FFFSType } from '@ffmpeg/ffmpeg'
 import { getFFmpeg } from './client'
+import { oneAtATime } from './serial'
 
 const DURATION_RE = /Duration:\s*(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
 // The file is mounted, not copied into memory (see convert.ts).
@@ -50,7 +51,10 @@ export function probeDurationViaAudioElement(file: File): Promise<number | null>
 export async function probeDurationMs(file: File, virtualName: string): Promise<number> {
   const native = await probeDurationViaAudioElement(file)
   if (native != null) return native
+  return oneAtATime(() => probeDurationWithFFmpeg(file, virtualName))
+}
 
+async function probeDurationWithFFmpeg(file: File, virtualName: string): Promise<number> {
   const ffmpeg = await getFFmpeg()
 
   const lines: string[] = []

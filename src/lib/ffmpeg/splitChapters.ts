@@ -2,6 +2,7 @@
 
 import { fetchFile } from '@ffmpeg/util'
 import { getFFmpeg } from './client'
+import { oneAtATime } from './serial'
 
 export interface Chapter {
   title: string
@@ -52,10 +53,19 @@ export function parseChapters(ffmetadata: string): Chapter[] {
  * Probe an M4B/M4A for its chapter list. Dumps ffmetadata to a virtual file and
  * parses it. Runs entirely in-browser on the shared ffmpeg singleton.
  */
-export async function probeChapters(file: File): Promise<Chapter[]> {
+// Files dropped together are probed at the same moment on the shared instance;
+// each needs its own virtual files, or one overwrites the other's.
+let probeSeq = 0
+
+export function probeChapters(file: File): Promise<Chapter[]> {
+  return oneAtATime(() => probeChaptersNow(file))
+}
+
+async function probeChaptersNow(file: File): Promise<Chapter[]> {
   const ffmpeg = await getFFmpeg()
-  const inName = `chapsrc_${Date.now()}`
-  const outName = `chapmeta_${Date.now()}.txt`
+  const id = ++probeSeq
+  const inName = `chapsrc_${id}`
+  const outName = `chapmeta_${id}.txt`
   try {
     await ffmpeg.writeFile(inName, await fetchFile(file))
     try {

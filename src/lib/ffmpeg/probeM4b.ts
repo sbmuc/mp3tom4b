@@ -2,6 +2,7 @@
 
 import { fetchFile } from '@ffmpeg/util'
 import { getFFmpeg } from './client'
+import { oneAtATime } from './serial'
 
 export interface AudioStreamInfo {
   /** Codec name, lower-cased (e.g. "aac"), or null if not found. */
@@ -88,7 +89,15 @@ export function parseM4bProbe(logLines: string[]): M4bProbeInfo {
  * cover presence. Runs a single `ffmpeg -i` (no output) so it only reads the
  * container header — fast, no full decode. Runs entirely in-browser.
  */
-export async function probeM4bInfo(file: File): Promise<M4bProbeInfo> {
+// Files dropped together are probed at the same moment on the shared instance;
+// each needs its own virtual file, or one overwrites the other.
+let probeSeq = 0
+
+export function probeM4bInfo(file: File): Promise<M4bProbeInfo> {
+  return oneAtATime(() => probeM4bInfoNow(file))
+}
+
+async function probeM4bInfoNow(file: File): Promise<M4bProbeInfo> {
   const ffmpeg = await getFFmpeg()
   const lines: string[] = []
   const handler = ({ message }: { message: string }) => {
@@ -96,7 +105,7 @@ export async function probeM4bInfo(file: File): Promise<M4bProbeInfo> {
   }
   ffmpeg.on('log', handler)
 
-  const virtualName = `probe_m4b_${Date.now()}`
+  const virtualName = `probe_m4b_${++probeSeq}`
   try {
     await ffmpeg.writeFile(virtualName, await fetchFile(file))
     try {
