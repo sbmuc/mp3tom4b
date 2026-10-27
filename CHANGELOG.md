@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 - The M4B player page now says up front that it plays M4B files on Windows, Mac, and phones, and explains how to skip between chapters.
+- The chapter editor page is now titled "M4B Editor" and explains how to change an audiobook's cover.
+- The compressor page explains step by step how to compress an audiobook. It no longer says the size depends on mono or stereo, or that the compressor makes mono files: only bitrate and length decide the size, and the compressor keeps the channels as they are.
 
 ---
 

@@ -3,18 +3,18 @@ import CompressModeSwitch from '@/components/CompressModeSwitch'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Compress M4B: Shrink Audiobook File Size',
+  title: 'Compress M4B Online: Reduce Audiobook File Size',
   description:
-    'Shrink your M4B audiobook in your browser. Re-encode to an audiobook bitrate (64 kbps mono is the sweet spot), chapters kept. No upload, no signup.',
+    'M4B compressor in your browser: reduce an audiobook\'s file size by re-encoding it at 64, 96, or 128 kbps, with chapters and cover kept. No upload.',
   alternates: { canonical: '/compress-m4b' },
   openGraph: {
-    title: 'Compress M4B: Shrink Your Audiobook File Size, Free and Private',
+    title: 'Compress M4B Online: Reduce Audiobook File Size, Free and Private',
     description:
       'Build a compact, chaptered M4B in your browser at audiobook bitrates. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
   },
   twitter: {
     card: 'summary',
-    title: 'Compress M4B: Shrink Your Audiobook File Size, Free and Private',
+    title: 'Compress M4B Online: Reduce Audiobook File Size, Free and Private',
     description:
       'Build a compact, chaptered M4B in your browser at audiobook bitrates. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
   },
@@ -33,23 +33,27 @@ const softwareApplicationLd = {
 }
 
 const SIZES = [
-  { bitrate: '64 kbps', channel: 'Mono', perHour: '~28 MB', tenHour: '~280 MB', note: 'Audiobook standard' },
-  { bitrate: '96 kbps', channel: 'Mono', perHour: '~42 MB', tenHour: '~420 MB', note: 'Speech + light music' },
-  { bitrate: '128 kbps', channel: 'Stereo', perHour: '~56 MB', tenHour: '~560 MB', note: 'Rarely needed for speech' },
+  { bitrate: '64 kbps', perHour: '~29 MB', tenHour: '~290 MB', note: 'Audiobook standard' },
+  { bitrate: '96 kbps', perHour: '~43 MB', tenHour: '~430 MB', note: 'Speech + light music' },
+  { bitrate: '128 kbps', perHour: '~58 MB', tenHour: '~580 MB', note: 'Rarely needed for speech' },
 ]
 
 const FAQS = [
   {
+    q: 'How do I compress an audiobook?',
+    a: 'Drop the M4B on this page, pick a bitrate (64 kbps suits narration), and click "Compress M4B". The smaller file downloads with its chapters, cover, and tags. Is the book a set of MP3s instead? Choose "Build from separate files" to turn them into one compact M4B.',
+  },
+  {
     q: 'How small can an M4B audiobook get?',
-    a: 'It depends on bitrate and length. At 64 kbps mono — the standard for spoken word — expect roughly 28 MB per hour, so a 10-hour audiobook lands around 280 MB. That is typically 2 to 4 times smaller than the same book encoded at 128 kbps stereo, with no audible difference for narration.',
+    a: 'It depends on bitrate and length. At 64 kbps, the usual bitrate for spoken word, an hour takes about 29 MB, so a 10-hour audiobook comes to about 290 MB. Many M4Bs are made at 128 kbps or more, so compressing them to 64 kbps halves the file or better, with no audible difference for narration.',
   },
   {
     q: 'Does compressing an M4B reduce audio quality?',
-    a: 'For spoken-word audio, dropping to 64 kbps mono is essentially inaudible — human speech does not need stereo or high bitrates. For recordings with music or sound effects you may prefer 96 kbps. Compression re-encodes the audio, so going very low (below 48 kbps) can start to sound thin.',
+    a: 'For narration, 64 kbps AAC sounds the same as higher bitrates to most listeners; speech simply doesn\'t need more. For recordings with music or sound effects you may prefer 96 kbps. Compressing re-encodes the audio, so it can\'t restore quality the file never had.',
   },
   {
     q: 'What bitrate should I use for an audiobook?',
-    a: '64 kbps mono is the audiobook standard and the default here. Use 96 kbps if the recording has music or effects you want to preserve, and 128 kbps only if you have a specific reason — it roughly doubles the file size for no real benefit on narration.',
+    a: '64 kbps is the usual audiobook bitrate and the default here. Use 96 kbps if the recording has music or effects you want to preserve, and 128 kbps only if you have a specific reason: it doubles the file size for no real benefit on narration.',
   },
   {
     q: 'I already have a single .m4b file — can I shrink it directly?',
@@ -99,8 +103,8 @@ export default function CompressM4bPage() {
             Compress M4B
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-            Shrink an existing M4B audiobook, or build a compact one from separate files — right in
-            your browser. Pick a lower bitrate and download a much smaller file, with chapters and
+            Reduce the file size of an M4B audiobook, or build a compact one from separate files, right
+            in your browser. Pick a lower bitrate and download a much smaller file, with chapters and
             cover art preserved.{' '}
             <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Your files never leave your device.</strong>
           </p>
@@ -113,10 +117,9 @@ export default function CompressM4bPage() {
             Why M4B files get large — and how small they can be
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-            File size comes down to three things: bitrate, whether the audio is mono or stereo, and
-            the length of the book. Narration is mono speech, so a low bitrate sounds identical while
-            taking a fraction of the space. Here is roughly what to expect at common audiobook
-            bitrates.
+            File size comes down to two things: the bitrate and the length of the book. Narration
+            doesn&apos;t need a high bitrate, so a low one sounds the same while taking a fraction of
+            the space. Here is roughly what to expect at common audiobook bitrates.
           </p>
 
           <div className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
@@ -124,7 +127,6 @@ export default function CompressM4bPage() {
               <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
                 <tr>
                   <th scope="col" className="px-4 py-2 font-medium">Bitrate</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Channel</th>
                   <th scope="col" className="px-4 py-2 font-medium">Per hour</th>
                   <th scope="col" className="px-4 py-2 font-medium">10-hour book</th>
                   <th scope="col" className="px-4 py-2 font-medium">Best for</th>
@@ -136,7 +138,6 @@ export default function CompressM4bPage() {
                     <th scope="row" className="whitespace-nowrap px-4 py-3 font-medium text-accent-700 dark:text-accent-400">
                       {row.bitrate}
                     </th>
-                    <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{row.channel}</td>
                     <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{row.perHour}</td>
                     <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{row.tenHour}</td>
                     <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{row.note}</td>
@@ -146,8 +147,8 @@ export default function CompressM4bPage() {
             </table>
           </div>
           <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-            For plain narration, <strong className="font-semibold text-zinc-800 dark:text-zinc-200">64 kbps mono</strong> is
-            the sweet spot: roughly half the size of 128 kbps stereo with no audible difference.
+            For plain narration, <strong className="font-semibold text-zinc-800 dark:text-zinc-200">64 kbps</strong> is
+            the sweet spot: half the size of 128 kbps with no audible difference.
           </p>
         </section>
 

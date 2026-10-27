@@ -3,18 +3,18 @@ import M4bEditor from '@/components/M4bEditor'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Edit M4B Chapters & Metadata',
+  title: 'M4B Editor: Edit Chapters, Tags & Cover Online',
   description:
-    'Edit M4B chapters in your browser: rename, add, or re-time them, fix title, author, and narrator tags, and swap the cover. No upload, no re-encode.',
+    'Edit M4B files in your browser: rename, add, or re-time chapters, fix title, author, and narrator tags, and change the cover. No upload, no re-encode.',
   alternates: { canonical: '/edit-m4b-chapters' },
   openGraph: {
-    title: 'M4B Chapter & Metadata Editor: Free, Private, No Upload',
+    title: 'M4B Editor Online: Chapters, Tags & Cover. Free, No Upload',
     description:
       'Fix chapters, tags, and cover art on an M4B audiobook, right in your browser. Runs entirely client-side via WebAssembly; the audio is copied, never re-encoded.',
   },
   twitter: {
     card: 'summary',
-    title: 'M4B Chapter & Metadata Editor: Free, Private, No Upload',
+    title: 'M4B Editor Online: Chapters, Tags & Cover. Free, No Upload',
     description:
       'Fix chapters, tags, and cover art on an M4B audiobook, right in your browser. Runs entirely client-side via WebAssembly; the audio is copied, never re-encoded.',
   },
@@ -44,6 +44,10 @@ const FAQS = [
   {
     q: 'What can I edit?',
     a: 'Chapter titles and start times (add, remove, rename, re-time), the book title, author, narrator, year, and genre, and the cover image (keep, replace, or remove).',
+  },
+  {
+    q: 'How do I change the cover of an M4B?',
+    a: 'Drop the M4B, then click "Replace image" under Cover (or "Add cover" if it has none) and pick a JPG or PNG. It\'s fitted to 1200×1200 and embedded when you save. "Remove cover" takes it out.',
   },
   {
     q: 'Are my files uploaded anywhere?',
@@ -82,11 +86,11 @@ export default function EditM4bPage() {
       <div className="mx-auto max-w-5xl px-4 py-6">
         <section className="py-10 text-center sm:py-14">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
-            Edit M4B chapters &amp; metadata
+            M4B editor: chapters, tags &amp; cover
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-            Rename, add, remove, or re-time chapters, fix the tags, and swap the cover on an existing
-            M4B — right in your browser, without re-encoding the audio.{' '}
+            Edit an M4B file right in your browser: rename, add, remove, or re-time chapters, fix the
+            tags, and change the cover, without re-encoding the audio.{' '}
             <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Your files never leave your device.</strong>
           </p>
         </section>
