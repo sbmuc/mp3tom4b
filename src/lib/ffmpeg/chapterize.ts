@@ -3,6 +3,7 @@
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { allKnown, buildTimedConcatList, parseSegmentStarts, remapThroughSegments } from './concatPlan'
+import { COVER_CODEC_ARGS } from './cover'
 import { humanizeFfmpegError } from './errors'
 import { buildEditMetadata, type EditChapter } from './editM4b'
 import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
@@ -158,7 +159,7 @@ export function buildChapterizeArgs(o: {
   args.push('-i', o.metaPath)
   const metaIdx = o.coverPath ? 2 : 1
   args.push('-map', '0:a')
-  if (o.coverPath) args.push('-map', '1', '-c:v', 'mjpeg', '-disposition:v', 'attached_pic')
+  if (o.coverPath) args.push('-map', '1', ...COVER_CODEC_ARGS, '-disposition:v', 'attached_pic')
   args.push(
     '-map_metadata', String(metaIdx),
     '-map_chapters', String(metaIdx),

@@ -24,7 +24,14 @@ describe.skipIf(!HAVE_FILES)('chapterizeFile on real narration', () => {
     const book = await bookInfo(await chapterizeFile({ file, chapters, metadata: META, cover: { mode: 'remove' }, bitrate: 64, durationMs }))
     expect(book.chapters.map((c) => c.title)).toEqual(chapters.map((c) => c.title))
     expect(book.seconds).toBeCloseTo(durationMs / 1000, -1)
-    // Re-encoding moves markers by a few hundredths at most.
-    book.chapters.forEach((c, i) => expect(Math.abs(c.startSec - chapters[i].startMs / 1000)).toBeLessThan(0.5))
+    // Each re-encoded piece comes out a few hundredths longer, and the markers
+    // move with the audio (the integration tests check they stay on it). So a
+    // marker may move later, but never by more than the book grew in total.
+    const grew = book.seconds - durationMs / 1000
+    book.chapters.forEach((c, i) => {
+      const moved = c.startSec - chapters[i].startMs / 1000
+      expect(moved, `chapter ${i + 1}`).toBeGreaterThan(-0.1)
+      expect(moved, `chapter ${i + 1}`).toBeLessThan(Math.max(0, grew) + 0.1)
+    })
   })
 })

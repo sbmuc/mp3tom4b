@@ -3,6 +3,7 @@
  * same small API surface convert.ts uses from @ffmpeg/ffmpeg. Lets the
  * integration test drive the real conversion code without a browser.
  */
+import { appendFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 
@@ -60,11 +61,16 @@ export class NodeFFmpeg {
     else this.progressCbs.delete(cb as ProgressCb)
   }
 
-  // Mirrors @ffmpeg/ffmpeg's worker: exec, read ret, reset.
+  // Mirrors @ffmpeg/ffmpeg's worker: exec, read ret, reset. FFMPEG_TRACE=<file>
+  // logs every command and how long it took, to find one that never returns.
   async exec(args: string[]): Promise<number> {
+    const trace = process.env.FFMPEG_TRACE
+    const t = Date.now()
+    if (trace) appendFileSync(trace, `${new Date().toISOString().slice(11, 19)} exec ${args.join(' ').slice(0, 300)}\n`)
     this.core.setTimeout(-1)
     this.core.exec(...args)
     const ret = this.core.ret
+    if (trace) appendFileSync(trace, `${new Date().toISOString().slice(11, 19)}   ret=${ret} in ${((Date.now() - t) / 1000).toFixed(1)} s\n`)
     this.core.reset()
     return ret
   }

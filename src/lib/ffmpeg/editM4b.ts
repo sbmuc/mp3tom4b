@@ -2,6 +2,7 @@
 
 import type { ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
+import { COVER_CODEC_ARGS } from './cover'
 import { humanizeFfmpegError } from './errors'
 import { mountBlobs, takeBlob, unmount } from './files'
 import { buildFFMetadata, buildGlobalMetadata } from './chapters'
@@ -65,7 +66,7 @@ export function buildEditMuxArgs(o: {
   if (o.coverMode === 'keep') {
     args.push('-map', '0:v?', '-c', 'copy', '-disposition:v', 'attached_pic')
   } else if (o.coverMode === 'replace') {
-    args.push('-map', '1', '-c:a', 'copy', '-c:v', 'mjpeg', '-disposition:v', 'attached_pic')
+    args.push('-map', '1', '-c:a', 'copy', ...COVER_CODEC_ARGS, '-disposition:v', 'attached_pic')
   } else {
     // remove: audio only
     args.push('-c:a', 'copy')

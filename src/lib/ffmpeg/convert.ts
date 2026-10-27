@@ -15,6 +15,7 @@ import {
   pickEncodeTarget,
   type EncodeTarget,
 } from './concatPlan'
+import { COVER_CODEC_ARGS } from './cover'
 import { humanizeFfmpegError } from './errors'
 import { mountBlobs, ownedBytes, unmount } from './files'
 import { decodedAudioSeconds } from './mp4Duration'
@@ -327,7 +328,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
 
     muxArgs.push('-map', '0:a', '-map_metadata', String(hasCover ? 2 : 1))
     if (hasCover) {
-      muxArgs.push('-map', '1', '-c:v', 'mjpeg', '-disposition:v', 'attached_pic')
+      muxArgs.push('-map', '1', ...COVER_CODEC_ARGS, '-disposition:v', 'attached_pic')
     }
     // stik=2 marks the file as an Audiobook so players file it correctly and
     // remember the resume position; pgap enables gapless playback.

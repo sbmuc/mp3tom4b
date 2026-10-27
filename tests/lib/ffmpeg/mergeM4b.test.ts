@@ -144,7 +144,7 @@ describe('buildMergeMuxArgs', () => {
     const args = buildMergeMuxArgs({ listPath: 'l.txt', coverPath: 'c.jpg', metaPath: 'm.txt', output: 'out.m4b' })
     const s = args.join(' ')
     expect(s).toContain('-i c.jpg')
-    expect(s).toContain('-map 1 -c:v mjpeg -disposition:v attached_pic')
+    expect(s).toContain('-map 1 -c:v mjpeg -huffman default -disposition:v attached_pic')
     expect(s).toContain('-map_metadata 2')
     expect(s).toContain('-map_chapters 2')
   })

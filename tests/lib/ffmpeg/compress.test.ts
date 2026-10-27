@@ -97,7 +97,7 @@ describe('buildParallelMuxArgs', () => {
     })
     const joined = args.join(' ')
     expect(joined).toContain('-i cover.jpg')
-    expect(joined).toContain('-map 1 -c:v mjpeg -disposition:v attached_pic')
+    expect(joined).toContain('-map 1 -c:v mjpeg -huffman default -disposition:v attached_pic')
     expect(joined).toContain('-map_metadata 2')
     expect(joined).toContain('-map_chapters 2')
   })

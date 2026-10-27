@@ -2,7 +2,7 @@
  * The M4B tools on real audiobooks made elsewhere: reading their chapters,
  * editing, splitting, compressing and merging.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { readZipEntries, entryBlob } from '@/lib/archive/zip'
 import { readMp4Chapters } from '@/lib/audio/mp4Chapters'
 import { parseBlob } from 'music-metadata'
@@ -12,7 +12,10 @@ import { mergeM4B } from '@/lib/ffmpeg/mergeM4b'
 import { probeM4bInfo } from '@/lib/ffmpeg/probeM4b'
 import { splitM4B } from '@/lib/ffmpeg/split'
 import { probeChapters } from '@/lib/ffmpeg/splitChapters'
-import { CHAMBER_M4B, FULL, HAVE_FILES, META, PHOENIX_M4B, bookInfo, realFile } from './files'
+import { CHAMBER_M4B, FULL, HAVE_FILES, META, PHOENIX_M4B, bookInfo, coverImage, coverStream, realFile } from './files'
+
+// The browser shrinks a new cover on a canvas first; here it goes in as stored.
+vi.mock('@/lib/image/resize', () => ({ resizeCoverImage: async (f: File) => f }))
 
 const HOUR = 3600
 
@@ -60,7 +63,16 @@ describe.skipIf(!HAVE_FILES)('M4B tools on real audiobooks', () => {
     }
   })
 
-  it.runIf(FULL)('compresses Chamber of Secrets to 64 kbps, keeping every chapter', async () => {
+  it('re-encodes a real cover (the JPEG encoder used to overrun on real covers and hang)', async () => {
+    const file = await realFile(CHAMBER_M4B)
+    const before = await bookInfo(file)
+    const chapters = before.chapters.map((c) => ({ startMs: c.startSec * 1000, title: c.title }))
+    const cover = await coverImage(file)
+    const out = await editM4B({ file, chapters, metadata: META, cover: { mode: 'replace', file: cover }, durationMs: before.seconds * 1000 })
+    expect(await coverStream(out)).toMatch(/mjpeg.*2400x2400.*attached pic/)
+  })
+
+  it.runIf(FULL)('compresses Chamber of Secrets to 64 kbps, keeping every chapter and the cover', async () => {
     const file = await realFile(CHAMBER_M4B)
     const before = await bookInfo(file)
     const out = await compressM4B({ file, bitrate: 64, hasCover: true, durationMs: before.seconds * 1000 })
@@ -68,6 +80,7 @@ describe.skipIf(!HAVE_FILES)('M4B tools on real audiobooks', () => {
     expect(out.size).toBeLessThan(file.size * 0.6)
     expect(after.chapters.map((c) => c.title)).toEqual(before.chapters.map((c) => c.title))
     expect(after.seconds).toBeCloseTo(before.seconds, -1)
+    expect(await coverStream(out)).toMatch(/mjpeg.*attached pic/)
   })
 
   it.runIf(FULL)('merges Chamber of Secrets and Order of the Phoenix into one 36-hour book', async () => {
@@ -78,9 +91,9 @@ describe.skipIf(!HAVE_FILES)('M4B tools on real audiobooks', () => {
       durationMs: x.seconds * 1000,
       chapters: x.chapters.map((c, j) => ({ title: c.title, startMs: c.startSec * 1000, endMs: (x.chapters[j + 1]?.startSec ?? x.seconds) * 1000 })),
     }))
-    const out = await bookInfo(
-      await mergeM4B({ files, parts, metadata: META, chapterMode: 'keep', cover: { mode: 'remove' }, reencode: false, bitrate: 64, target: { sampleRate: 44100, channels: 2 }, totalDurationMs: (a.seconds + b.seconds) * 1000 }),
-    )
+    const merged = await mergeM4B({ files, parts, metadata: META, chapterMode: 'keep', cover: { mode: 'keep' }, coverSourceIndex: 0, reencode: false, bitrate: 64, target: { sampleRate: 44100, channels: 2 }, totalDurationMs: (a.seconds + b.seconds) * 1000 })
+    expect(await coverStream(merged)).toMatch(/mjpeg.*attached pic/)
+    const out = await bookInfo(merged)
     expect(out.chapters).toHaveLength(a.chapters.length + b.chapters.length)
     expect(out.seconds).toBeCloseTo(a.seconds + b.seconds, -1)
     expect(out.chapters[a.chapters.length].startSec).toBeCloseTo(a.seconds, 0)

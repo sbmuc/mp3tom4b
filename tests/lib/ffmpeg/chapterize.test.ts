@@ -126,7 +126,7 @@ describe('buildChapterizeArgs', () => {
   it('embeds a cover as attached_pic at metadata index 2', () => {
     const s = buildChapterizeArgs({ input: 'in.mp3', coverPath: 'c.jpg', metaPath: 'm.txt', bitrate: 96, output: 'out.m4b' }).join(' ')
     expect(s).toContain('-i c.jpg')
-    expect(s).toContain('-map 1 -c:v mjpeg -disposition:v attached_pic')
+    expect(s).toContain('-map 1 -c:v mjpeg -huffman default -disposition:v attached_pic')
     expect(s).toContain('-map_metadata 2')
     expect(s).toContain('-map_chapters 2')
     expect(s).toContain('-b:a 96k')

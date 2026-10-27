@@ -109,16 +109,33 @@ export async function bookInfo(m4b: Blob): Promise<BookInfo> {
 
 let tools: Promise<NodeFFmpeg> | null = null
 
-/**
- * ffmpeg's description of the audio stream, e.g. "aac (LC) …, 22050 Hz, mono".
- * The MP4 header's own channel count says 2 for mono AAC, so ask the decoder.
- */
-export async function audioStream(m4b: Blob): Promise<string> {
+/** ffmpeg's description of a stream of `kind` in the file, '' if there is none. */
+async function streamOf(m4b: Blob, kind: 'Audio' | 'Video'): Promise<string> {
   const ff = await (tools ??= NodeFFmpeg.create())
   await ff.writeFile('probe.m4b', new Uint8Array(await m4b.arrayBuffer()))
   const { log } = await ff.run(['-i', 'probe.m4b'])
   await ff.deleteFile('probe.m4b')
-  return (log.find((l) => /Audio:/.test(l)) ?? '').replace(/.*Audio:\s*/, '').trim()
+  const line = log.find((l) => l.includes(`${kind}:`)) ?? ''
+  return line.slice(line.indexOf(`${kind}:`) + kind.length + 1).trim()
+}
+
+/**
+ * The audio stream, e.g. "aac (LC) …, 22050 Hz, mono". The MP4 header's own
+ * channel count says 2 for mono AAC, so ask the decoder.
+ */
+export const audioStream = (m4b: Blob) => streamOf(m4b, 'Audio')
+
+/** The embedded cover, e.g. "mjpeg (Baseline) …, 1200x1200 …, attached pic". */
+export const coverStream = (m4b: Blob) => streamOf(m4b, 'Video')
+
+/** The book's embedded cover image as a file, as it's stored. */
+export async function coverImage(m4b: Blob): Promise<File> {
+  const ff = await (tools ??= NodeFFmpeg.create())
+  await ff.writeFile('probe.m4b', new Uint8Array(await m4b.arrayBuffer()))
+  await ff.run(['-i', 'probe.m4b', '-an', '-map', '0:v', '-c', 'copy', 'cover.jpg'])
+  const bytes = await ff.readFile('cover.jpg')
+  for (const f of ['probe.m4b', 'cover.jpg']) await ff.deleteFile(f)
+  return new File([new Uint8Array(bytes)], 'cover.jpg', { type: 'image/jpeg' })
 }
 
 /**

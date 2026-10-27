@@ -70,6 +70,18 @@ export function longToneFile(specs: ToneSpec[], format: ToneSpec['format'] = 'mp
   return render([...inputs, '-filter_complex', concat, '-ac', String(specs[0].channels), ...codecArgs({ format })], format, `lecture.${format}`)
 }
 
+/** A 1200×1200 JPEG cover of colour noise, written with the encoder fix in src/lib/ffmpeg/cover.ts. */
+export function detailedCoverFile(): Promise<File> {
+  return render(
+    [
+      '-f', 'lavfi', '-i', 'nullsrc=s=1200x1200,geq=lum=random(1)*255:cb=random(2)*255:cr=random(3)*255,format=yuvj420p',
+      '-frames:v', '1', '-c:v', 'mjpeg', '-huffman', 'default', '-q:v', '2',
+    ],
+    'jpg',
+    'cover.jpg',
+  )
+}
+
 /** Build the AudioFile the drop zone would, using the real tag reader. */
 export async function asAudioFile(file: File, i: number): Promise<AudioFile> {
   const x = await extractMetadata(file)
@@ -99,6 +111,8 @@ export interface Analysis {
   pcm: Int16Array
   rate: number
   stream: string
+  /** ffmpeg's line for the embedded cover, '' when there is none. */
+  cover: string
   chapters: Array<{ startMs: number; endMs: number; title: string }>
   tags: Record<string, string>
 }
@@ -110,6 +124,7 @@ export async function analyze(m4b: Uint8Array): Promise<Analysis> {
   await tools.writeFile('out.m4b', m4b)
   const probe = await tools.run(['-i', 'out.m4b'])
   const stream = probe.log.find((l) => /Stream #\d+:\d+.*Audio:/.test(l)) ?? ''
+  const cover = probe.log.find((l) => /Stream #\d+:\d+.*Video:/.test(l)) ?? ''
   const rate = Number(stream.match(/(\d+) Hz/)?.[1])
   await tools.run(['-i', 'out.m4b', '-map', '0:a', '-f', 's16le', '-ac', '1', 'out.pcm'])
   const raw = await tools.readFile('out.pcm')
@@ -133,7 +148,7 @@ export async function analyze(m4b: Uint8Array): Promise<Analysis> {
   })
   // 'Aborted()' is emscripten's normal end-of-run line, not a decode error
   const decodeErrors = dec.log.filter((l) => l.trim() && l.trim() !== 'Aborted()')
-  return { decodeErrors, pcm, rate, stream, chapters, tags }
+  return { decodeErrors, pcm, rate, stream, cover, chapters, tags }
 }
 
 /** Frequency from zero crossings — exact enough for a pure tone. */

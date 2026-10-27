@@ -81,7 +81,7 @@ describe('buildEditMuxArgs', () => {
   it('replace: adds the cover input and shifts the metadata index to 2', () => {
     const j = buildEditMuxArgs({ ...base, coverMode: 'replace' }).join(' ')
     expect(j).toContain('-i edit_cover.jpg')
-    expect(j).toContain('-map 1 -c:a copy -c:v mjpeg -disposition:v attached_pic')
+    expect(j).toContain('-map 1 -c:a copy -c:v mjpeg -huffman default -disposition:v attached_pic')
     expect(j).toContain('-map_metadata 2')
     expect(j).toContain('-map_chapters 2')
   })

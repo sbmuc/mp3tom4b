@@ -2,6 +2,7 @@
 
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
+import { COVER_CODEC_ARGS } from './cover'
 import { humanizeFfmpegError } from './errors'
 import { buildFFMetadata, buildGlobalMetadata } from './chapters'
 import { mountBlobs, takeBlob, unmount } from './files'
@@ -165,7 +166,7 @@ export function buildMergeMuxArgs(o: {
   args.push('-i', o.metaPath)
   const metaIdx = o.coverPath ? 2 : 1
   args.push('-map', '0:a')
-  if (o.coverPath) args.push('-map', '1', '-c:v', 'mjpeg', '-disposition:v', 'attached_pic')
+  if (o.coverPath) args.push('-map', '1', ...COVER_CODEC_ARGS, '-disposition:v', 'attached_pic')
   args.push(
     '-map_metadata', String(metaIdx),
     '-map_chapters', String(metaIdx),
