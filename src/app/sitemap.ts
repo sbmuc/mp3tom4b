@@ -22,6 +22,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/edit-m4b-chapters`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/merge-m4b`, lastModified: '2026-10-26', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/add-chapters-to-mp3`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${BASE}/m4b-player`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/m4b-player`, lastModified: '2026-10-27', changeFrequency: 'monthly', priority: 0.8 },
   ]
 }

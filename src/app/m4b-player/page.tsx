@@ -3,20 +3,20 @@ import M4bPlayer from '@/components/M4bPlayer'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'M4B Player Online: Play Audiobooks in Your Browser',
+  title: 'M4B Player Online: Play M4B Files on Windows & Mac',
   description:
-    'Play an M4B audiobook in your browser with its chapters, cover art, and speed control. Nothing to install. No upload: the file never leaves your device.',
+    'Open and listen to M4B audiobooks in your browser on Windows, Mac, or your phone, with chapters, cover art, and speed control. Nothing to install.',
   alternates: { canonical: '/m4b-player' },
   openGraph: {
-    title: 'M4B Player Online: Free, Private, Nothing to Install',
+    title: 'M4B Player Online: Play M4B Files on Windows, Mac & Phone',
     description:
-      'Open and play M4B audiobooks in your browser with chapter navigation and speed control. The file plays from your device and is never uploaded.',
+      'Open an M4B audiobook in your browser and listen with its chapters, cover art, and speed control. The file plays from your device and is never uploaded.',
   },
   twitter: {
     card: 'summary',
-    title: 'M4B Player Online: Free, Private, Nothing to Install',
+    title: 'M4B Player Online: Play M4B Files on Windows, Mac & Phone',
     description:
-      'Open and play M4B audiobooks in your browser with chapter navigation and speed control. The file plays from your device and is never uploaded.',
+      'Open an M4B audiobook in your browser and listen with its chapters, cover art, and speed control. The file plays from your device and is never uploaded.',
   },
 }
 
@@ -34,12 +34,16 @@ const softwareApplicationLd = {
 
 const FAQS = [
   {
-    q: 'How do I open an M4B file?',
+    q: 'How do I open and listen to an M4B file?',
     a: 'Drop it on this page and it plays right away, with its chapters, cover, and a speed control. An M4B is an MP4 audio file with chapter markers, so on a Mac or iPhone Apple Books opens it too, and on other systems a media player such as VLC plays it.',
   },
   {
     q: 'Can I play M4B files on Windows?',
     a: 'Yes. Open this page in Chrome, Edge, or Firefox and drop the file; there is nothing to install. Windows has no audiobook app built in, so double-clicking an M4B often opens a music app that ignores the chapters, if it opens at all.',
+  },
+  {
+    q: 'How do I skip to another chapter?',
+    a: 'Click a chapter in the list under the player, or use the previous and next chapter buttons on either side of the play controls. Your keyboard\'s media keys and your phone\'s lock screen skip chapters too.',
   },
   {
     q: 'Is my audiobook uploaded?',
@@ -55,7 +59,7 @@ const FAQS = [
   },
   {
     q: 'Can I change the playback speed?',
-    a: 'Yes, from 0.75× to 2×, and voices keep their natural pitch. You can also skip back 15 seconds, forward 30 seconds, or jump between chapters, including with your keyboard\'s media keys or your phone\'s lock screen.',
+    a: 'Yes, from 0.75× to 2×, and voices keep their natural pitch. You can also skip back 15 seconds or forward 30 seconds.',
   },
   {
     q: 'Which files does it play?',
@@ -91,8 +95,8 @@ export default function M4bPlayerPage() {
         <section className="py-10 text-center sm:py-14">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">M4B Player</h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-            Play an M4B audiobook right in your browser, with its chapters, cover art, and playback
-            speed. Nothing to install.{' '}
+            Open an M4B file and listen to it right in your browser, on Windows, Mac, or your phone,
+            with its chapters, cover art, and playback speed. Nothing to install.{' '}
             <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Your file never leaves your device.</strong>
           </p>
         </section>

@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Fixed
 - **Cover art no longer breaks a conversion.** The FFmpeg engine's JPEG encoder has a bug that real covers can trigger while being embedded. With such a cover the converter stopped with "Your browser ran out of memory", even for a 20-second file. The compressor, merger, "Add chapters", and the chapter editor (when it replaced a cover) stopped the same way or never finished; compressing a 9½-hour audiobook with its cover hung at "Finalizing". Covers are now embedded with standard JPEG tables, which don't have the bug. They look the same and come out about the same size.
 
+### Changed
+- The M4B player page now says up front that it plays M4B files on Windows, Mac, and phones, and explains how to skip between chapters.
+
 ---
 
 ## [1.11.0] — 2026-10-26
