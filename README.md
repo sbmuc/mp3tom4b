@@ -41,7 +41,7 @@ _See also: [CHANGELOG.md](CHANGELOG.md), [BACKLOG.md](BACKLOG.md)._
 
 ## Tech Stack
 
-- Next.js 14 + TypeScript + Tailwind CSS
+- Next.js 16 + React 19 + TypeScript + Tailwind CSS
 - ffmpeg.wasm for in-browser audio encoding
 - Hosted on Vercel
 

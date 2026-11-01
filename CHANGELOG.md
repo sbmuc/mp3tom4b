@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.13.0] — 2026-11-01
+
+### Changed
+- Runs on Next.js 16 and React 19. Next.js 14 no longer gets security fixes; with this update the site's dependencies have no known vulnerabilities. Nothing changes in how the tools work.
+
+---
+
 ## [1.12.2] — 2026-11-01
 
 ### Changed
