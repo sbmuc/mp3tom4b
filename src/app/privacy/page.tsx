@@ -81,7 +81,7 @@ export default function PrivacyPage() {
           href="https://github.com/sbmuc/mp3tom4b/issues/new"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-accent-600 underline hover:text-accent-700 dark:text-accent-400"
+          className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400"
         >
           open a GitHub issue
         </a>

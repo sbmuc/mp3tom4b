@@ -46,7 +46,7 @@ function ShrinkSteps() {
             key={title}
             className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
           >
-            <div className="flex items-center gap-2 text-accent-600 dark:text-accent-400">
+            <div className="flex items-center gap-2 text-accent-700 dark:text-accent-400">
               <Icon size={20} aria-hidden="true" />
               <span className="font-mono text-xs">Step {i + 1}</span>
             </div>

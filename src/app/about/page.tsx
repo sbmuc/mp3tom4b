@@ -35,7 +35,7 @@ export default function AboutPage() {
           href="https://github.com/sbmuc/mp3tom4b"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-accent-600 underline hover:text-accent-700 dark:text-accent-400"
+          className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400"
         >
           GitHub
         </a>{' '}
@@ -59,7 +59,7 @@ export default function AboutPage() {
           href="https://burcevski.nl"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-accent-600 underline hover:text-accent-700 dark:text-accent-400"
+          className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400"
         >
           Burcevski ICT
         </a>{' '}
@@ -68,14 +68,14 @@ export default function AboutPage() {
           href="https://github.com/sbmuc/mp3tom4b/issues/new"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-accent-600 underline hover:text-accent-700 dark:text-accent-400"
+          className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400"
         >
           Open an issue on GitHub
         </a>{' '}
         or email{' '}
         <a
           href="mailto:sebas.bur@gmail.com"
-          className="text-accent-600 underline hover:text-accent-700 dark:text-accent-400"
+          className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400"
         >
           sebas.bur@gmail.com
         </a>
