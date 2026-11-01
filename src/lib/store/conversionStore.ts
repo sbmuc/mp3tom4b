@@ -191,7 +191,8 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       if (Object.keys(patch).length > 0) {
         next.metadata = { ...state.metadata, ...patch }
       }
-      if (extracted.coverFile && state.coverSource !== 'user') {
+      // A cover the user picked or dropped beats the one embedded in the audio.
+      if (extracted.coverFile && (state.coverSource === null || state.coverSource === 'auto')) {
         next.coverFile = extracted.coverFile
         next.coverSource = 'auto'
       }

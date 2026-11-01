@@ -196,8 +196,10 @@ export default function DropZone() {
       // Cover image routing
       let coverSetThisDrop: File | null = null
       if (imageFiles.length > 0) {
+        // A dropped image replaces a cover taken from the audio or an earlier
+        // drop, but not one picked in the Cover image section.
         const state = useConversionStore.getState()
-        if (state.coverFile !== null) {
+        if (state.coverSource === 'user') {
           addNotice('Cover already set. Remove it in the Cover image section first.', true)
         } else {
           const best = pickBestCoverImage(imageFiles)
