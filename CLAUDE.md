@@ -355,13 +355,16 @@ Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`).
 
 ---
 
-## Testing Strategy (V1.1+)
+## Testing Strategy
 
-V1 ships without a test suite to keep scope tight. Once V1 is live and stable, add:
+Four layers, all in place since Nov 2026:
 
-- **Unit tests** (Vitest) for `lib/ffmpeg/chapters.ts`, `lib/audio/validate.ts`, `lib/image/resize.ts`.
-- **Integration test** for the full conversion pipeline using a small fixture audio file.
-- **E2E** (Playwright) for the happy-path flow: drop file → fill metadata → convert → download.
+- **Unit tests** (`npm test`, Vitest) for the pure functions in `lib/`.
+- **Integration tests** (`npm run test:integration`) run every tool against the shipped ffmpeg-core in Node.
+- **Real-file tests** (`npm run test:real`, `REAL_FULL=1` for whole books) on the owner's own audiobooks, kept outside the repo.
+- **Browser smoke tests** (`npm run test:e2e`, Playwright, `e2e/`): every tool in a real Chrome on generated files. Locally they start `next start` on port 3100 (run `npm run build` first); with `BASE_URL` they test that site.
+
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, integration and the browser tests on every push and PR. `.github/workflows/production-check.yml` runs the browser tests against www.mp3tom4b.com every morning (06:00 UTC), after every production deploy, and on demand; a failure emails the owner. Changes that could break a tool in the browser go through a PR (CI + Vercel preview), and the owner merges.
 
 ---
 
