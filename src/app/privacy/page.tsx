@@ -36,7 +36,7 @@ export default function PrivacyPage() {
         Analytics
       </h2>
       <p className="mt-2">
-        We count anonymous page views with Vercel Analytics and Umami. Umami also counts, per tool,
+        We count anonymous page views with Vercel Analytics. With Umami we count, per tool,
         whether a conversion finished or failed, with figures like the number of files, the
         bitrate, the length of the audiobook, the output size, how long it took and, when it
         failed, the kind of error (for example &ldquo;out of memory&rdquo;). Neither sets cookies

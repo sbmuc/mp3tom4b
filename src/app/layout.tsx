@@ -44,16 +44,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
         </div>
         <Analytics />
-        {/* Umami: cookieless page views and the usage events in lib/analytics.ts.
-            Served from our own domain (/stats is rewritten to Umami Cloud in
-            next.config.js), counts only the production host, and honours Do Not
-            Track. */}
+        {/* Umami: the cookieless usage events in lib/analytics.ts, nothing else.
+            It's served from our own domain (/stats is rewritten to Umami Cloud in
+            next.config.js) so blockers don't drop the events, but then Umami sees
+            Vercel's IP instead of the visitor's: its countries and visitor counts
+            would be wrong, so its automatic page views are off and Vercel
+            Analytics above counts visitors. Only the production host is counted,
+            and Do Not Track is honoured. */}
         <Script
           src="/stats/script.js"
           data-website-id="6821279d-906b-4db1-ad00-a37a7ab2b35a"
           data-host-url="/stats"
           data-domains="www.mp3tom4b.com"
           data-do-not-track="true"
+          data-auto-track="false"
           strategy="afterInteractive"
         />
       </body>

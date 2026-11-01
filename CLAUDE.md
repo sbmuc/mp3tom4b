@@ -68,7 +68,7 @@ Users skew technical-curious but not necessarily developers. UX must be obvious 
 - **Icons:** lucide-react
 - **State:** Zustand (lightweight, no boilerplate)
 - **Hosting:** Vercel (free tier)
-- **Analytics:** Vercel Analytics (free tier, page views) + Umami Cloud (free tier, page views and anonymous per-tool success/failure events via `src/lib/analytics.ts`, proxied through `/stats`) — both cookieless
+- **Analytics:** Vercel Analytics (free tier: page views, visitors, countries, referrers) + Umami Cloud (free tier: anonymous per-tool success/failure events only, via `src/lib/analytics.ts`, proxied through `/stats`; auto page views off because the proxy hides the visitor's IP) — both cookieless
 
 ### Why client-side?
 
@@ -428,7 +428,7 @@ This is a side project, not a startup. Metrics are about validation, not growth-
 ## Open Questions / Decisions to Revisit
 
 - [ ] Final accent color choice
-- [x] Analytics with events: Umami Cloud (free tier) added Nov 2026; Vercel Analytics kept for page views for now
+- [x] Analytics with events: Umami Cloud (free tier) added Nov 2026 for events only; Vercel Analytics keeps page views
 - [ ] Add a "Buy me a coffee" / Ko-fi link in footer post-launch, or keep it 100% free with no monetization signals?
 - [ ] License the code as MIT on GitHub from day one (recommended) or keep private until V1 ships?
 - [ ] iOS app branding when we get there — same name or sub-brand?

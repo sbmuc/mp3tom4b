@@ -179,7 +179,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - All file processing happens in the browser via WebAssembly. No file is uploaded.
 - The only network calls during normal use are: loading the page itself, loading ffmpeg.wasm on first conversion, and (only on explicit "Look up online" click) sending title/author/narrator to iTunes Search and/or Open Library.
-- Cookieless analytics: Vercel Analytics for page views, and Umami (`src/lib/analytics.ts`) for page views plus anonymous per-tool events: success, and failure with only the kind of error, carrying counts, sizes, durations and settings, never file names or content. Umami is served through `/stats` on our own domain, counts only www.mp3tom4b.com, and honours Do Not Track.
+- Cookieless analytics: Vercel Analytics for page views, visitors, countries and referrers, and Umami (`src/lib/analytics.ts`) for anonymous per-tool events only (its automatic page views are off, because through the proxy it sees Vercel's IP, not the visitor's): success, and failure with only the kind of error, carrying counts, sizes, durations and settings, never file names or content. Umami is served through `/stats` on our own domain, counts only www.mp3tom4b.com, and honours Do Not Track.
 - No third-party tracking scripts, no ads, no sign-up.
 - Source code is open on GitHub for independent auditing.
 
