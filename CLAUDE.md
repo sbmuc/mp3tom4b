@@ -59,7 +59,7 @@ Users skew technical-curious but not necessarily developers. UX must be obvious 
 
 ### Stack
 
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 16 (App Router, React 19; built with webpack — `next build --webpack` — because Turbopack can't bundle @ffmpeg/ffmpeg's worker)
 - **Styling:** Tailwind CSS
 - **Language:** TypeScript (strict mode)
 - **Encoder:** @ffmpeg/ffmpeg + @ffmpeg/util (WebAssembly)

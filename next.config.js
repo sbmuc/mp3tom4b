@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+// Built with webpack (`next build --webpack`), not Next 16's default Turbopack:
+// @ffmpeg/ffmpeg starts its worker with `new Worker(new URL(variable,
+// import.meta.url))`, which Turbopack can't bundle.
 const nextConfig = {
   // Umami's script and its event endpoint, served from our own domain so the
   // browser only ever talks to www.mp3tom4b.com (see layout.tsx).

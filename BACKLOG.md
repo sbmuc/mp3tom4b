@@ -144,3 +144,10 @@ These came up during planning and got rejected with clear reasoning. Recorded so
 3. **V3 (iOS) is the monetization commitment** — only start it once the web version has proven there's audience demand.
 4. **The "Won't Do" list is sacred** — items there should require strong evidence to revisit, not just a passing thought.
 5. **When in doubt, prefer shipping less.** A small, working V1.1 ships faster than a sprawling one and gives you faster feedback for V1.2.
+
+## Tech debt (from the Next.js 16 upgrade, Nov 2026)
+
+- **`react-hooks/set-state-in-effect`** — eslint-config-next 16 flags 23 places that call setState inside an effect (an extra render each; behaviour is correct). The rule is set to `warn` in `eslint.config.mjs`; rewrite them (derive state during render, or key components) and turn it back to `error`.
+- **Turbopack** — builds use `next build --webpack` because Turbopack can't bundle @ffmpeg/ffmpeg's `new Worker(new URL(variable, import.meta.url))`. Revisit when @ffmpeg/ffmpeg or Turbopack changes.
+- **Editor title from tags** — `extractMetadata` takes the book title from the album tag (right for chapter MP3s); an M4B with only a title tag shows its file name in the editor instead. Fall back to the title tag for single-file books.
+
