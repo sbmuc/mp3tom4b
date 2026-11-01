@@ -35,7 +35,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { track } from '@vercel/analytics'
+import { trackEvent, trackFailure } from '@/lib/analytics'
 import {
   analyzeCompatibility,
   mergeM4B,
@@ -480,14 +480,15 @@ export default function M4bMerger() {
         },
       })
       setResultBlob(blob)
-      track('m4b_merged', {
+      trackEvent('m4b_merged', {
         fileCount: readyRows.length,
         chapterMode,
         reencode,
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
       })
-    } catch {
+    } catch (err) {
       // Error surfaced via the onProgress 'error' event.
+      if (!cancelledRef.current) trackFailure('merge', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
     }
   }
 

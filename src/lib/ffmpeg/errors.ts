@@ -35,6 +35,17 @@ export function humanizeFfmpegError(err: unknown): string {
   return 'Conversion failed. Refresh the page and try again.'
 }
 
+/** What kind of failure an error is, for anonymous counts (no message, no names). */
+export type FailureReason = 'out_of_memory' | 'interrupted' | 'unreadable_input' | 'other'
+
+export function failureReason(err: unknown): FailureReason {
+  const raw = extractMessage(err)
+  if (err === 28 || /memory access out of bounds|out of memory|allocation failed/i.test(raw)) return 'out_of_memory'
+  if (/Aborted\(\)|RuntimeError: unreachable/i.test(raw)) return 'interrupted'
+  if (err === 1 || /invalid data|could ?n[o']t read|corrupt|unsupported codec/i.test(raw)) return 'unreadable_input'
+  return 'other'
+}
+
 function extractMessage(err: unknown): string {
   if (err instanceof Error) return err.message
   if (typeof err === 'string') return err

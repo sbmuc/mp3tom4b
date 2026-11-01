@@ -16,7 +16,7 @@ import {
   Wand2,
   X,
 } from 'lucide-react'
-import { track } from '@vercel/analytics'
+import { trackEvent, trackFailure } from '@/lib/analytics'
 import { compressM4B } from '@/lib/ffmpeg/compress'
 import { probeM4bInfo, type M4bProbeInfo } from '@/lib/ffmpeg/probeM4b'
 import { terminateFFmpeg } from '@/lib/ffmpeg/client'
@@ -148,7 +148,7 @@ export default function M4bCompressor() {
         },
       })
       setOutputBlob(blob)
-      track('m4b_compressed', {
+      trackEvent('m4b_compressed', {
         bitrateKbps: bitrate,
         chapterCount: probe.chapterCount,
         audioDurationSec: Math.round((probe.durationMs ?? 0) / 1000),
@@ -156,8 +156,9 @@ export default function M4bCompressor() {
         outputMb: Math.round((blob.size / (1024 * 1024)) * 10) / 10,
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
       })
-    } catch {
+    } catch (err) {
       // Error is surfaced via the onProgress 'error' event.
+      if (!cancelledRef.current) trackFailure('compress', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
     }
   }
 

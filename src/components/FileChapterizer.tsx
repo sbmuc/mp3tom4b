@@ -20,7 +20,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { track } from '@vercel/analytics'
+import { trackEvent, trackFailure } from '@/lib/analytics'
 import {
   chapterizeFile,
   describeSilenceResult,
@@ -305,9 +305,10 @@ export default function FileChapterizer() {
       if (result.starts.length > 1) setRows(rowsFromStarts(result.starts))
       setSilenceNote({ text: describeSilenceResult(result, { minGapSec: gapSec, minChapterMs }), found: result.starts.length > 1 })
       setProgress(idleProgress)
-      track('chapters_detected', { chapterCount: result.starts.length })
-    } catch {
+      trackEvent('chapters_detected', { chapterCount: result.starts.length, pauses: result.pauses })
+    } catch (err) {
       // error surfaced via onProgress
+      if (!cancelledRef.current) trackFailure('detect_silence', err)
     }
   }
 
@@ -392,13 +393,14 @@ export default function FileChapterizer() {
         },
       })
       setResultBlob(blob)
-      track('file_chapterized', {
+      trackEvent('file_chapterized', {
         chapterCount: chapters.length,
         bitrate,
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
       })
-    } catch {
+    } catch (err) {
       // Error surfaced via the onProgress 'error' event.
+      if (!cancelledRef.current) trackFailure('chapterize', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
     }
   }
 

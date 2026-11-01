@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.12.2] — 2026-11-01
+
+### Changed
+- **Anonymous counts of finished and failed conversions.** Besides page views, the site now counts per tool whether a conversion finished or failed, with figures like the number of files, the bitrate, the book's length and, for a failure, the kind of error (for example "out of memory"). This uses Umami, which sets no cookies; it never receives your audio, file names, metadata, or covers, and browsers that send Do Not Track aren't counted. The privacy policy explains it.
+
+---
+
 ## [1.12.1] — 2026-11-01
 
 ### Fixed

@@ -68,7 +68,7 @@ Users skew technical-curious but not necessarily developers. UX must be obvious 
 - **Icons:** lucide-react
 - **State:** Zustand (lightweight, no boilerplate)
 - **Hosting:** Vercel (free tier)
-- **Analytics:** Vercel Analytics (free tier) — privacy-respecting, no cookies needed
+- **Analytics:** Vercel Analytics (free tier, page views) + Umami Cloud (free tier, page views and anonymous per-tool success/failure events via `src/lib/analytics.ts`, proxied through `/stats`) — both cookieless
 
 ### Why client-side?
 
@@ -314,11 +314,11 @@ Sister landing pages on the same domain for `flac-to-m4b`, `wav-to-m4b`, `m4a-to
 
 ## Privacy & Legal
 
-- **No tracking cookies.** Vercel Analytics is cookieless; if Plausible is added later, it's also cookieless.
+- **No tracking cookies.** Vercel Analytics and Umami are both cookieless. Events carry counts, sizes, durations and settings only — never file names, tags or error messages.
 - **No file uploads.** This is the core promise. Communicate it clearly on the homepage and explain on /about how it works (ffmpeg.wasm runs in-browser).
 - **AVG/GDPR posture:** since no personal data is collected, processed, or stored, the privacy policy is short and simple. Still required to have one.
 - **Footer must include:** Privacy Policy link, copyright line ("© 2026 Burcevski ICT"), KvK number (74404172), contact email, link to GitHub repo.
-- **Cookie banner:** not needed if only Vercel Analytics is used (cookieless). If Google Analytics is ever added — banner required. Don't add GA.
+- **Cookie banner:** not needed while analytics stay cookieless (Vercel Analytics, Umami). If Google Analytics is ever added — banner required. Don't add GA.
 - **Open source the code.** Publish the repo publicly on GitHub. This is itself a privacy proof — anyone can audit that no upload happens. Add a clear LICENSE file (MIT recommended for the code).
 
 ---
@@ -428,7 +428,7 @@ This is a side project, not a startup. Metrics are about validation, not growth-
 ## Open Questions / Decisions to Revisit
 
 - [ ] Final accent color choice
-- [ ] Plausible Analytics later, or stick with Vercel Analytics?
+- [x] Analytics with events: Umami Cloud (free tier) added Nov 2026; Vercel Analytics kept for page views for now
 - [ ] Add a "Buy me a coffee" / Ko-fi link in footer post-launch, or keep it 100% free with no monetization signals?
 - [ ] License the code as MIT on GitHub from day one (recommended) or keep private until V1 ships?
 - [ ] iOS app branding when we get there — same name or sub-brand?

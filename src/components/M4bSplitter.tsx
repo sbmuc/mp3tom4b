@@ -16,7 +16,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { track } from '@vercel/analytics'
+import { trackEvent, trackFailure } from '@/lib/analytics'
 import { splitM4B, type SplitResult } from '@/lib/ffmpeg/split'
 import { probeChapters, type Chapter } from '@/lib/ffmpeg/splitChapters'
 import { terminateFFmpeg } from '@/lib/ffmpeg/client'
@@ -130,15 +130,16 @@ export default function M4bSplitter() {
         },
       })
       setResult(res)
-      track('m4b_split', {
+      trackEvent('m4b_split', {
         bitrateKbps: bitrate,
         chapterCount: chapters.length,
         outputCount: res.count,
         inputMb: Math.round((file.size / (1024 * 1024)) * 10) / 10,
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
       })
-    } catch {
+    } catch (err) {
       // Error surfaced via the onProgress 'error' event.
+      if (!cancelledRef.current) trackFailure('split', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
     }
   }
 

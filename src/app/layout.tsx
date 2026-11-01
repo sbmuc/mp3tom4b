@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/react'
 import './globals.css'
 import Header from '@/components/Header'
@@ -43,6 +44,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
         </div>
         <Analytics />
+        {/* Umami: cookieless page views and the usage events in lib/analytics.ts.
+            Served from our own domain (/stats is rewritten to Umami Cloud in
+            next.config.js), counts only the production host, and honours Do Not
+            Track. */}
+        <Script
+          src="/stats/script.js"
+          data-website-id="6821279d-906b-4db1-ad00-a37a7ab2b35a"
+          data-host-url="/stats"
+          data-domains="www.mp3tom4b.com"
+          data-do-not-track="true"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   )

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OUT_OF_MEMORY, humanizeFfmpegError } from '@/lib/ffmpeg/errors'
+import { OUT_OF_MEMORY, failureReason, humanizeFfmpegError } from '@/lib/ffmpeg/errors'
 
 describe('humanizeFfmpegError', () => {
   it('explains running out of memory, however the browser reports it', () => {
@@ -15,5 +15,17 @@ describe('humanizeFfmpegError', () => {
 
   it('turns an interrupted run into a refresh hint', () => {
     expect(humanizeFfmpegError(new Error('RuntimeError: unreachable'))).toMatch(/interrupted/)
+  })
+})
+
+describe('failureReason', () => {
+  it('sorts failures into anonymous kinds', () => {
+    expect(failureReason(new Error('RuntimeError: memory access out of bounds'))).toBe('out_of_memory')
+    expect(failureReason(new RangeError('Array buffer allocation failed'))).toBe('out_of_memory')
+    expect(failureReason(28)).toBe('out_of_memory')
+    expect(failureReason(new Error('Aborted()'))).toBe('interrupted')
+    expect(failureReason(1)).toBe('unreadable_input')
+    expect(failureReason(new Error('chapter 3/10: Invalid data found when processing input'))).toBe('unreadable_input')
+    expect(failureReason(new Error('something else'))).toBe('other')
   })
 })

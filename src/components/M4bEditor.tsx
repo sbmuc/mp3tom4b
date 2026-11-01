@@ -19,7 +19,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { track } from '@vercel/analytics'
+import { trackEvent, trackFailure } from '@/lib/analytics'
 import { editM4B, type CoverMode } from '@/lib/ffmpeg/editM4b'
 import { probeChapters } from '@/lib/ffmpeg/splitChapters'
 import { terminateFFmpeg } from '@/lib/ffmpeg/client'
@@ -304,13 +304,14 @@ export default function M4bEditor() {
         },
       })
       setResultBlob(blob)
-      track('m4b_edited', {
+      trackEvent('m4b_edited', {
         chapterCount: chapters.length,
         coverMode,
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
       })
-    } catch {
+    } catch (err) {
       // Error surfaced via the onProgress 'error' event.
+      if (!cancelledRef.current) trackFailure('edit', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
     }
   }
 

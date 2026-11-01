@@ -13,7 +13,7 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 text-zinc-700 dark:text-zinc-300">
       <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Last updated: 2 September 2026</p>
+      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Last updated: 1 November 2026</p>
 
       <h2 className="mt-10 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
         Your audio files
@@ -36,9 +36,14 @@ export default function PrivacyPage() {
         Analytics
       </h2>
       <p className="mt-2">
-        We use Vercel Analytics to count anonymous page views. It does not set cookies, does not
-        identify visitors, and never receives any of your audio, metadata, or cover images. No
-        third-party advertising trackers are loaded.
+        We count anonymous page views with Vercel Analytics and Umami. Umami also counts, per tool,
+        whether a conversion finished or failed, with figures like the number of files, the
+        bitrate, the length of the audiobook, the output size, how long it took and, when it
+        failed, the kind of error (for example &ldquo;out of memory&rdquo;). Neither sets cookies
+        or identifies visitors, and neither ever receives your audio, file names, metadata, or
+        cover images. Umami&apos;s requests go to Umami Cloud through this site&apos;s own domain,
+        and browsers that send Do Not Track aren&apos;t counted by it. No third-party advertising
+        trackers are loaded.
       </p>
 
       <h2 className="mt-8 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
