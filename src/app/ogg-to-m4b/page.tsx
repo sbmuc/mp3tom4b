@@ -2,23 +2,18 @@ import type { Metadata } from 'next'
 import ConverterTool from '@/components/ConverterTool'
 import HowItWorks from '@/components/HowItWorks'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'OGG to M4B: Convert OGG Vorbis Audio to Audiobook',
   description:
     'Convert OGG Vorbis files to a chaptered M4B audiobook in your browser, with cover art and tags. Free, no upload, no signup, no limits.',
   alternates: { canonical: '/ogg-to-m4b' },
-  openGraph: {
-    title: 'OGG to M4B Converter: Free, Private, No Upload',
-    description:
-      'Drop your OGG files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'OGG to M4B Converter: Free, Private, No Upload',
-    description:
-      'Drop your OGG files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
-  },
+  ...socialMetadata(
+    '/ogg-to-m4b',
+    'OGG to M4B Converter: Free, Private, No Upload',
+    'Drop your OGG files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
+  ),
 }
 
 const softwareApplicationLd = {

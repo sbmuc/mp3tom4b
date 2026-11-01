@@ -2,23 +2,18 @@ import type { Metadata } from 'next'
 import ConverterTool from '@/components/ConverterTool'
 import HowItWorks from '@/components/HowItWorks'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'WAV to M4B: Convert WAV Audio to Audiobook',
   description:
     'Convert WAV files to a chaptered M4B audiobook in your browser, at a fraction of the size, with cover art and tags. No upload, no signup.',
   alternates: { canonical: '/wav-to-m4b' },
-  openGraph: {
-    title: 'WAV to M4B Converter: Free, Private, No Upload',
-    description:
-      'Drop your WAV files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'WAV to M4B Converter: Free, Private, No Upload',
-    description:
-      'Drop your WAV files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
-  },
+  ...socialMetadata(
+    '/wav-to-m4b',
+    'WAV to M4B Converter: Free, Private, No Upload',
+    'Drop your WAV files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
+  ),
 }
 
 const softwareApplicationLd = {

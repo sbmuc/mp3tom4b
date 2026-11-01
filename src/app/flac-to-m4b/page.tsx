@@ -2,23 +2,18 @@ import type { Metadata } from 'next'
 import ConverterTool from '@/components/ConverterTool'
 import HowItWorks from '@/components/HowItWorks'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'FLAC to M4B: Convert Lossless Audio to Audiobook',
   description:
     'Convert FLAC files to a chaptered M4B audiobook in your browser. Lossless audio in, compact AAC out, with cover art and tags. No upload, no signup.',
   alternates: { canonical: '/flac-to-m4b' },
-  openGraph: {
-    title: 'FLAC to M4B Converter: Free, Private, No Upload',
-    description:
-      'Drop your FLAC files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'FLAC to M4B Converter: Free, Private, No Upload',
-    description:
-      'Drop your FLAC files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
-  },
+  ...socialMetadata(
+    '/flac-to-m4b',
+    'FLAC to M4B Converter: Free, Private, No Upload',
+    'Drop your FLAC files and get a single chaptered M4B audiobook out. Runs entirely in your browser via WebAssembly, so your audio never leaves your device.',
+  ),
 }
 
 const softwareApplicationLd = {

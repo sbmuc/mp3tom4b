@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
     'mp3tom4b processes audio files entirely in your browser. No audio data is uploaded, stored, or shared.',
   alternates: { canonical: '/privacy' },
+  ...socialMetadata('/privacy', 'mp3tom4b Privacy Policy', 'mp3tom4b processes audio files entirely in your browser. No audio data is uploaded, stored, or shared.'),
 }
 
 export default function PrivacyPage() {

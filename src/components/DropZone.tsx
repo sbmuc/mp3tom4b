@@ -382,6 +382,7 @@ export default function DropZone() {
             delivers everything so the skip/classify notices keep working. */}
         <input
           {...getInputProps()}
+          aria-label="Choose audio files and a cover image"
           accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.opus,image/jpeg,image/png,.jpg,.jpeg,.png,.zip,application/zip"
         />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />

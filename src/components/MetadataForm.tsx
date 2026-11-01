@@ -103,7 +103,7 @@ export default function MetadataForm() {
 
         <div>
           <label htmlFor="md-narrator" className={labelClass}>
-            Narrator <span className="text-zinc-400">(optional)</span>
+            Narrator <span className="text-zinc-500 dark:text-zinc-400">(optional)</span>
             {verifiedFields.narrator && <VerifiedBadge source={verifiedFields.narrator} />}
           </label>
           <input
@@ -118,7 +118,7 @@ export default function MetadataForm() {
 
         <div>
           <label htmlFor="md-year" className={labelClass}>
-            Year <span className="text-zinc-400">(optional)</span>
+            Year <span className="text-zinc-500 dark:text-zinc-400">(optional)</span>
             {verifiedFields.year && <VerifiedBadge source={verifiedFields.year} />}
           </label>
           <input

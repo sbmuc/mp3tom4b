@@ -1,23 +1,18 @@
 import type { Metadata } from 'next'
 import FileChapterizer from '@/components/FileChapterizer'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'Add Chapters to an MP3: Make a Chaptered M4B',
   description:
     'Turn one long MP3, M4A, WAV, or FLAC file into a chaptered M4B audiobook in your browser. Split evenly, by silence, or by hand. No upload, no signup.',
   alternates: { canonical: '/add-chapters-to-mp3' },
-  openGraph: {
-    title: 'Add Chapters to an MP3 — Make a Chaptered M4B, Free and Private',
-    description:
-      'Split one long audio file into a chaptered M4B audiobook, right in your browser — evenly, by silence, or by hand. Runs entirely client-side; your audio never leaves your device.',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'Add Chapters to an MP3 — Make a Chaptered M4B, Free and Private',
-    description:
-      'Split one long audio file into a chaptered M4B audiobook, right in your browser — evenly, by silence, or by hand. Runs entirely client-side; your audio never leaves your device.',
-  },
+  ...socialMetadata(
+    '/add-chapters-to-mp3',
+    'Add Chapters to an MP3 — Make a Chaptered M4B, Free and Private',
+    'Split one long audio file into a chaptered M4B audiobook, right in your browser — evenly, by silence, or by hand. Runs entirely client-side; your audio never leaves your device.',
+  ),
 }
 
 const softwareApplicationLd = {

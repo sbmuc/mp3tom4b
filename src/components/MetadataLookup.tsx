@@ -188,7 +188,7 @@ export default function MetadataLookup() {
     <section aria-label="Online metadata lookup" className="mt-6">
       <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
         Verify metadata{' '}
-        <span className="text-sm font-normal text-zinc-400">(optional)</span>
+        <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400">(optional)</span>
       </h2>
 
       {toast && (
@@ -342,7 +342,7 @@ export default function MetadataLookup() {
                         {r.narrator ? ` · narrated by ${r.narrator}` : ''}
                         {r.year ? ` · ${r.year}` : ''}
                       </p>
-                      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
                         {SOURCE_LABEL[r.source]}
                       </p>
                     </div>

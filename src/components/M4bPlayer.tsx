@@ -55,7 +55,7 @@ export default function M4bPlayer() {
             : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
-        <input {...getInputProps()} accept=".m4b,.m4a,.mp4,.mp3,audio/mp4,audio/x-m4a,audio/mpeg" />
+        <input {...getInputProps()} aria-label="Choose an audiobook to play" accept=".m4b,.m4a,.mp4,.mp3,audio/mp4,audio/x-m4a,audio/mpeg" />
         {!file && <Upload size={32} className="mb-3 text-zinc-400 dark:text-zinc-500" aria-hidden="true" />}
         <p className="text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive

@@ -444,7 +444,7 @@ const ChapterList = memo(function ChapterList({
                   : 'text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800/60'
               }`}
             >
-              <span className="w-8 shrink-0 font-mono text-xs text-zinc-400 dark:text-zinc-500">{i + 1}</span>
+              <span className="w-8 shrink-0 font-mono text-xs text-zinc-500 dark:text-zinc-500">{i + 1}</span>
               <span className="min-w-0 flex-1 truncate">{chapterLabel(c, i)}</span>
               <span className="shrink-0 font-mono text-xs text-zinc-500 dark:text-zinc-400">{formatDuration(c.startSec)}</span>
             </button>

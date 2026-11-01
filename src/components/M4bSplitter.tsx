@@ -176,7 +176,7 @@ export default function M4bSplitter() {
             : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
-        <input {...getInputProps()} accept=".m4b,.m4a,audio/mp4,audio/x-m4a" />
+        <input {...getInputProps()} aria-label="Choose an M4B to split into MP3s" accept=".m4b,.m4a,audio/mp4,audio/x-m4a" />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your M4B here' : 'Drop an M4B, or click to browse'}
@@ -225,7 +225,7 @@ export default function M4bSplitter() {
               type="button"
               onClick={handleReset}
               aria-label="Remove file"
-              className="shrink-0 rounded p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:text-zinc-200"
+              className="shrink-0 rounded p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:text-zinc-200"
             >
               <X size={16} aria-hidden="true" />
             </button>
@@ -241,7 +241,7 @@ export default function M4bSplitter() {
                   <span className="min-w-0 flex-1 truncate text-zinc-700 dark:text-zinc-300">
                     {c.title?.trim() || `Chapter ${i + 1}`}
                   </span>
-                  <span className="shrink-0 font-mono text-xs text-zinc-400 dark:text-zinc-500">
+                  <span className="shrink-0 font-mono text-xs text-zinc-500 dark:text-zinc-500">
                     {formatDuration(Math.max(0, (c.endMs - c.startMs) / 1000))}
                   </span>
                 </li>

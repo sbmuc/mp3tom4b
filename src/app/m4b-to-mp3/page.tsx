@@ -1,23 +1,18 @@
 import type { Metadata } from 'next'
 import M4bSplitter from '@/components/M4bSplitter'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'M4B to MP3: Split an Audiobook into Chapter MP3s',
   description:
     'Split an M4B audiobook into per-chapter MP3 files in your browser, or convert it to one MP3. Tagged MP3s in a ZIP. No upload, no signup.',
   alternates: { canonical: '/m4b-to-mp3' },
-  openGraph: {
-    title: 'M4B to MP3 Converter: Split by Chapter, Free and Private',
-    description:
-      'Turn an M4B audiobook into per-chapter MP3 files, right in your browser. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'M4B to MP3 Converter: Split by Chapter, Free and Private',
-    description:
-      'Turn an M4B audiobook into per-chapter MP3 files, right in your browser. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
-  },
+  ...socialMetadata(
+    '/m4b-to-mp3',
+    'M4B to MP3 Converter: Split by Chapter, Free and Private',
+    'Turn an M4B audiobook into per-chapter MP3 files, right in your browser. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
+  ),
 }
 
 const softwareApplicationLd = {

@@ -1,23 +1,18 @@
 import type { Metadata } from 'next'
 import M4bEditor from '@/components/M4bEditor'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'M4B Editor: Edit Chapters, Tags & Cover Online',
   description:
     'Edit M4B files in your browser: rename, add, or re-time chapters, fix title, author, and narrator tags, and change the cover. No upload, no re-encode.',
   alternates: { canonical: '/edit-m4b-chapters' },
-  openGraph: {
-    title: 'M4B Editor Online: Chapters, Tags & Cover. Free, No Upload',
-    description:
-      'Fix chapters, tags, and cover art on an M4B audiobook, right in your browser. Runs entirely client-side via WebAssembly; the audio is copied, never re-encoded.',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'M4B Editor Online: Chapters, Tags & Cover. Free, No Upload',
-    description:
-      'Fix chapters, tags, and cover art on an M4B audiobook, right in your browser. Runs entirely client-side via WebAssembly; the audio is copied, never re-encoded.',
-  },
+  ...socialMetadata(
+    '/edit-m4b-chapters',
+    'M4B Editor Online: Chapters, Tags & Cover. Free, No Upload',
+    'Fix chapters, tags, and cover art on an M4B audiobook, right in your browser. Runs entirely client-side via WebAssembly; the audio is copied, never re-encoded.',
+  ),
 }
 
 const softwareApplicationLd = {

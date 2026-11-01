@@ -1,23 +1,18 @@
 import type { Metadata } from 'next'
 import M4bPlayer from '@/components/M4bPlayer'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'M4B Player Online: Play M4B Files on Windows & Mac',
   description:
     'Open and listen to M4B audiobooks in your browser on Windows, Mac, or your phone, with chapters, cover art, and speed control. Nothing to install.',
   alternates: { canonical: '/m4b-player' },
-  openGraph: {
-    title: 'M4B Player Online: Play M4B Files on Windows, Mac & Phone',
-    description:
-      'Open an M4B audiobook in your browser and listen with its chapters, cover art, and speed control. The file plays from your device and is never uploaded.',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'M4B Player Online: Play M4B Files on Windows, Mac & Phone',
-    description:
-      'Open an M4B audiobook in your browser and listen with its chapters, cover art, and speed control. The file plays from your device and is never uploaded.',
-  },
+  ...socialMetadata(
+    '/m4b-player',
+    'M4B Player Online: Play M4B Files on Windows, Mac & Phone',
+    'Open an M4B audiobook in your browser and listen with its chapters, cover art, and speed control. The file plays from your device and is never uploaded.',
+  ),
 }
 
 const softwareApplicationLd = {

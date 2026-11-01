@@ -59,7 +59,7 @@ export default function CoverUpload() {
   return (
     <section aria-label="Cover image" className="mt-6">
       <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-        Cover image <span className="text-sm font-normal text-zinc-400">(optional)</span>
+        Cover image <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400">(optional)</span>
       </h2>
 
       <div className="flex items-start gap-4">
@@ -68,7 +68,7 @@ export default function CoverUpload() {
           aria-label="Upload cover image"
           className={`flex h-[200px] w-[200px] shrink-0 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 ${borderClass}`}
         >
-          <input {...getInputProps()} />
+          <input {...getInputProps()} aria-label="Choose a cover image" />
           {previewUrl ? (
             <div className="relative h-full w-full bg-white">
               {/* object-contain + white bg mirrors the actual output, which pads

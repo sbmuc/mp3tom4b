@@ -13,7 +13,7 @@ export default function Header() {
           className="group inline-flex min-h-[44px] items-baseline gap-0.5 text-xl font-semibold tracking-tight"
         >
           <span className="text-zinc-900 dark:text-zinc-100">mp3to</span>
-          <span className="text-accent-500">m4b</span>
+          <span className="text-accent-700 dark:text-accent-500">m4b</span>
         </Link>
 
         <nav className="flex items-center gap-4 text-sm text-zinc-500 dark:text-zinc-400">

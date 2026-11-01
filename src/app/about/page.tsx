@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'About',
   description:
     'mp3tom4b is a free, open-source, browser-based MP3-to-M4B audiobook converter. Files never leave your device.',
   alternates: { canonical: '/about' },
+  ...socialMetadata('/about', 'About mp3tom4b', 'mp3tom4b is a free, open-source, browser-based MP3-to-M4B audiobook converter. Files never leave your device.'),
 }
 
 export default function AboutPage() {

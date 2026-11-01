@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'FAQ',
   description:
     'Answers to common questions about mp3tom4b: what M4B is, why it is private, supported file types, file size limits, browser support, offline use.',
   alternates: { canonical: '/faq' },
+  ...socialMetadata('/faq', 'mp3tom4b FAQ', 'Answers to common questions about mp3tom4b: what M4B is, why it is private, supported file types, file size limits, browser support, offline use.'),
 }
 
 const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [

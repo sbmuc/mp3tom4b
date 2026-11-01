@@ -143,7 +143,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Dark mode that activates automatically based on operating-system preference.
 - Responsive layout that works on tablet; desktop is the optimised target.
 - Works in in-app browsers (Reddit, Instagram, Facebook): the single-threaded engine needs only WebAssembly and Web Workers, so the site sends no COOP/COEP headers and only warns when one of those two is missing.
-- Keyboard-accessible interactive elements; ARIA labels on icon-only buttons.
+- Keyboard-accessible interactive elements; ARIA labels on icon-only buttons and on every file input; light-mode text and icon buttons meet WCAG AA contrast (the wordmark's "m4b" is accent-700 in light mode).
 - aria-live progress announcements during conversion.
 - Keeps the screen awake during conversion, compression, and splitting (while the tab is in the foreground) so a long job isn't interrupted by display sleep.
 - Estimated time remaining on every long-running tool, projected from the recent rate of progress.
@@ -167,7 +167,8 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## SEO
 
-- Open Graph and Twitter Card metadata on every page.
+- Open Graph and Twitter Card metadata on every page, each with its own og:url and the share image (`src/lib/seo/social.ts`; a page's own `openGraph` replaces the root's rather than merging, so every page goes through that helper).
+- The homepage H1 is the sentence "Convert MP3 to M4B audiobooks without uploading a single byte"; the wordmark above it is styled text, not the heading.
 - JSON-LD `SoftwareApplication` schema on the homepage.
 - JSON-LD `FAQPage` schema on the FAQ page and each sister landing page.
 - Sitemap.xml covering all routes, each with the date its content last changed.

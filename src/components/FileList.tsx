@@ -61,11 +61,11 @@ export default function FileList() {
         <p className="text-sm text-zinc-700 dark:text-zinc-300">
           <span className="font-medium">{files.length}</span> file
           {files.length === 1 ? '' : 's'}
-          <span className="text-zinc-400 dark:text-zinc-500"> · </span>
+          <span className="text-zinc-500 dark:text-zinc-500"> · </span>
           <span className="font-mono text-xs">{formatBytes(totalBytes)}</span>
           {showSortControls && (
             <>
-              <span className="text-zinc-400 dark:text-zinc-500"> · </span>
+              <span className="text-zinc-500 dark:text-zinc-500"> · </span>
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 {SORT_LABEL[sortDirection]}
               </span>

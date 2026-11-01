@@ -435,7 +435,7 @@ export default function FileChapterizer() {
             : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
-        <input {...getInputProps()} accept=".mp3,.m4a,.m4b,.wav,.flac,.ogg,.opus,audio/*" />
+        <input {...getInputProps()} aria-label="Choose an audio file to add chapters to" accept=".mp3,.m4a,.m4b,.wav,.flac,.ogg,.opus,audio/*" />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your audio file here' : 'Drop a single audio file, or click to browse'}
@@ -483,7 +483,7 @@ export default function FileChapterizer() {
               type="button"
               onClick={handleReset}
               aria-label="Remove file"
-              className="shrink-0 rounded p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:text-zinc-200"
+              className="shrink-0 rounded p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:text-zinc-200"
             >
               <X size={16} aria-hidden="true" />
             </button>
@@ -594,7 +594,7 @@ export default function FileChapterizer() {
                       className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm text-zinc-900 hover:border-zinc-300 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-500/30 dark:text-zinc-100 dark:hover:border-zinc-700 dark:focus:bg-zinc-950"
                     />
                     <button type="button" onClick={() => removeRow(r.id)} aria-label="Remove chapter"
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-400 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400">
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-500 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400">
                       <Trash2 size={15} aria-hidden="true" />
                     </button>
                     </div>

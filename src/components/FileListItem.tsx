@@ -69,7 +69,7 @@ export default function FileListItem({ file, index }: Props) {
         {...attributes}
         {...listeners}
         aria-label={`Reorder ${file.chapterTitle}`}
-        className="flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center rounded text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 active:cursor-grabbing dark:text-zinc-500 dark:hover:text-zinc-200"
+        className="flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center rounded text-zinc-500 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 active:cursor-grabbing dark:text-zinc-500 dark:hover:text-zinc-200"
       >
         <GripVertical size={18} aria-hidden="true" />
       </button>
@@ -118,7 +118,7 @@ export default function FileListItem({ file, index }: Props) {
           onClick={() => updateChapterTitle(file.id, file.originalChapterTitle)}
           aria-label="Reset chapter title"
           title={`Reset to "${file.originalChapterTitle}"`}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-zinc-500 dark:hover:text-zinc-200"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-500 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-zinc-500 dark:hover:text-zinc-200"
         >
           <RotateCcw size={14} aria-hidden="true" />
         </button>
@@ -136,7 +136,7 @@ export default function FileListItem({ file, index }: Props) {
         type="button"
         onClick={() => removeFile(file.id)}
         aria-label={`Remove ${file.chapterTitle}`}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-400 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-500 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400"
       >
         <Trash2 size={16} aria-hidden="true" />
       </button>

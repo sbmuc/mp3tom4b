@@ -210,7 +210,7 @@ export default function M4bCompressor() {
             : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
-        <input {...getInputProps()} accept=".m4b,.m4a,audio/mp4,audio/x-m4a" />
+        <input {...getInputProps()} aria-label="Choose an M4B to compress" accept=".m4b,.m4a,audio/mp4,audio/x-m4a" />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your M4B here' : 'Drop a finished M4B, or click to browse'}
@@ -268,7 +268,7 @@ export default function M4bCompressor() {
               type="button"
               onClick={handleReset}
               aria-label="Remove file"
-              className="shrink-0 rounded p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:text-zinc-200"
+              className="shrink-0 rounded p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:text-zinc-200"
             >
               <X size={16} aria-hidden="true" />
             </button>

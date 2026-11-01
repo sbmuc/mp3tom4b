@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.12.1] — 2026-11-01
+
+### Fixed
+- Every page now shows its own link and the mp3tom4b image when shared on social media or in a chat. The tool and format pages had no image, and the About, FAQ, and Privacy pages pointed to the homepage.
+- Screen readers announce what each file picker is for, and grey text and buttons in light mode have enough contrast to read. The "m4b" in the logo is a shade darker in light mode for the same reason.
+- The homepage's main heading now says what the site does ("Convert MP3 to M4B audiobooks without uploading a single byte") instead of just the name; it looks the same.
+- Updated the audio tag reader to a version that fixes a hang on deliberately malformed files.
+
+---
+
 ## [1.12.0] — 2026-11-01
 
 ### Added

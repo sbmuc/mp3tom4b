@@ -1,23 +1,18 @@
 import type { Metadata } from 'next'
 import M4bMerger from '@/components/M4bMerger'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'Merge M4B Files: Combine Audiobooks Into One',
   description:
     'Merge several M4B or M4A files into one audiobook in your browser, ideal for multi-part books. Chapters, cover, and tags are kept. No upload, no signup.',
   alternates: { canonical: '/merge-m4b' },
-  openGraph: {
-    title: 'Merge M4B Files: Combine Audiobooks Into One, Free and Private',
-    description:
-      'Join multi-part M4B audiobooks into a single chaptered file, right in your browser. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'Merge M4B Files: Combine Audiobooks Into One, Free and Private',
-    description:
-      'Join multi-part M4B audiobooks into a single chaptered file, right in your browser. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
-  },
+  ...socialMetadata(
+    '/merge-m4b',
+    'Merge M4B Files: Combine Audiobooks Into One, Free and Private',
+    'Join multi-part M4B audiobooks into a single chaptered file, right in your browser. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
+  ),
 }
 
 const softwareApplicationLd = {

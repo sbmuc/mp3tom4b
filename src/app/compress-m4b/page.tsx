@@ -1,23 +1,18 @@
 import type { Metadata } from 'next'
 import CompressModeSwitch from '@/components/CompressModeSwitch'
 import Link from 'next/link'
+import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
   title: 'Compress M4B Online: Reduce Audiobook File Size',
   description:
     'M4B compressor in your browser: reduce an audiobook\'s file size by re-encoding it at 64, 96, or 128 kbps, with chapters and cover kept. No upload.',
   alternates: { canonical: '/compress-m4b' },
-  openGraph: {
-    title: 'Compress M4B Online: Reduce Audiobook File Size, Free and Private',
-    description:
-      'Build a compact, chaptered M4B in your browser at audiobook bitrates. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'Compress M4B Online: Reduce Audiobook File Size, Free and Private',
-    description:
-      'Build a compact, chaptered M4B in your browser at audiobook bitrates. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
-  },
+  ...socialMetadata(
+    '/compress-m4b',
+    'Compress M4B Online: Reduce Audiobook File Size, Free and Private',
+    'Build a compact, chaptered M4B in your browser at audiobook bitrates. Runs entirely client-side via WebAssembly, so your audio never leaves your device.',
+  ),
 }
 
 const softwareApplicationLd = {
