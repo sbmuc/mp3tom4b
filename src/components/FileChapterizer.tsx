@@ -23,6 +23,7 @@ import {
 import { track } from '@vercel/analytics'
 import {
   chapterizeFile,
+  describeSilenceResult,
   detectSilenceChapters,
   proposeEqualChapters,
   type ChapterizeCoverMode,
@@ -108,6 +109,8 @@ export default function FileChapterizer() {
   const [equalUnit, setEqualUnit] = useState<'chapters' | 'minutes'>('chapters')
   const [equalNote, setEqualNote] = useState<string | null>(null)
   const [minGapSec, setMinGapSec] = useState('1.5')
+  const [minChapterMin, setMinChapterMin] = useState('1')
+  const [silenceNote, setSilenceNote] = useState<{ text: string; found: boolean } | null>(null)
 
   // Cover
   const [coverMode, setCoverMode] = useState<ChapterizeCoverMode>('keep')
@@ -181,6 +184,7 @@ export default function FileChapterizer() {
     setDurationMs(0)
     setBitrate(64)
     setEqualNote(null)
+    setSilenceNote(null)
     setCoverMode('keep')
     setOriginalCoverFile(null)
     setReplaceFile(null)
@@ -201,6 +205,7 @@ export default function FileChapterizer() {
     setProgress(idleProgress)
     setResultBlob(null)
     setEqualNote(null)
+    setSilenceNote(null)
     setCoverMode('keep')
     setReplaceFile(null)
     setCoverError(null)
@@ -275,24 +280,32 @@ export default function FileChapterizer() {
       setEqualNote(null)
     }
     setRows(rowsFromStarts(starts))
+    setSilenceNote(null)
   }
 
   const runSilenceDetection = async () => {
     if (!file || isBusy) return
     cancelledRef.current = false
     const gap = Number(minGapSec)
+    const gapSec = Number.isFinite(gap) && gap > 0 ? gap : 1.5
+    const shortest = Number(minChapterMin)
+    // Chapter times are whole seconds, so chapters can't be closer than that.
+    const minChapterMs = Number.isFinite(shortest) && shortest > 0 ? Math.max(1000, Math.round(shortest * 60_000)) : 60_000
+    setSilenceNote(null)
     try {
-      const starts = await detectSilenceChapters(
+      const result = await detectSilenceChapters(
         file,
-        { minGapMs: Number.isFinite(gap) && gap > 0 ? gap * 1000 : 1500, durationMs },
+        { minGapMs: gapSec * 1000, minChapterMs, durationMs },
         (p) => {
           if (!cancelledRef.current) setProgress(p)
         },
       )
       if (cancelledRef.current) return
-      setRows(rowsFromStarts(starts))
+      // Keep the chapters already in the list when the scan found none.
+      if (result.starts.length > 1) setRows(rowsFromStarts(result.starts))
+      setSilenceNote({ text: describeSilenceResult(result, { minGapSec: gapSec, minChapterMs }), found: result.starts.length > 1 })
       setProgress(idleProgress)
-      track('chapters_detected', { chapterCount: starts.length })
+      track('chapters_detected', { chapterCount: result.starts.length })
     } catch {
       // error surfaced via onProgress
     }
@@ -503,7 +516,7 @@ export default function FileChapterizer() {
 
               <div className="hidden w-px self-stretch bg-zinc-200 sm:block dark:bg-zinc-700" aria-hidden="true" />
 
-              <div className="flex items-end gap-2">
+              <div className="flex flex-wrap items-end gap-2">
                 <div>
                   <label htmlFor="min-gap" className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">Detect chapters at pauses ≥</label>
                   <div className="flex items-center gap-2">
@@ -515,6 +528,17 @@ export default function FileChapterizer() {
                     <span className="text-sm text-zinc-500 dark:text-zinc-400">sec</span>
                   </div>
                 </div>
+                <div>
+                  <label htmlFor="min-chapter" className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">Shortest chapter</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="min-chapter" type="number" min={0.1} step={0.5} value={minChapterMin} disabled={isBusy}
+                      onChange={(e) => setMinChapterMin(e.target.value)}
+                      className={`${inputBase} w-20 font-mono`}
+                    />
+                    <span className="text-sm text-zinc-500 dark:text-zinc-400">min</span>
+                  </div>
+                </div>
                 <button type="button" onClick={() => void runSilenceDetection()} disabled={isBusy} className={smallBtn}>
                   <ScanLine size={14} aria-hidden="true" /> Detect from silence
                 </button>
@@ -523,6 +547,10 @@ export default function FileChapterizer() {
             {equalNote && (
               <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">{equalNote}</p>
             )}
+            <p role="status" aria-live="polite"
+              className={`text-xs ${silenceNote ? 'mt-2' : ''} ${silenceNote?.found ? 'text-zinc-700 dark:text-zinc-300' : 'text-amber-700 dark:text-amber-400'}`}>
+              {silenceNote?.text}
+            </p>
             <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
               Silence detection scans the whole file, so it takes a while on long books. You can always tweak the result below.
             </p>

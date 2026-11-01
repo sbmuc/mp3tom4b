@@ -3,6 +3,7 @@ import {
   buildChapterizeArgs,
   buildSegmentBoundaries,
   buildSegmentTimes,
+  describeSilenceResult,
   parseSilences,
   proposeChaptersFromSilence,
   proposeEqualChapters,
@@ -130,5 +131,26 @@ describe('buildChapterizeArgs', () => {
     expect(s).toContain('-map_metadata 2')
     expect(s).toContain('-map_chapters 2')
     expect(s).toContain('-b:a 96k')
+  })
+})
+
+describe('describeSilenceResult', () => {
+  const opts = { minGapSec: 1.5, minChapterMs: 60_000 }
+
+  it('says when no pause was long enough', () => {
+    expect(describeSilenceResult({ starts: [0], pauses: 0 }, opts)).toBe('No pauses of 1.5 s or longer found. Try a shorter pause.')
+  })
+
+  it('says when pauses were found but all were too close together', () => {
+    expect(describeSilenceResult({ starts: [0], pauses: 2 }, opts)).toBe(
+      'Found 2 pauses of 1.5 s or longer, but none comes at least 1 min after the start or the previous chapter. Lower the shortest chapter and detect again.',
+    )
+  })
+
+  it('counts the chapters made and the pauses skipped', () => {
+    expect(describeSilenceResult({ starts: [0, 90_000, 200_000], pauses: 3 }, { ...opts, minChapterMs: 30_000 })).toBe(
+      'Found 3 pauses of 1.5 s or longer and made 3 chapters. 1 pause was skipped because it came less than 30 s after the previous chapter.',
+    )
+    expect(describeSilenceResult({ starts: [0, 90_000], pauses: 1 }, opts)).toBe('Found 1 pause of 1.5 s or longer and made 2 chapters.')
   })
 })

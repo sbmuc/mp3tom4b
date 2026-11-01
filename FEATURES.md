@@ -98,7 +98,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 ## Add chapters to a single file
 
 - Available at `/add-chapters-to-mp3`: drop one long audio file (MP3, M4A, M4B, WAV, FLAC, OGG, Opus) and turn it into a chaptered M4B.
-- Three ways to set chapter marks: split evenly into a number of chapters (or one every N minutes), auto-detect chapters from the silent pauses (`silencedetect`, opt-in — a full decode pass with progress + wake lock), or enter/adjust the times by hand.
+- Three ways to set chapter marks: split evenly into a number of chapters (or one every N minutes), auto-detect chapters from the silent pauses (`silencedetect`, opt-in — a full decode pass with progress + wake lock; pause length and shortest chapter are adjustable, and a line afterwards says how many pauses were found, used and skipped), or enter/adjust the times by hand.
 - Editable chapter table (reused from the editor): first chapter pinned to 0:00:00, add/remove, auto-sort by time, live validation.
 - Metadata form (prefilled from the file) and cover (keep the file's own, upload a new image, or remove).
 - Bitrate 64 / 96 / 128 kbps; the audio stays one continuous stream with chapter markers added over it.

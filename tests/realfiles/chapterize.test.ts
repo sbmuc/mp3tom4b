@@ -11,7 +11,8 @@ describe.skipIf(!HAVE_FILES)('chapterizeFile on real narration', () => {
   it('finds chapter breaks at real pauses and keeps them on the audio', async () => {
     const file = await realFile(FULL ? AZKABAN_MP3 : chapterMp3s(BOOKS.goblet)[0])
     const durationMs = (await extractMetadata(file)).durationMs ?? 0
-    const starts = await detectSilenceChapters(file, { minGapMs: 1500, durationMs })
+    const { starts, pauses } = await detectSilenceChapters(file, { minGapMs: 1500, durationMs })
+    expect(pauses).toBeGreaterThanOrEqual(starts.length - 1)
     expect(starts[0]).toBe(0)
     starts.forEach((s, i) => {
       expect(s).toBeLessThan(durationMs)

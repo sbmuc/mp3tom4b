@@ -39,7 +39,7 @@ const FAQS = [
   },
   {
     q: 'How does "detect from silence" work?',
-    a: 'It scans the audio for quiet gaps and proposes a chapter break at each pause longer than the threshold you set. It reads the whole file, so it takes a while on long books — and you can always adjust the proposed chapters before converting.',
+    a: 'It scans the audio for quiet gaps and proposes a chapter break at each pause longer than the threshold you set, skipping pauses that would make a chapter shorter than the "Shortest chapter" length (1 minute unless you change it). Afterwards it tells you how many pauses it found and used. It reads the whole file, so it takes a while on long books, and you can always adjust the proposed chapters before converting.',
   },
   {
     q: 'Does this split the file into separate tracks?',

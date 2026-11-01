@@ -84,6 +84,40 @@ export function proposeChaptersFromSilence(
   return starts
 }
 
+/** What a silence scan found: the chapters it proposes and how many pauses it saw. */
+export interface SilenceChapters {
+  /** Chapter start times (ms), always starting at 0. */
+  starts: number[]
+  /** Pauses inside the file, including those too close to the previous chapter to use. */
+  pauses: number
+}
+
+const durationLabel = (ms: number) =>
+  ms % 60_000 === 0 ? `${ms / 60_000} min` : `${Math.round(ms / 1000)} s`
+
+/**
+ * One line telling the user what a silence scan did, so a scan that yields no
+ * chapters never looks like nothing happened. Pure + unit-testable.
+ */
+export function describeSilenceResult(
+  r: SilenceChapters,
+  opts: { minGapSec: number; minChapterMs: number },
+): string {
+  const gap = `${opts.minGapSec} s`
+  const shortest = durationLabel(opts.minChapterMs)
+  const pauses = `${r.pauses} pause${r.pauses === 1 ? '' : 's'}`
+  if (r.pauses === 0) return `No pauses of ${gap} or longer found. Try a shorter pause.`
+  const used = r.starts.length - 1
+  if (used === 0) {
+    return `Found ${pauses} of ${gap} or longer, but none comes at least ${shortest} after the start or the previous chapter. Lower the shortest chapter and detect again.`
+  }
+  const skipped = r.pauses - used
+  const made = `Found ${pauses} of ${gap} or longer and made ${r.starts.length} chapters`
+  return skipped > 0
+    ? `${made}. ${skipped} pause${skipped === 1 ? ' was' : 's were'} skipped because ${skipped === 1 ? 'it came' : 'they came'} less than ${shortest} after the previous chapter.`
+    : `${made}.`
+}
+
 /**
  * Split the timeline into equal chapters — either a fixed `count`, or one every
  * `intervalMs`. Always starts at 0; never emits a marker at/after the end.
@@ -206,7 +240,7 @@ export async function detectSilenceChapters(
   file: File,
   opts: { minGapMs?: number; minChapterMs?: number; durationMs?: number },
   onProgress?: (p: ConversionProgress) => void,
-): Promise<number[]> {
+): Promise<SilenceChapters> {
   const emit = (p: ConversionProgress) => onProgress?.(p)
   const minGapSec = Math.max(0.1, (opts.minGapMs ?? 1500) / 1000)
   const durationMs = opts.durationMs ?? 0
@@ -215,7 +249,15 @@ export async function detectSilenceChapters(
   // It reads the log, so it takes its turn with the other probes (serial.ts).
   const lines = await oneAtATime(() => scanForSilence(file, minGapSec, durationMs, emit))
   emit({ status: 'done', percent: 100, label: 'Done.' })
-  return proposeChaptersFromSilence(parseSilences(lines), durationMs, { minChapterMs: opts.minChapterMs })
+  const silences = parseSilences(lines)
+  const inside = silences.filter((s) => {
+    const mid = (s.startMs + s.endMs) / 2
+    return mid > 0 && (durationMs <= 0 || mid < durationMs)
+  })
+  return {
+    starts: proposeChaptersFromSilence(silences, durationMs, { minChapterMs: opts.minChapterMs }),
+    pauses: inside.length,
+  }
 }
 
 /** One silencedetect decode pass; returns the log lines it printed. */
