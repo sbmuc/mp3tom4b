@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.12.0] — 2026-11-01
+
+### Added
+- **A Tools menu in the header.** Every page now links to all seven tools (convert, compress, edit, merge, M4B to MP3, add chapters, player), each with a one-line description. Before, the header only linked to the compressor.
+- **"Add chapters" says what silence detection found.** After a scan, a line explains how many pauses it found and how many chapters it made, or why it made none. A new "Shortest chapter" setting (1 minute by default) controls how close together chapters may be. A scan that finds nothing no longer clears the chapters you already had.
+
+### Fixed
+- **A cover dropped together with the audio is kept.** If the MP3s carried their own cover art, it replaced the image you dropped alongside them, and dropping the image again said "Cover already set". Your dropped image now wins over art embedded in the audio; only a cover you picked in the Cover image section takes priority over a drop.
+- **The site works in in-app browsers.** Opening mp3tom4b from the Reddit, Instagram, or Facebook app could show "Your browser is missing the APIs we need", because the site still required a browser feature it no longer uses. The warning now only appears when a browser really can't run the converter.
+
+---
+
 ## [1.11.1] — 2026-10-27
 
 ### Fixed

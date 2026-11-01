@@ -49,6 +49,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Corrupt or unreadable images are rejected the moment they are added, rather than failing at the end of a conversion.
 - Auto-resize to 1200×1200 JPEG before embedding; non-square images are padded onto a white background.
 - Source badge on the cover preview ("from drop" or "from audio file") so users see at a glance how the cover was set.
+- Precedence: a cover picked in the Cover image section beats one dropped with the audio, which beats the one embedded in the audio. A dropped image replaces an embedded or earlier dropped cover; only a picked cover makes a drop say "Cover already set".
 - Remove-cover button.
 
 ## Conversion
@@ -135,11 +136,13 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## UI / UX
 
+- Header "Tools" menu listing all seven tools with a one-line description, on every page (Escape or a click outside closes it; full width on phones).
 - Drop zone with privacy badge directly underneath.
 - First-time visitor hint on the empty drop zone — short explainer of what M4B is, with a link to the FAQ.
 - Dismissible drop notices ("Used X as cover", "Cover already set", "N files skipped") that auto-dismiss after 6 seconds.
 - Dark mode that activates automatically based on operating-system preference.
 - Responsive layout that works on tablet; desktop is the optimised target.
+- Works in in-app browsers (Reddit, Instagram, Facebook): the single-threaded engine needs only WebAssembly and Web Workers, so the site sends no COOP/COEP headers and only warns when one of those two is missing.
 - Keyboard-accessible interactive elements; ARIA labels on icon-only buttons.
 - aria-live progress announcements during conversion.
 - Keeps the screen awake during conversion, compression, and splitting (while the tab is in the foreground) so a long job isn't interrupted by display sleep.
@@ -183,6 +186,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - TypeScript strict mode across the codebase.
 - Vitest unit tests covering chapter generation, file validation, metadata extraction, image resize, bitrate logic, ETA formatting, MP4 duration parsing, MP4 chapter reading (chapter track and `chpl`), player chapter navigation, and how inputs are joined.
+- CI (`.github/workflows/ci.yml`): lint, typecheck, unit and integration tests on every push to `main`/`dev` and every pull request.
 - Real-file tests (`npm run test:real`, `REAL_FULL=1` for whole books) that run every tool on the owner's own audiobooks, kept outside the repo and skipped when absent: two very different MP3 rips, 9- and 27-hour M4Bs from other tools, an 11-hour single MP3, and Google Drive ZIPs.
 - Integration tests (`npm run test:integration`) that run the real converter, compressor, chapterizer, and MP3 splitter against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy (never after the sound, no drift), the M4A copy path, metadata escaping, a 120-chapter split on one instance, nothing left behind after a failed join, files dropped together each read correctly, and covers embedded and kept — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
 - The ffmpeg-core JS is patched (`scripts/patch-ffmpeg-core.mjs`): one instance can run any number of commands (the stock core crashed after about 65 MP3 encodes), and mounted files are read 1 MB at a time instead of 32 KB, so reading from disk is as fast as reading from memory. Covers are encoded with standard JPEG Huffman tables (`src/lib/ffmpeg/cover.ts`): the core's optimal-table encoder overruns its buffer on many real covers.

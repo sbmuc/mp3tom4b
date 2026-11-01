@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import ToolsMenu from './ToolsMenu'
 
 const navLinkClass =
   'inline-flex min-h-[44px] items-center px-2 -mx-1 transition-colors hover:text-zinc-900 dark:hover:text-zinc-100'
@@ -6,7 +7,7 @@ const navLinkClass =
 export default function Header() {
   return (
     <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2">
+      <div className="relative mx-auto flex max-w-5xl items-center justify-between px-4 py-2">
         <Link
           href="/"
           className="group inline-flex min-h-[44px] items-baseline gap-0.5 text-xl font-semibold tracking-tight"
@@ -16,9 +17,7 @@ export default function Header() {
         </Link>
 
         <nav className="flex items-center gap-4 text-sm text-zinc-500 dark:text-zinc-400">
-          <Link href="/compress-m4b" className={navLinkClass}>
-            Compress
-          </Link>
+          <ToolsMenu className={navLinkClass} />
           <Link href="/about" className={navLinkClass}>
             About
           </Link>

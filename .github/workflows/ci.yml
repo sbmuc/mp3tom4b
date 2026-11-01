@@ -1,0 +1,33 @@
+name: CI
+
+# Lint, typecheck, unit and integration tests on every push and pull request.
+# The integration tests run the shipped ffmpeg-core (public/ffmpeg/) in Node.
+# The real-file suite (npm run test:real) needs the owner's own audiobooks,
+# which stay out of the repo, so it only runs locally.
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run test:integration
