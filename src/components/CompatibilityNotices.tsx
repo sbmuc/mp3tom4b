@@ -10,10 +10,11 @@ export default function CompatibilityNotices() {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    const hasSAB = typeof SharedArrayBuffer !== 'undefined'
-    const isolated = typeof crossOriginIsolated === 'undefined' ? false : crossOriginIsolated
+    // The single-threaded ffmpeg core needs WebAssembly and Web Workers, nothing
+    // more: no SharedArrayBuffer and no cross-origin isolation.
     const hasWasm = typeof WebAssembly !== 'undefined'
-    setCompat(hasSAB && isolated && hasWasm ? 'ok' : 'unsupported')
+    const hasWorker = typeof Worker !== 'undefined'
+    setCompat(hasWasm && hasWorker ? 'ok' : 'unsupported')
 
     const mq = window.matchMedia('(max-width: 639px)')
     setIsMobile(mq.matches)
@@ -31,9 +32,9 @@ export default function CompatibilityNotices() {
         >
           <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
           <div>
-            <p className="font-medium">Your browser is missing the APIs we need.</p>
+            <p className="font-medium">This browser can&apos;t run the converter.</p>
             <p className="mt-0.5 text-xs">
-              Conversion requires <code className="font-mono">SharedArrayBuffer</code> and a cross-origin-isolated context. Try the latest Chrome, Firefox, or Safari 16+ on desktop, and avoid in-app browsers (Facebook, Instagram, etc.).
+              It needs WebAssembly and Web Workers. Open this page in a recent Chrome, Edge, Firefox, or Safari.
             </p>
           </div>
         </div>

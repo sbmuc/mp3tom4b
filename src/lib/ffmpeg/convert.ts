@@ -24,8 +24,7 @@ import { probeDurationMs } from './probe'
 // Mutex for the singleton FFmpeg instance. Concurrent calls into the same
 // ffmpeg.wasm instance corrupt its wasm heap (manifests as
 // "RuntimeError: memory access out of bounds"), even though the JS API queues
-// messages — the MT core's SharedArrayBuffer-backed memory is particularly
-// sensitive. Parallel workers must serialize their writes to the singleton.
+// messages. Parallel workers must serialize their writes to the singleton.
 let singletonOpLock: Promise<void> = Promise.resolve()
 async function withSingleton<T>(op: (ffmpeg: FFmpeg) => Promise<T>): Promise<T> {
   const previous = singletonOpLock

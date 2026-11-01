@@ -12,7 +12,6 @@ const CORE_VERSION = '0.12.6'
 // The wasm is the stock one, so returning visitors don't download it again.
 const CORE_JS_URL = `/ffmpeg/${CORE_VERSION}-p2/ffmpeg-core.js`
 const CORE_WASM_URL = `/ffmpeg/${CORE_VERSION}/ffmpeg-core.wasm`
-const MT_WORKER_URL = `/ffmpeg/${CORE_VERSION}/ffmpeg-core.worker.js`
 
 let instance: FFmpeg | null = null
 let loadPromise: Promise<FFmpeg> | null = null
@@ -39,15 +38,13 @@ function rememberCoreSeen(): void {
   }
 }
 
-// Single-threaded blob URLs — used for parallel encoder worker instances
-// regardless of whether the singleton is MT. Multiple MT instances conflict
-// over their pthread pools (each spawns its own pool against shared
-// SharedArrayBuffer state) which causes loads or execs to fail. Workers run
-// on the ST core for reliability; we still get parallelism by running
-// multiple ST instances at once.
-let stCoreURL: string | null = null
-let stWasmURL: string | null = null
-let stLoadPromise: Promise<void> | null = null
+// Blob URLs of the core, made once by the singleton and reused by every
+// encoder worker instance. The core is single-threaded: it needs neither
+// SharedArrayBuffer nor cross-origin isolation, so the site sends no
+// COOP/COEP headers and works in in-app browsers too. Encoding still runs in
+// parallel, as several instances at once.
+let coreBlobURL: string | null = null
+let wasmBlobURL: string | null = null
 
 // Active encoder worker instances — terminated on cancel.
 const activeWorkers = new Set<FFmpeg>()
@@ -56,47 +53,20 @@ const activeWorkers = new Set<FFmpeg>()
 // on shared module state inside @ffmpeg/ffmpeg.
 let workerLoadLock: Promise<void> = Promise.resolve()
 
-/**
- * Multi-threaded ffmpeg.wasm is currently disabled. Running an MT instance
- * alongside ST worker instances (used for parallel encoding) corrupts the
- * shared wasm heap and crashes with "RuntimeError: memory access out of
- * bounds". With parallel ST workers we already saturate available cores via
- * separate instances, so we lose nothing by going all-ST — and we save the
- * ~30MB MT core download.
- *
- * Re-enable only if parallel encoding is removed or if @ffmpeg/ffmpeg gains
- * proper isolation between MT and ST instances in the same page.
- */
-function canUseMultiThreaded(): boolean {
-  return false
-}
-
-/**
- * Lazy-load and cache the singleton FFmpeg instance used for concat + mux.
- * Uses the multi-threaded core when possible, single-threaded otherwise.
- */
+/** Lazy-load and cache the singleton FFmpeg instance used for concat + mux. */
 export async function getFFmpeg(): Promise<FFmpeg> {
   if (instance) return instance
   if (loadPromise) return loadPromise
 
   loadPromise = (async () => {
     const ffmpeg = new FFmpeg()
-    const useMt = canUseMultiThreaded()
-
-    const [coreURL, wasmURL] = await Promise.all([
-      toBlobURL(CORE_JS_URL, 'text/javascript'),
-      toBlobURL(CORE_WASM_URL, 'application/wasm'),
-    ])
-
-    if (useMt) {
-      const workerURL = await toBlobURL(MT_WORKER_URL, 'text/javascript')
-      await ffmpeg.load({ coreURL, wasmURL, workerURL })
-    } else {
-      // When MT isn't available, the singleton is ST — reuse its blobs for workers.
-      stCoreURL = coreURL
-      stWasmURL = wasmURL
-      await ffmpeg.load({ coreURL, wasmURL })
+    if (!coreBlobURL || !wasmBlobURL) {
+      ;[coreBlobURL, wasmBlobURL] = await Promise.all([
+        toBlobURL(CORE_JS_URL, 'text/javascript'),
+        toBlobURL(CORE_WASM_URL, 'application/wasm'),
+      ])
     }
+    await ffmpeg.load({ coreURL: coreBlobURL, wasmURL: wasmBlobURL })
 
     instance = ffmpeg
     rememberCoreSeen()
@@ -107,31 +77,12 @@ export async function getFFmpeg(): Promise<FFmpeg> {
 }
 
 /**
- * Lazy-load the single-threaded core blob URLs. Idempotent and safe to call
- * concurrently from multiple workers — only the first call does the work.
- */
-async function ensureStBlobs(): Promise<void> {
-  if (stCoreURL && stWasmURL) return
-  if (stLoadPromise) return stLoadPromise
-  stLoadPromise = (async () => {
-    const [coreURL, wasmURL] = await Promise.all([
-      toBlobURL(CORE_JS_URL, 'text/javascript'),
-      toBlobURL(CORE_WASM_URL, 'application/wasm'),
-    ])
-    stCoreURL = coreURL
-    stWasmURL = wasmURL
-  })()
-  return stLoadPromise
-}
-
-/**
  * Create a short-lived single-threaded FFmpeg instance for parallel encoding.
  * Loads are serialized internally to avoid race conditions in @ffmpeg/ffmpeg.
  * Call releaseWorkerFFmpeg() when done.
  */
 export async function createWorkerFFmpeg(): Promise<FFmpeg> {
-  await getFFmpeg() // ensure singleton is up so cancel/teardown semantics line up
-  await ensureStBlobs()
+  await getFFmpeg() // makes the blob URLs, and keeps cancel/teardown semantics in line
 
   // Serialize loads so multiple concurrent createWorkerFFmpeg() calls don't
   // step on each other during initialization.
@@ -143,7 +94,7 @@ export async function createWorkerFFmpeg(): Promise<FFmpeg> {
   try {
     await previous
     const ffmpeg = new FFmpeg()
-    await ffmpeg.load({ coreURL: stCoreURL!, wasmURL: stWasmURL! })
+    await ffmpeg.load({ coreURL: coreBlobURL!, wasmURL: wasmBlobURL! })
     activeWorkers.add(ffmpeg)
     return ffmpeg
   } finally {

@@ -79,7 +79,7 @@ iTunes Search and Open Library already ship in V1.1. These would only land if re
 - **Chapter-title collision detection** — when multiple files have the same embedded title, warn and offer to deduplicate or rename.
 
 ### File handling improvements
-- **Larger file support** — investigate ffmpeg.wasm-mt (multithreaded) for files > 1.5GB. Requires COOP/COEP headers (already configured) and SharedArrayBuffer support.
+- **Larger file support** — investigate ffmpeg.wasm-mt (multithreaded) for files > 1.5GB. Requires SharedArrayBuffer, so COOP/COEP headers again (removed in Nov 2026 because the single-threaded core doesn't need them and they broke in-app browsers).
 - **Resume after browser crash** — auto-save conversion state every chapter so a refresh doesn't lose progress.
 
 ---
