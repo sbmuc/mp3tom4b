@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.14.0] — 2026-11-02
+
+### Added
+- **One long file? The converter now points you to chapters.** The converter makes one chapter per file, so a single long MP3 came out as one chapter (GitHub issue #1). When you drop one file of 15 minutes or more, a note offers "Add chapters to this file": it opens Add chapters with that file, the details you filled in, and the cover you dropped, so you can put chapters at the pauses or every few minutes without dropping anything again.
+- The homepage's first-visit note and the FAQ say how to get chapters into one long file.
+
+---
+
 ## [1.13.0] — 2026-11-01
 
 ### Changed

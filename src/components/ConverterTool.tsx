@@ -10,6 +10,7 @@ import MetadataForm from '@/components/MetadataForm'
 import MetadataLookup from '@/components/MetadataLookup'
 import MixedAlbumWarning from '@/components/MixedAlbumWarning'
 import ProgressBar from '@/components/ProgressBar'
+import SingleFileChaptersHint from '@/components/SingleFileChaptersHint'
 
 export default function ConverterTool() {
   return (
@@ -18,6 +19,7 @@ export default function ConverterTool() {
       <DropZone />
       <DuplicateNotice />
       <MixedAlbumWarning />
+      <SingleFileChaptersHint />
       <FileList />
       <MetadataForm />
       <MetadataLookup />

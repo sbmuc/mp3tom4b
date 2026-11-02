@@ -418,7 +418,14 @@ export default function DropZone() {
             <span className="font-medium text-zinc-900 dark:text-zinc-100">New here?</span>{' '}
             M4B is the audiobook format Apple Books, Plex, and most modern players recognise: chapters,
             cover art, and resume position in one tagged file. Drop your audio in and you&apos;ll get
-            back a single M4B with chapters at every file boundary.
+            back a single M4B with chapters at every file boundary. Is your book one long file?{' '}
+            <Link
+              href="/add-chapters-to-mp3"
+              className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400 dark:hover:text-accent-300"
+            >
+              Add chapters
+            </Link>{' '}
+            puts them at the pauses.
           </p>
           <ul className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
             <li className="flex items-center gap-2">

@@ -58,6 +58,13 @@ export async function makeFixtures(): Promise<void> {
     )
   }
 
+  // One 16-minute file, longer than the converter's "one long file" threshold.
+  // 8 kHz mono at 8 kbps keeps it under 1 MB and quick to make.
+  await make(
+    ['-f', 'lavfi', '-i', 'sine=frequency=300:duration=960:sample_rate=8000', '-ac', '1', '-c:a', 'libmp3lame', '-b:a', '8k'],
+    'long.mp3',
+  )
+
   // One 50 s MP3 of three 15 s tones with 2.5 s of silence between them.
   await make(
     [

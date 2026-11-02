@@ -64,6 +64,18 @@ test('converter: chapter MP3s and a dropped cover become one chaptered M4B', asy
   await expect(page.getByText('2 chapters')).toBeVisible()
 })
 
+test('converter: one long file is offered to Add chapters, with what was typed and the cover', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('long.mp3'), fixture('cover.jpg')])
+  await expect(page.getByText('One file becomes one chapter.')).toBeVisible()
+  await page.locator('#md-title').fill('Handed Over')
+  await page.getByRole('button', { name: 'Add chapters to this file' }).click()
+  await expect(page).toHaveURL(/\/add-chapters-to-mp3$/)
+  await expect(page.getByText('long.mp3')).toBeVisible()
+  await expect(page.locator('#ch-title')).toHaveValue('Handed Over')
+  await expect(page.getByText('Using a new cover image.')).toBeVisible()
+})
+
 test('compressor: a chaptered M4B gets smaller and keeps its chapters', async ({ page }) => {
   await page.goto('/compress-m4b')
   await page.getByLabel('Choose an M4B to compress').setInputFiles(fixture('book.m4b'))
