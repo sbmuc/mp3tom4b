@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { socialMetadata } from '@/lib/seo/social'
 
@@ -26,6 +27,21 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   {
     q: 'Which audio file types are supported?',
     a: 'MP3, M4A, WAV, FLAC, OGG, and Opus. Mixed formats in a single audiobook are fine, because each file is re-encoded to AAC at the bitrate you choose before being joined.',
+  },
+  {
+    q: 'My audiobook is one long MP3. Can it get chapters?',
+    a: 'Yes. The converter makes one chapter per file, so for one long file use Add chapters (mp3tom4b.com/add-chapters-to-mp3): put chapters at the pauses in the narration, split it every few minutes, or type the times, and it makes the M4B. If you drop a single long file on the homepage, it offers to take it there with what you have filled in.',
+    aNode: (
+      <>
+        Yes. The converter makes one chapter per file, so for one long file use{' '}
+        <Link href="/add-chapters-to-mp3" className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400">
+          Add chapters
+        </Link>
+        : put chapters at the pauses in the narration, split it every few minutes, or type the times, and it
+        makes the M4B. If you drop a single long file on the homepage, it offers to take it there with what you
+        have filled in.
+      </>
+    ),
   },
   {
     q: 'Can I drop a ZIP file?',

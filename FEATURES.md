@@ -22,6 +22,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## Chapters
 
+- One long file: when the converter holds a single file of 15 minutes or more, a note offers "Add chapters to this file", which opens Add chapters with the same file, the fields the user typed or looked up, and a dropped cover (handed over in memory by `src/lib/handoff.ts`; nothing is stored or uploaded).
 - Chapter title auto-generated from each filename (extension stripped, separators normalised, title-cased).
 - Embedded `title` tag is used as the chapter title only when it is unique across the dropped files; otherwise the filename is used, so a set that shares one album/book title doesn't become a run of identical chapters.
 - Each row shows the source filename beneath the title when they differ, with a pencil cue and hint making it clear titles are click-to-edit.

@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { trackEvent, trackFailure } from '@/lib/analytics'
+import { takeChapterizerHandoff } from '@/lib/handoff'
 import {
   chapterizeFile,
   describeSilenceResult,
@@ -322,6 +323,21 @@ export default function FileChapterizer() {
     setReplaceFile(f)
     setCoverMode('replace')
   }
+
+  // A file the converter handed over (its "Add chapters to this file" button):
+  // load it as if it had been dropped here, then apply what the user had typed
+  // and their cover there. Once, on arrival.
+  useEffect(() => {
+    const handoff = takeChapterizerHandoff()
+    if (!handoff) return
+    void (async () => {
+      await onDrop([handoff.file])
+      if (Object.keys(handoff.metadata).length > 0) setMetadata((m) => ({ ...m, ...handoff.metadata }))
+      if (handoff.cover) await replaceCover(handoff.cover)
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, on arrival
+  }, [])
+
   const removeCover = () => {
     setReplaceFile(null)
     setCoverMode('remove')
