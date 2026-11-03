@@ -43,6 +43,15 @@ export async function makeFixtures(): Promise<void> {
     )
   }
 
+  // Two short MP3s whose tag titles carry track numbers, as LibriVox's do.
+  for (const [n, title] of [[1, '01 - Opening'], [2, '02 - Closing']] as const) {
+    await make(
+      ['-f', 'lavfi', '-i', `sine=frequency=${500 + n * 50}:duration=3`, '-c:a', 'libmp3lame', '-b:a', '64k',
+        '-id3v2_version', '3', '-metadata', `title=${title}`, '-metadata', 'artist=E2E Author', '-metadata', 'album=Numbered Book'],
+      `numbered-${n}.mp3`,
+    )
+  }
+
   // Two 40 s M4Bs with two chapters and a cover each.
   for (const [name, hz] of [['book.m4b', 440], ['book-2.m4b', 550]] as const) {
     await ff.writeFile('meta.txt', META(name === 'book.m4b' ? 'E2E Book' : 'E2E Book Two'))

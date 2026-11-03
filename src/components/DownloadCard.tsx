@@ -6,6 +6,7 @@ import { useConversionStore } from '@/lib/store/conversionStore'
 import { formatBytes } from '@/lib/audio/format'
 import OutputPreview from '@/components/OutputPreview'
 import WhereToListen from '@/components/WhereToListen'
+import EditResultButton from '@/components/EditResultButton'
 
 function sanitizeFilename(value: string): string {
   return value.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim()
@@ -154,6 +155,7 @@ export default function DownloadCard() {
           <RotateCcw size={14} aria-hidden="true" />
           Start over
         </button>
+        <EditResultButton blob={outputBlob} fileName={resolved} />
       </div>
 
       {showConfirm && (

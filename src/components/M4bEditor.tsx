@@ -31,6 +31,7 @@ import OutputPreview from '@/components/OutputPreview'
 import type { ConversionMetadata, ConversionProgress, Genre } from '@/types'
 import ToolError from '@/components/ToolError'
 import DropPrompt from '@/components/DropPrompt'
+import { takeEditorHandoff } from '@/lib/handoff'
 
 const ACCEPTED_EXTENSIONS = ['.m4b', '.m4a']
 const ACTIVE_STATUSES = new Set(['loading-ffmpeg', 'muxing'])
@@ -321,6 +322,17 @@ export default function M4bEditor() {
     terminateFFmpeg()
     setProgress(idleProgress)
   }
+
+  // A finished M4B from another tool's "Edit chapters & tags": open it as if
+  // it had been dropped here. Once, on arrival.
+  useEffect(() => {
+    const handed = takeEditorHandoff()
+    if (!handed) return
+    void (async () => {
+      await onDrop([handed])
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, on arrival
+  }, [])
 
   const downloadName = (() => {
     const author = sanitizeFilename(metadata.author)

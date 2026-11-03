@@ -66,6 +66,26 @@ test('converter: chapter MP3s and a dropped cover become one chaptered M4B', asy
   await expect(page.getByText('2 chapters')).toBeVisible()
 })
 
+test('converter: the result opens in the editor', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toBeVisible()
+  await page.getByRole('button', { name: 'Edit chapters & tags' }).click()
+  await expect(page).toHaveURL(/\/edit-m4b-chapters$/)
+  await expect(page.getByLabel('Chapter title')).toHaveCount(2)
+  await expect(page.getByLabel('Chapter title').last()).toHaveValue('Chapter 2')
+})
+
+test('converter: shared track numbers are left out of the chapter titles', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('numbered-2.mp3'), fixture('numbered-1.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+  await expect(page.getByLabel('Chapter title').first()).toHaveValue('Opening')
+  await expect(page.getByLabel('Chapter title').last()).toHaveValue('Closing')
+})
+
 test('converter: Convert with an unreadable file goes to that file', async ({ page }) => {
   await page.goto('/')
   await page
@@ -175,6 +195,26 @@ test('converter: a file with its cue sheet is offered to Add chapters with those
   await page.getByRole('button', { name: 'Add chapters to this file' }).click()
   await expect(page).toHaveURL(/\/add-chapters-to-mp3$/)
   await expect(page.getByLabel('Chapter title').last()).toHaveValue('The End')
+})
+
+test('player: picks up where you left off', async ({ page }) => {
+  await page.goto('/m4b-player')
+  await page.getByLabel('Choose an audiobook to play').setInputFiles(fixture('long.mp3'))
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => document.querySelector('audio')?.currentTime ?? 0)).toBeGreaterThan(0)
+  await page.evaluate(() => {
+    const audio = document.querySelector('audio')!
+    audio.currentTime = 300
+  })
+  await expect(page.getByText(/^5:0\d$/).first()).toBeVisible()
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+
+  await page.reload()
+  await page.getByLabel('Choose an audiobook to play').setInputFiles(fixture('long.mp3'))
+  await expect(page.getByText(/Picked up where you left off, at 5:0\d\./)).toBeVisible()
+  expect(await page.evaluate(() => document.querySelector('audio')?.currentTime ?? 0)).toBeGreaterThanOrEqual(299)
+  await page.getByRole('button', { name: 'Start from the beginning' }).click()
+  expect(await page.evaluate(() => document.querySelector('audio')?.currentTime ?? -1)).toBeLessThan(1)
 })
 
 test('player: plays an M4B and shows its chapters', async ({ page }) => {

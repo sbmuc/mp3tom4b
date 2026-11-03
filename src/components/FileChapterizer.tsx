@@ -41,6 +41,7 @@ import OutputPreview from '@/components/OutputPreview'
 import WhereToListen from '@/components/WhereToListen'
 import ToolError from '@/components/ToolError'
 import DropPrompt from '@/components/DropPrompt'
+import EditResultButton from '@/components/EditResultButton'
 
 const ACCEPTED_EXTENSIONS = ['.mp3', '.m4a', '.m4b', '.wav', '.flac', '.ogg', '.opus']
 const BUSY_STATUSES = new Set(['loading-ffmpeg', 'probing', 'encoding'])
@@ -863,6 +864,7 @@ export default function FileChapterizer() {
               className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">
               <RotateCcw size={14} aria-hidden="true" /> Do another
             </button>
+            <EditResultButton blob={resultBlob} fileName={downloadName} />
           </div>
           <WhereToListen />
           <OutputPreview file={resultBlob} fileName={downloadName} />
