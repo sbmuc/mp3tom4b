@@ -5,6 +5,7 @@ import { useDropzone } from 'react-dropzone'
 import { ImageIcon, X } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { isDecodableImage } from '@/lib/image/validate'
+import DropPrompt from '@/components/DropPrompt'
 
 const ACCEPT = {
   'image/jpeg': ['.jpg', '.jpeg'],
@@ -82,7 +83,7 @@ export default function CoverUpload() {
               />
               {(coverSource === 'auto' || coverSource === 'drop') && (
                 <span className="absolute bottom-1 left-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-center text-[10px] font-medium text-white">
-                  {coverSource === 'drop' ? 'from drop · click to replace' : 'from audio file · click to replace'}
+                  {coverSource === 'drop' ? 'from drop' : 'from audio file'} · <DropPrompt mouse="click to replace" touch="tap to replace" />
                 </span>
               )}
             </div>
@@ -90,7 +91,7 @@ export default function CoverUpload() {
             <>
               <ImageIcon size={28} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
               <p className="mt-2 px-2 text-xs text-zinc-600 dark:text-zinc-400">
-                Drop or click to add cover
+                <DropPrompt mouse="Drop or click to add cover" touch="Tap to add a cover" />
               </p>
               <p className="mt-1 font-mono text-[10px] text-zinc-500 dark:text-zinc-400">
                 JPG · PNG

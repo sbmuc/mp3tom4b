@@ -29,6 +29,24 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
     a: 'MP3, M4A, WAV, FLAC, OGG, and Opus. Mixed formats in a single audiobook are fine, because each file is re-encoded to AAC at the bitrate you choose before being joined.',
   },
   {
+    q: 'How do I get the M4B into Apple Books or onto my phone?',
+    a: 'On a Mac, drag the file into the Books app; it shows up under Audiobooks. For an iPhone or iPad, connect it to your Mac, select it in Finder and sync the book on the Audiobooks tab (on Windows, use iTunes), or save the file to the Files app and open it in a free player such as BookPlayer. On Android, copy the file to your phone and open it in an audiobook app such as Voice or Smart AudioBook Player. For Audiobookshelf and other audiobook servers, put it in your audiobooks folder, one folder per book, and scan the library. On any computer, the M4B player on this site plays it in your browser, chapters included.',
+    aNode: (
+      <>
+        On a Mac, drag the file into the Books app; it shows up under Audiobooks. For an iPhone or iPad, connect it
+        to your Mac, select it in Finder and sync the book on the Audiobooks tab (on Windows, use iTunes), or save the
+        file to the Files app and open it in a free player such as BookPlayer. On Android, copy the file to your phone
+        and open it in an audiobook app such as Voice or Smart AudioBook Player. For Audiobookshelf and other
+        audiobook servers, put it in your audiobooks folder, one folder per book, and scan the library. On any
+        computer, the{' '}
+        <Link href="/m4b-player" className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400">
+          M4B player
+        </Link>{' '}
+        plays it in your browser, chapters included.
+      </>
+    ),
+  },
+  {
     q: 'My audiobook is one long MP3. Can it get chapters?',
     a: 'Yes. The converter makes one chapter per file, so for one long file use Add chapters (mp3tom4b.com/add-chapters-to-mp3): put chapters at the pauses in the narration, split it every few minutes, or type the times, and it makes the M4B. If you drop a single long file on the homepage, it offers to take it there with what you have filled in.',
     aNode: (

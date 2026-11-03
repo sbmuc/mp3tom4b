@@ -113,6 +113,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Auto-generated filename in `{Author} - {Title}.m4b` format.
 - Custom filename input — override the auto-generated name; the `.m4b` extension is added if missing, and a "reset" button restores the auto name.
 - "Start over" button to clear all state and begin a new conversion.
+- "Where to listen" with every new book (converter, merger, add-chapters): how to get the M4B into Apple Books on a Mac, onto an iPhone or iPad (Finder sync, or the Files app plus a player like BookPlayer), onto Android (Voice, Smart AudioBook Player), into Audiobookshelf, or into the site's own M4B player. The FAQ has the same answer.
 - Preview: play the result in the page before downloading (chapter list, chapter skipping, speed) to check the chapters land on the audio. Offered on every tool that produces an M4B: converter, compressor, chapter editor, merger, and add-chapters.
 
 ## Compress an existing M4B
@@ -151,6 +152,10 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Estimated time remaining on every long-running tool, projected from the recent rate of progress.
 - The one-time ~31 MB engine download is named in the progress label on first use, rather than looking like a stall; later visits (served from the browser cache) just say "Loading converter…".
 - Touch-sized (44px) drag, reset, and remove controls.
+- Drop zones say "Tap to choose …" on phones and tablets (no mouse, a finger as the main pointer) and "Drop …, or click to browse" elsewhere.
+- Clicking Convert before it's ready goes to the first thing missing: the empty drop zone, the unreadable file's remove button, or the title or author field.
+- The metadata form's example values read "e.g. The Hobbit", so they aren't mistaken for filled-in fields.
+- When a tool fails, the error says where to report it if it keeps happening (a GitHub issue or an email), without sending anything itself.
 
 ## Pages
 

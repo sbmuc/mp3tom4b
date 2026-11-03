@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useDropzone } from 'react-dropzone'
 import { AlertTriangle, Upload } from 'lucide-react'
 import AudioPlayer from '@/components/AudioPlayer'
+import DropPrompt from '@/components/DropPrompt'
 
 const ACCEPTED_EXTENSIONS = ['.m4b', '.m4a', '.mp4', '.mp3']
 
@@ -61,8 +62,8 @@ export default function M4bPlayer() {
           {isDragActive
             ? 'Drop your audiobook here'
             : file
-              ? 'Drop another file to play it instead'
-              : 'Drop an M4B to play it, or click to browse'}
+              ? <DropPrompt mouse="Drop another file to play it instead" touch="Tap to play another file" />
+              : <DropPrompt mouse="Drop an M4B to play it, or click to browse" touch="Tap to choose an M4B to play" />}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
           M4B · M4A · MP3 · plays from your device, nothing is uploaded

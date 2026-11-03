@@ -14,6 +14,7 @@ import { isDecodableImage } from '@/lib/image/validate'
 import { getFFmpeg } from '@/lib/ffmpeg/client'
 import { probeDurationViaAudioElement } from '@/lib/ffmpeg/probe'
 import type { AudioFile, ExtractedMetadata } from '@/types'
+import DropPrompt from '@/components/DropPrompt'
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.wav', '.flac', '.ogg', '.opus'])
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
@@ -412,7 +413,7 @@ export default function DropZone() {
         />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
-          {isDragActive ? 'Drop your files here' : 'Drop audio files + cover image, or click to browse'}
+          {isDragActive ? 'Drop your files here' : <DropPrompt mouse="Drop audio files + cover image, or click to browse" touch="Tap to choose audio files and a cover image" />}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
           MP3 · M4A · WAV · FLAC · OGG · Opus · JPG · PNG · CUE · ZIP

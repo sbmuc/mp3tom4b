@@ -74,7 +74,7 @@ export default function MetadataForm() {
             value={metadata.title}
             onChange={(e) => setMetadata({ title: e.target.value })}
             onBlur={() => markTouched('title')}
-            placeholder="The Hobbit"
+            placeholder="e.g. The Hobbit"
             aria-invalid={showTitleError || undefined}
             aria-describedby={showTitleError ? 'md-title-err' : undefined}
             className={`${inputBase} ${showTitleError ? inputErr : inputOk}`}
@@ -93,7 +93,7 @@ export default function MetadataForm() {
             value={metadata.author}
             onChange={(e) => setMetadata({ author: e.target.value })}
             onBlur={() => markTouched('author')}
-            placeholder="J.R.R. Tolkien"
+            placeholder="e.g. J.R.R. Tolkien"
             aria-invalid={showAuthorError || undefined}
             aria-describedby={showAuthorError ? 'md-author-err' : undefined}
             className={`${inputBase} ${showAuthorError ? inputErr : inputOk}`}
@@ -111,7 +111,7 @@ export default function MetadataForm() {
             type="text"
             value={metadata.narrator}
             onChange={(e) => setMetadata({ narrator: e.target.value })}
-            placeholder="Andy Serkis"
+            placeholder="e.g. Andy Serkis"
             className={`${inputBase} ${inputOk}`}
           />
         </div>

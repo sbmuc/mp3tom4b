@@ -60,8 +60,33 @@ test('converter: chapter MP3s and a dropped cover become one chaptered M4B', asy
   await expect(page.getByText('from drop')).toBeVisible()
   await page.getByRole('button', { name: 'Convert to M4B' }).click()
   await expect(page.getByText('Your audiobook is ready')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Where to listen' })).toBeVisible()
   await page.getByText('Preview: listen and check the chapters').click()
   await expect(page.getByText('2 chapters')).toBeVisible()
+})
+
+test('converter: Convert with an unreadable file goes to that file', async ({ page }) => {
+  await page.goto('/')
+  await page
+    .getByLabel('Choose audio files and a cover image')
+    .setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3'), fixture('broken.mp3')])
+  await expect(page.getByText('Could not read this file — remove it to convert')).toBeVisible()
+  // The button stays clickable while it's aria-disabled (it says what's
+  // missing); Playwright would otherwise wait for it to be enabled.
+  await page.getByRole('button', { name: 'Convert to M4B' }).click({ force: true })
+  const remove = page.getByRole('button', { name: 'Remove Broken' })
+  await expect(remove).toBeFocused()
+  await expect(remove).toBeInViewport()
+})
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  test('drop zones say tap instead of drop or click', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByText('Tap to choose audio files and a cover image')).toBeVisible()
+    await expect(page.getByText('Drop audio files + cover image, or click to browse')).toBeHidden()
+  })
 })
 
 test('converter: one long file is offered to Add chapters, with what was typed and the cover', async ({ page }) => {
