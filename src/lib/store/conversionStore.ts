@@ -3,6 +3,7 @@
 import { orderBy } from 'natural-orderby'
 import { create } from 'zustand'
 import { DEFAULT_BITRATE, suggestBitrate } from '@/lib/audio/bitrate'
+import type { CueSheet } from '@/lib/audio/cue'
 import { terminateFFmpeg } from '@/lib/ffmpeg/client'
 import type {
   AudioFile,
@@ -89,6 +90,10 @@ interface ConversionStore {
   /** Cancel a running conversion. Files and metadata are preserved for retry. */
   cancelConversion: () => void
 
+  /** A cue sheet dropped with a single audio file: its chapters, for Add chapters. */
+  cue: { file: File; sheet: CueSheet } | null
+  setCue: (cue: { file: File; sheet: CueSheet } | null) => void
+
   // Reset
   reset: () => void
 }
@@ -120,7 +125,11 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       return { files: sortFilesNatural(merged, state.sortDirection), outputBlob: null }
     }),
   removeFile: (id) =>
-    set((state) => ({ files: state.files.filter((f) => f.id !== id), outputBlob: null })),
+    set((state) => {
+      const files = state.files.filter((f) => f.id !== id)
+      // A cue sheet belongs to the file it came with; with no files left it goes too.
+      return { files, outputBlob: null, cue: files.length > 0 ? state.cue : null }
+    }),
   reorderFiles: (activeId, overId) =>
     set((state) => {
       const files = [...state.files]
@@ -250,6 +259,9 @@ export const useConversionStore = create<ConversionStore>((set) => ({
     })
   },
 
+  cue: null,
+  setCue: (cue) => set({ cue }),
+
   reset: () => {
     if (duplicateTimeout) {
       clearTimeout(duplicateTimeout)
@@ -274,6 +286,7 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       outputBlob: null,
       duplicateNotice: null,
       flashingIds: new Set(),
+      cue: null,
     })
   },
 }))

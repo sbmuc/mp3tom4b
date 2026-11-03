@@ -27,8 +27,8 @@ describe('singleLongFile', () => {
 describe('handOffToChapterizer', () => {
   it('hands a file over once', () => {
     const file = new File([new Uint8Array(1)], 'book.mp3')
-    handOffToChapterizer({ file, cover: null, metadata: { title: 'Typed' } })
-    expect(takeChapterizerHandoff()).toEqual({ file, cover: null, metadata: { title: 'Typed' } })
+    handOffToChapterizer({ file, cover: null, cue: null, metadata: { title: 'Typed' } })
+    expect(takeChapterizerHandoff()).toEqual({ file, cover: null, cue: null, metadata: { title: 'Typed' } })
     expect(takeChapterizerHandoff()).toBeNull()
   })
 })

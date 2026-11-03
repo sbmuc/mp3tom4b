@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.15.0] — 2026-11-03
+
+### Added
+- **Cue sheets give exact chapters.** Drop one long audio file together with its .cue file (the cue sheet rippers like EAC, foobar2000 and XLD write) and every track becomes a chapter, with its exact time and title, instead of guessing from silences. On the homepage the note says how many chapters the cue sheet has and opens Add chapters with them filled in; on Add chapters you can drop the audio and the .cue together. The cue sheet's title and performer fill the book's title and author when the file has no tags. Cue sheets in older encodings and inside ZIPs work too; cue sheets that span several files (one per CD) aren't supported yet and are reported instead of being silently skipped.
+
+---
+
 ## [1.14.0] — 2026-11-02
 
 ### Added

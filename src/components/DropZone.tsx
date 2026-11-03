@@ -6,6 +6,7 @@ import { useDropzone } from 'react-dropzone'
 import { Bookmark, BookOpen, Image as ImageIcon, Upload, X } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { guessType, isZipFile, unzipFiles } from '@/lib/archive/zip'
+import { decodeCueBytes, parseCue } from '@/lib/audio/cue'
 import { validateFiles } from '@/lib/audio/validate'
 import { fileNameToChapterTitle } from '@/lib/audio/format'
 import { extractMetadata } from '@/lib/audio/metadata'
@@ -18,7 +19,7 @@ const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.wav', '.flac', '.ogg', '.opu
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
 // Sidecar files common in audiobook folders. Still reported when skipped —
 // dropping a folder shouldn't silently swallow things the user can see in it.
-const JUNK_EXTENSIONS = new Set(['.txt', '.nfo', '.cue', '.log', '.m3u', '.m3u8', '.sfv', '.pdf', '.xml', '.json'])
+const JUNK_EXTENSIONS = new Set(['.txt', '.nfo', '.log', '.m3u', '.m3u8', '.sfv', '.pdf', '.xml', '.json'])
 
 /** "a.txt, b.pdf and 2 more" — keeps a long skip list readable. */
 function formatNameList(names: string[], max = 3): string {
@@ -31,7 +32,7 @@ function getExt(name: string): string {
   return i >= 0 ? name.slice(i).toLowerCase() : ''
 }
 
-type FileClass = 'audio' | 'image' | 'junk' | 'unknown'
+type FileClass = 'audio' | 'image' | 'cue' | 'junk' | 'unknown'
 
 function classifyFile(file: File): FileClass {
   return classifyName(file.name)
@@ -42,6 +43,7 @@ function classifyName(name: string): FileClass {
   const ext = getExt(name)
   if (AUDIO_EXTENSIONS.has(ext)) return 'audio'
   if (IMAGE_EXTENSIONS.has(ext)) return 'image'
+  if (ext === '.cue') return 'cue'
   if (JUNK_EXTENSIONS.has(ext)) return 'junk'
   return 'unknown'
 }
@@ -107,6 +109,7 @@ export default function DropZone() {
   const setDuplicateNotice = useConversionStore((s) => s.setDuplicateNotice)
   const flashFiles = useConversionStore((s) => s.flashFiles)
   const setCoverFileDrop = useConversionStore((s) => s.setCoverFileDrop)
+  const setCue = useConversionStore((s) => s.setCue)
   const isEmpty = useConversionStore((s) => s.files.length === 0)
 
   const [notices, setNotices] = useState<DropNotice[]>([])
@@ -165,7 +168,7 @@ export default function DropZone() {
         const what = zips.length === 1 ? `"${zips[0].name}"` : `${zips.length} ZIP files`
         const progressId = addNotice(`Unpacking ${what}…`, true)
         const unpacked = await unzipFiles(zips, {
-          keep: (name) => ['audio', 'image'].includes(classifyName(name)),
+          keep: (name) => ['audio', 'image', 'cue'].includes(classifyName(name)),
           typeOf: guessType,
           onProgress: (done, total) =>
             updateNotice(progressId, `Unpacking ${what}… ${Math.round((done / Math.max(1, total)) * 100)}%`),
@@ -181,6 +184,7 @@ export default function DropZone() {
 
       const audioFiles: File[] = []
       const imageFiles: File[] = []
+      const cueFiles: File[] = []
       // Everything that is neither audio nor a usable image goes in
       // skippedNonAudio (above), reported by name so a folder or ZIP drop never
       // silently swallows a file the user can see.
@@ -189,6 +193,7 @@ export default function DropZone() {
         switch (classifyFile(file)) {
           case 'audio': audioFiles.push(file); break
           case 'image': imageFiles.push(file); break
+          case 'cue': cueFiles.push(file); break
           default: skippedNonAudio.push(file.name)
         }
       }
@@ -335,6 +340,26 @@ export default function DropZone() {
         }
       }
 
+      // A cue sheet: its tracks are the chapters of one long file. Kept for the
+      // "Add chapters" hint, which opens that tool with them filled in.
+      if (cueFiles.length > 0) {
+        const [cueFile, ...extra] = cueFiles
+        const sheet = parseCue(decodeCueBytes(new Uint8Array(await cueFile.arrayBuffer())))
+        if (!sheet) {
+          addNotice(`"${cueFile.name}" doesn't list any tracks, so it was skipped.`, true)
+        } else if (sheet.files.length > 1) {
+          addNotice(
+            `"${cueFile.name}" covers ${sheet.files.length} files. Each file already becomes a chapter here; cue sheets for one file are what's supported so far.`,
+            true,
+          )
+        } else {
+          setCue({ file: cueFile, sheet })
+        }
+        if (extra.length > 0) {
+          addNotice(`Used "${cueFile.name}"; ${extra.length} other cue sheet${extra.length > 1 ? 's' : ''} ignored.`)
+        }
+      }
+
       // Always report non-audio files that were dropped — including when the drop
       // contained nothing else, which previously did nothing at all. An M4B is
       // already an audiobook (often next to the MP3s in a downloaded ZIP), so
@@ -356,7 +381,7 @@ export default function DropZone() {
 
       folderNameRef.current = null
     },
-    [addFiles, applyAutoMetadata, applySmartBitrate, setDuplicateNotice, flashFiles, setCoverFileDrop, addNotice, updateNotice, dismissNotice]
+    [addFiles, applyAutoMetadata, applySmartBitrate, setDuplicateNotice, flashFiles, setCoverFileDrop, setCue, addNotice, updateNotice, dismissNotice]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -383,14 +408,14 @@ export default function DropZone() {
         <input
           {...getInputProps()}
           aria-label="Choose audio files and a cover image"
-          accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.opus,image/jpeg,image/png,.jpg,.jpeg,.png,.zip,application/zip"
+          accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.opus,image/jpeg,image/png,.jpg,.jpeg,.png,.cue,.zip,application/zip"
         />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your files here' : 'Drop audio files + cover image, or click to browse'}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-          MP3 · M4A · WAV · FLAC · OGG · Opus · JPG · PNG · ZIP
+          MP3 · M4A · WAV · FLAC · OGG · Opus · JPG · PNG · CUE · ZIP
         </p>
       </div>
 
