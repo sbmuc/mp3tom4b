@@ -41,10 +41,12 @@ const LEADING_NUMBER = /^\s*(\d{1,3})(?:\s*[-–—.:)]\s*|\s+)(\S.*)$/
 /**
  * Chapter titles without the track numbers in front ("01 - The Happy Prince",
  * "3. Home Again", "07 Finale"), but only when every title has one, no number
- * repeats, and something is left after it. A whole set numbered like that is
- * numbering, which players show themselves; a lone "1984" or "12 Angry Men"
- * among plain titles is a name and stays. At most three digits, so a year at
- * the start is never taken for a track number.
+ * repeats, something is left after it, and what's left still tells the
+ * chapters apart. A whole set numbered like that is numbering, which players
+ * show themselves; a lone "1984" or "12 Angry Men" among plain titles is a
+ * name and stays. When the number is all that differs ("01 Book Title",
+ * "1 of 3", "1 John"), it stays too. At most three digits, so a year at the
+ * start is never taken for a track number.
  */
 export function stripTrackNumbers(titles: string[]): string[] {
   if (titles.length < 2) return titles
@@ -52,8 +54,10 @@ export function stripTrackNumbers(titles: string[]): string[] {
   if (parts.some((m) => m === null)) return titles
   const numbers = new Set(parts.map((m) => Number(m![1])))
   if (numbers.size !== titles.length) return titles
-  return parts.map((m) => {
+  const stripped = parts.map((m) => {
     const rest = m![2].trim()
     return rest.charAt(0).toUpperCase() + rest.slice(1)
   })
+  if (new Set(stripped.map((t) => t.toLowerCase())).size !== stripped.length) return titles
+  return stripped
 }
