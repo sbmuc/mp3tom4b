@@ -3,9 +3,17 @@ import { failureReason } from '@/lib/ffmpeg/errors'
 /** Event properties: counts, sizes, durations and settings only. */
 export type EventData = Record<string, string | number | boolean>
 
+/** The fields Umami sends with an event (its own payload, which we only adjust). */
+export interface UmamiPayload {
+  url?: string
+  name?: string
+  data?: EventData
+  [field: string]: unknown
+}
+
 declare global {
   interface Window {
-    umami?: { track: (name: string, data?: EventData) => void }
+    umami?: { track: (payload: (base: UmamiPayload) => UmamiPayload) => void }
   }
 }
 
@@ -18,7 +26,11 @@ declare global {
  */
 export function trackEvent(name: string, data?: EventData): void {
   try {
-    window.umami?.track(name, data)
+    // Umami's page is the one the script loaded on: with its automatic page
+    // views off it doesn't follow client-side navigation, so an event fired on
+    // /add-chapters-to-mp3 after arriving on / was filed under /. Send the
+    // page the event really happened on.
+    window.umami?.track((base) => ({ ...base, url: window.location.pathname, name, data }))
   } catch {
     // analytics must never get in the way
   }
