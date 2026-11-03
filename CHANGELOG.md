@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.18.0] — 2026-11-03
+
+### Added
+- **The M4B player picks up where you left off.** Open the same file again and it continues where you stopped, with a button to start from the beginning instead. Your place is kept only in your browser on this device, under a scrambled code rather than the file name, and is forgotten when you finish the book. The privacy policy says so.
+- **Edit chapters & tags, straight from the result.** Every tool that makes an M4B now has a button that opens the finished file in the editor, so fixing a chapter title, a tag or the cover takes seconds, without downloading and dropping it again.
+
+### Changed
+- **Chapter titles without track numbers.** When every file's title starts with its number, like LibriVox's "01 - The Happy Prince", the number is left out: "The Happy Prince". Titles where only some start with a number, like "1984", are kept as they are.
+
+---
+
 ## [1.17.0] — 2026-11-03
 
 ### Added

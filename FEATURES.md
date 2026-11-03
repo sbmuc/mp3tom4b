@@ -24,6 +24,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - Cue sheets: a `.cue` dropped with one audio file (loose or in a ZIP) is read in the browser (`src/lib/audio/cue.ts`: UTF-8 or Windows-1252, INDEX 01 times in 1/75 s frames, minutes past 99). On the homepage it turns the single-file note into "This file has a cue sheet with N chapters" and goes along to Add chapters; on Add chapters, dropping audio plus `.cue` fills the chapter list with the tracks' titles and times (whole seconds, rounded down; tracks past the end or in the same second are left out and counted), and the sheet's TITLE/PERFORMER fill the title and author when the file has no tags. Sheets that span several files are reported and not used.
 - One long file: when the converter holds a single file of 15 minutes or more, a note offers "Add chapters to this file", which opens Add chapters with the same file, the fields the user typed or looked up, and a dropped cover (handed over in memory by `src/lib/handoff.ts`; nothing is stored or uploaded).
+- Shared track numbers are left out of chapter titles: when every readable file in a drop starts with a distinct number of up to three digits ("01 - The Happy Prince", "3. Home", "07 Finale"), the number is dropped (`stripTrackNumbers` in `src/lib/audio/format.ts`). A lone "1984" among plain titles stays; the list still sorts by file name.
 - Chapter title auto-generated from each filename (extension stripped, separators normalised, title-cased).
 - Embedded `title` tag is used as the chapter title only when it is unique across the dropped files; otherwise the filename is used, so a set that shares one album/book title doesn't become a run of identical chapters.
 - Each row shows the source filename beneath the title when they differ, with a pencil cue and hint making it clear titles are click-to-edit.
@@ -113,6 +114,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Auto-generated filename in `{Author} - {Title}.m4b` format.
 - Custom filename input — override the auto-generated name; the `.m4b` extension is added if missing, and a "reset" button restores the auto name.
 - "Start over" button to clear all state and begin a new conversion.
+- "Edit chapters & tags" on every result card that makes an M4B (converter, compressor, merger, add-chapters) opens the finished file in the editor, handed over in memory (`src/lib/handoff.ts`), so a fix doesn't need a download, a new drop, or another conversion.
 - "Where to listen" with every new book (converter, merger, add-chapters): how to get the M4B into Apple Books on a Mac, onto an iPhone or iPad (Finder sync, or the Files app plus a player like BookPlayer), onto Android (Voice, Smart AudioBook Player), into Audiobookshelf, or into the site's own M4B player. The FAQ has the same answer, and the iPhone and Android rows link to their guides.
 - Preview: play the result in the page before downloading (chapter list, chapter skipping, speed) to check the chapters land on the audio. Offered on every tool that produces an M4B: converter, compressor, chapter editor, merger, and add-chapters.
 
@@ -129,12 +131,13 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## M4B player
 
-- Available at `/m4b-player`: drop an `.m4b`, `.m4a`, or `.mp3` and it plays in the browser's own audio element from a local `blob:` URL — nothing is uploaded or stored.
+- Available at `/m4b-player`: drop an `.m4b`, `.m4a`, or `.mp3` and it plays in the browser's own audio element from a local `blob:` URL — nothing is uploaded.
 - Shows the cover, title, author, narrator, chapter count, and length from the file's tags.
 - Chapter list with the playing chapter highlighted and kept in view; click a chapter to play from its start. Chapters come from the MP4 chapter track (falling back to the Nero `chpl` box) or from MP3 ID3 chapters, read without loading ffmpeg.
 - Previous / next chapter ("previous" restarts the current chapter after its first 3 seconds), 15 s back, 30 s forward, a seek bar over the whole book, time left in the chapter, and 0.75×–2× speed.
 - Lock-screen, headset, and media-key controls via the Media Session API, with the chapter title and cover shown.
 - Files without chapters get a pointer to the chapter editor (M4B) or "Add chapters to MP3" (MP3).
+- Picks up where you left off: the position per book is kept in this browser's localStorage under a SHA-256 of the file name and size (`src/lib/audio/resume.ts`), saved every 5 s, on pause and when the page closes, cleared at the end; the 50 most recently played books are kept. Reopening the file jumps there (not within 30 s of either end) with a "Start from the beginning" button. Previews on the tool pages don't remember.
 - The same player powers the download preview on every M4B tool.
 
 ## UI / UX
@@ -190,6 +193,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - All file processing happens in the browser via WebAssembly. No file is uploaded.
 - The only network calls during normal use are: loading the page itself, loading ffmpeg.wasm on first conversion, and (only on explicit "Look up online" click) sending title/author/narrator to iTunes Search and/or Open Library.
 - Cookieless analytics: Vercel Analytics for page views, visitors, countries and referrers, and Umami (`src/lib/analytics.ts`) for anonymous per-tool events only (its automatic page views are off, because through the proxy it sees Vercel's IP, not the visitor's): success, and failure with only the kind of error, carrying counts, sizes, durations and settings, never file names or content. Umami is served through `/stats` on our own domain, counts only www.mp3tom4b.com, and honours Do Not Track.
+- The only thing kept between visits is the M4B player's position per book, in localStorage on the device, keyed by a hash rather than the file name (plus a flag that the engine was downloaded before).
 - No third-party tracking scripts, no ads, no sign-up.
 - Source code is open on GitHub for independent auditing.
 

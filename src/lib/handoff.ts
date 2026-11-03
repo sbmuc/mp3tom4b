@@ -33,3 +33,18 @@ export function takeChapterizerHandoff(): ChapterizerHandoff | null {
   pending = null
   return handoff
 }
+
+// A finished M4B from another tool's result card ("Edit chapters & tags"),
+// for the editor to open as if it had been dropped there. Same rules: memory
+// only, taken once.
+let pendingEdit: File | null = null
+
+export function handOffToEditor(file: File): void {
+  pendingEdit = file
+}
+
+export function takeEditorHandoff(): File | null {
+  const file = pendingEdit
+  pendingEdit = null
+  return file
+}

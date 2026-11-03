@@ -28,6 +28,7 @@ import type { Bitrate, ConversionProgress } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
 import ToolError from '@/components/ToolError'
 import DropPrompt from '@/components/DropPrompt'
+import EditResultButton from '@/components/EditResultButton'
 
 const ACCEPTED_EXTENSIONS = ['.m4b', '.m4a']
 const ACTIVE_STATUSES = new Set(['loading-ffmpeg', 'encoding'])
@@ -439,6 +440,7 @@ export default function M4bCompressor() {
               <RotateCcw size={14} aria-hidden="true" />
               Compress another
             </button>
+            <EditResultButton blob={outputBlob} fileName={downloadName} />
           </div>
           <OutputPreview file={outputBlob} fileName={downloadName} />
         </div>
