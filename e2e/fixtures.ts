@@ -65,6 +65,19 @@ export async function makeFixtures(): Promise<void> {
     'long.mp3',
   )
 
+  // A cue sheet for pauses.mp3 as a ripper would write it: Windows line ends,
+  // named after a WAV, chapters at the middle of each pause (16.25 s, 33.75 s).
+  writeFileSync(
+    fixture('pauses.cue'),
+    [
+      'PERFORMER "Cue Author"', 'TITLE "Cue Book"', 'FILE "pauses.wav" WAVE',
+      '  TRACK 01 AUDIO', '    TITLE "Opening"', '    INDEX 01 00:00:00',
+      '  TRACK 02 AUDIO', '    TITLE "The Middle"', '    INDEX 01 00:16:19',
+      '  TRACK 03 AUDIO', '    TITLE "The End"', '    INDEX 01 00:33:56',
+      '',
+    ].join('\r\n'),
+  )
+
   // One 50 s MP3 of three 15 s tones with 2.5 s of silence between them.
   await make(
     [

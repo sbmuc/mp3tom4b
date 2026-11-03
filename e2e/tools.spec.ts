@@ -123,6 +123,34 @@ test('add chapters: silence detection finds the pauses and the M4B is made', asy
   await expect(page.getByText('Your chaptered audiobook is ready')).toBeVisible()
 })
 
+test('add chapters: a cue sheet dropped with the file gives the chapters and titles', async ({ page }) => {
+  await page.goto('/add-chapters-to-mp3')
+  await page
+    .getByLabel('Choose an audio file to add chapters to')
+    .setInputFiles([fixture('pauses.mp3'), fixture('pauses.cue')])
+  await expect(page.getByText('3 chapters from "pauses.cue".')).toBeVisible()
+  await expect(page.getByLabel('Chapter title')).toHaveCount(3)
+  await expect(page.getByLabel('Chapter title').nth(1)).toHaveValue('The Middle')
+  await expect(page.getByLabel('Chapter start time').nth(2)).toHaveValue('0:00:33')
+  // The file has no tags, so the sheet's TITLE and PERFORMER fill them.
+  await expect(page.locator('#ch-title')).toHaveValue('Cue Book')
+  await expect(page.locator('#ch-author')).toHaveValue('Cue Author')
+  await page.getByRole('button', { name: 'Create chaptered M4B' }).click()
+  await expect(page.getByText('Your chaptered audiobook is ready')).toBeVisible()
+  await page.getByText('Preview: listen and check the chapters').click()
+  await expect(page.getByText('3 chapters')).toBeVisible()
+  await expect(page.getByText('The Middle').last()).toBeVisible()
+})
+
+test('converter: a file with its cue sheet is offered to Add chapters with those chapters', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('pauses.mp3'), fixture('pauses.cue')])
+  await expect(page.getByText('This file has a cue sheet with 3 chapters.')).toBeVisible()
+  await page.getByRole('button', { name: 'Add chapters to this file' }).click()
+  await expect(page).toHaveURL(/\/add-chapters-to-mp3$/)
+  await expect(page.getByLabel('Chapter title').last()).toHaveValue('The End')
+})
+
 test('player: plays an M4B and shows its chapters', async ({ page }) => {
   await page.goto('/m4b-player')
   await page.getByLabel('Choose an audiobook to play').setInputFiles(fixture('book.m4b'))

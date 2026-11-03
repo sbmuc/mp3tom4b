@@ -37,6 +37,10 @@ const FAQS = [
     a: 'It scans the audio for quiet gaps and proposes a chapter break at each pause longer than the threshold you set, skipping pauses that would make a chapter shorter than the "Shortest chapter" length (1 minute unless you change it). Afterwards it tells you how many pauses it found and used. It reads the whole file, so it takes a while on long books, and you can always adjust the proposed chapters before converting.',
   },
   {
+    q: 'Can I use a .cue file for the chapters?',
+    a: 'Yes. Drop the audio file together with its cue sheet (the .cue file rippers like EAC, foobar2000 and XLD write next to one big file) and every track becomes a chapter, with its exact start time and title. The sheet\'s title and performer fill in the book\'s title and author when the file has no tags. Cue sheets that span several files, one per CD, aren\'t supported yet.',
+  },
+  {
     q: 'Does this split the file into separate tracks?',
     a: 'No. It keeps the audio as one continuous file and adds chapter markers over it, so you get a single tidy M4B. To split an M4B into one MP3 per chapter instead, use the M4B to MP3 tool.',
   },

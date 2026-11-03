@@ -12,6 +12,8 @@ export interface ChapterizerHandoff {
   file: File
   /** A cover the user dropped or picked; null to keep the file's own. */
   cover: File | null
+  /** A cue sheet dropped with the file; its tracks become the chapters. */
+  cue: File | null
   /** Only the fields the user typed or looked up; the rest is re-read from the tags. */
   metadata: Partial<ConversionMetadata>
 }

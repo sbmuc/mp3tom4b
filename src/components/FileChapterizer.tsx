@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { trackEvent, trackFailure } from '@/lib/analytics'
 import { takeChapterizerHandoff } from '@/lib/handoff'
+import { decodeCueBytes, isCueFile, parseCue, type CueChapter } from '@/lib/audio/cue'
 import {
   chapterizeFile,
   describeSilenceResult,
@@ -88,6 +89,29 @@ function parseTimecode(str: string): number | null {
 
 const rowsFromStarts = (starts: number[]): Row[] =>
   starts.map((ms, i) => ({ id: crypto.randomUUID(), timeStr: formatTimecode(ms), title: `Chapter ${i + 1}` }))
+
+/**
+ * Rows from a cue sheet's tracks, in whole seconds like the rest of this tool
+ * (rounded down, so a marker never lands after its chapter starts). The first
+ * starts at 0:00:00; tracks past the end of the file, or a second track in the
+ * same second, are left out and counted.
+ */
+function rowsFromCue(chapters: CueChapter[], durationMs: number): { rows: Row[]; leftOut: number } {
+  const rows: Row[] = []
+  let lastSec = -1
+  let leftOut = 0
+  chapters.forEach((c, i) => {
+    const ms = i === 0 ? 0 : c.startMs
+    const sec = Math.floor(ms / 1000)
+    if ((durationMs > 0 && ms >= durationMs) || sec <= lastSec) {
+      leftOut++
+      return
+    }
+    lastSec = sec
+    rows.push({ id: crypto.randomUUID(), timeStr: formatTimecode(ms), title: c.title })
+  })
+  return { rows, leftOut }
+}
 
 export default function FileChapterizer() {
   const [file, setFile] = useState<File | null>(null)
@@ -196,10 +220,18 @@ export default function FileChapterizer() {
   }
 
   const onDrop = useCallback(async (accepted: File[]) => {
-    const candidate = accepted.find((f) => !f.name.startsWith('.'))
-    if (!candidate) return
-    if (!hasAcceptedExtension(candidate.name)) {
-      setInputError('That file type is not supported. Drop an MP3, M4A, M4B, WAV, FLAC, OGG, or Opus file.')
+    const visible = accepted.filter((f) => !f.name.startsWith('.'))
+    // One audio file, optionally with its cue sheet.
+    const cueFile = visible.find((f) => isCueFile(f.name)) ?? null
+    const candidate = visible.find((f) => hasAcceptedExtension(f.name))
+    if (!candidate) {
+      if (visible.length > 0) {
+        setInputError(
+          cueFile
+            ? 'Drop the audio file together with its cue sheet.'
+            : 'That file type is not supported. Drop an MP3, M4A, M4B, WAV, FLAC, OGG, or Opus file.',
+        )
+      }
       return
     }
     setInputError(null)
@@ -228,9 +260,33 @@ export default function FileChapterizer() {
       }
       setDurationMs(dur)
       setRows([{ id: crypto.randomUUID(), timeStr: '0:00:00', title: 'Chapter 1' }])
+
+      const sheet = cueFile ? parseCue(decodeCueBytes(new Uint8Array(await cueFile.arrayBuffer()))) : null
+      if (cueFile && !sheet) {
+        setSilenceNote({ text: `"${cueFile.name}" doesn't list any tracks, so it was ignored.`, found: false })
+      } else if (cueFile && sheet && sheet.files.length > 1) {
+        setSilenceNote({
+          text: `"${cueFile.name}" covers ${sheet.files.length} files; cue sheets for one file are what's supported so far.`,
+          found: false,
+        })
+      } else if (cueFile && sheet) {
+        const { rows: cueRows, leftOut } = rowsFromCue(sheet.chapters, dur)
+        setRows(cueRows)
+        const n = cueRows.length
+        setSilenceNote({
+          text:
+            `${n} chapter${n === 1 ? '' : 's'} from "${cueFile.name}".` +
+            (leftOut > 0
+              ? ` ${leftOut} track${leftOut === 1 ? ' was' : 's were'} left out: past the end of the file, or in the same second as the one before.`
+              : ''),
+          found: true,
+        })
+      }
+      // Tags first; a cue sheet's title and performer only fill what the tags leave empty.
+      const usableSheet = sheet && sheet.files.length <= 1 ? sheet : null
       setMetadata({
-        title: meta.title ?? fileBaseName(candidate.name),
-        author: meta.author ?? '',
+        title: meta.title ?? usableSheet?.title ?? fileBaseName(candidate.name),
+        author: meta.author ?? usableSheet?.performer ?? '',
         narrator: meta.narrator ?? '',
         year: meta.year ?? '',
         genre: meta.genre ?? 'Audiobook',
@@ -244,7 +300,7 @@ export default function FileChapterizer() {
     }
   }, [])
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: false })
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: true })
 
   // ---- chapter rows ----
   const updateRow = (id: string, patch: Partial<Row>) =>
@@ -331,7 +387,7 @@ export default function FileChapterizer() {
     const handoff = takeChapterizerHandoff()
     if (!handoff) return
     void (async () => {
-      await onDrop([handoff.file])
+      await onDrop(handoff.cue ? [handoff.file, handoff.cue] : [handoff.file])
       if (Object.keys(handoff.metadata).length > 0) setMetadata((m) => ({ ...m, ...handoff.metadata }))
       if (handoff.cover) await replaceCover(handoff.cover)
     })()
@@ -453,13 +509,13 @@ export default function FileChapterizer() {
             : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
-        <input {...getInputProps()} aria-label="Choose an audio file to add chapters to" accept=".mp3,.m4a,.m4b,.wav,.flac,.ogg,.opus,audio/*" />
+        <input {...getInputProps()} aria-label="Choose an audio file to add chapters to" accept=".mp3,.m4a,.m4b,.wav,.flac,.ogg,.opus,.cue,audio/*" />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your audio file here' : 'Drop a single audio file, or click to browse'}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-          MP3 · M4A · M4B · WAV · FLAC · OGG · Opus · one long file → chaptered M4B
+          MP3 · M4A · M4B · WAV · FLAC · OGG · Opus · one long file → chaptered M4B · add its .cue for exact chapters
         </p>
       </div>
 

@@ -44,6 +44,10 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
     ),
   },
   {
+    q: 'Can I use a .cue file for the chapters?',
+    a: 'Yes, for one long file. Drop the audio file together with its cue sheet and the converter offers to open Add chapters with the cue sheet\'s tracks as chapters, with their exact times and titles. Cue sheets that span several files, one per CD, aren\'t supported yet; those files each become a chapter anyway.',
+  },
+  {
     q: 'Can I drop a ZIP file?',
     a: 'Yes. Drop the ZIP as you downloaded it, from Google Drive, Dropbox, LibriVox or elsewhere, and the audio files inside are unpacked right in your browser, in folder and name order, with a cover image if there is one. Google Drive splits big downloads into several ZIPs; drop them all at once. The merge tool takes ZIPs of M4B files the same way. Unpacking happens on your device, so nothing is uploaded for this either.',
   },

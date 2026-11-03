@@ -22,6 +22,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## Chapters
 
+- Cue sheets: a `.cue` dropped with one audio file (loose or in a ZIP) is read in the browser (`src/lib/audio/cue.ts`: UTF-8 or Windows-1252, INDEX 01 times in 1/75 s frames, minutes past 99). On the homepage it turns the single-file note into "This file has a cue sheet with N chapters" and goes along to Add chapters; on Add chapters, dropping audio plus `.cue` fills the chapter list with the tracks' titles and times (whole seconds, rounded down; tracks past the end or in the same second are left out and counted), and the sheet's TITLE/PERFORMER fill the title and author when the file has no tags. Sheets that span several files are reported and not used.
 - One long file: when the converter holds a single file of 15 minutes or more, a note offers "Add chapters to this file", which opens Add chapters with the same file, the fields the user typed or looked up, and a dropped cover (handed over in memory by `src/lib/handoff.ts`; nothing is stored or uploaded).
 - Chapter title auto-generated from each filename (extension stripped, separators normalised, title-cased).
 - Embedded `title` tag is used as the chapter title only when it is unique across the dropped files; otherwise the filename is used, so a set that shares one album/book title doesn't become a run of identical chapters.
