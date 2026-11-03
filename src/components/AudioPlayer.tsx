@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AlertTriangle, BookAudio, Loader2, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward } from 'lucide-react'
 import { formatDuration } from '@/lib/audio/format'
+import { clearPosition, loadPosition, resumeKey, savePosition, shouldResume } from '@/lib/audio/resume'
 import {
   chapterIndexAt,
   playbackType,
@@ -34,14 +35,19 @@ interface Props {
   fileName: string
   /** Shown under "No chapter markers" (e.g. a link to a tool that adds them). */
   noChaptersHint?: ReactNode
+  /** Remember the position in this browser and pick up there next time (the M4B player, not previews). */
+  remember?: boolean
 }
+
+/** How often, at most, the position is written while playing. */
+const SAVE_EVERY_MS = 5000
 
 /**
  * Plays an audiobook with the browser's own audio element: chapter list and
  * chapter skipping, ±seconds, speed, and lock-screen / media-key controls via
  * the Media Session API. Reads tags and chapters locally; nothing is uploaded.
  */
-export default function AudioPlayer({ file, fileName, noChaptersHint }: Props) {
+export default function AudioPlayer({ file, fileName, noChaptersHint, remember = false }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const speedId = useId()
   const [src, setSrc] = useState<string | null>(null)
@@ -79,6 +85,59 @@ export default function AudioPlayer({ file, fileName, noChaptersHint }: Props) {
     setCoverUrl(url)
     return () => URL.revokeObjectURL(url)
   }, [info])
+
+  // ---- pick up where you left off (see lib/audio/resume.ts) ----
+  const resumeKeyRef = useRef<string | null>(null)
+  // Nothing is saved before the saved position is applied, or the 0:00 of a
+  // fresh load would overwrite it.
+  const resumeAppliedRef = useRef(false)
+  const lastSavedRef = useRef(0)
+  const [resumedAt, setResumedAt] = useState<number | null>(null)
+
+  // Runs when both the key and the audio's length are known, whichever is last.
+  const applyResume = useCallback(() => {
+    const audio = audioRef.current
+    const key = resumeKeyRef.current
+    if (!audio || !key || resumeAppliedRef.current || audio.readyState < HTMLMediaElement.HAVE_METADATA) return
+    resumeAppliedRef.current = true
+    const saved = loadPosition(key)
+    if (shouldResume(saved, Number.isFinite(audio.duration) ? audio.duration : 0)) {
+      audio.currentTime = saved
+      setTime(saved)
+      setResumedAt(saved)
+    }
+  }, [])
+
+  const persist = useCallback((force = false) => {
+    const audio = audioRef.current
+    const key = resumeKeyRef.current
+    if (!audio || !key || !resumeAppliedRef.current) return
+    const now = Date.now()
+    if (!force && now - lastSavedRef.current < SAVE_EVERY_MS) return
+    lastSavedRef.current = now
+    savePosition(key, audio.currentTime)
+  }, [])
+
+  useEffect(() => {
+    if (!remember) return
+    let cancelled = false
+    void resumeKey(fileName, file.size)
+      .then((key) => {
+        if (cancelled) return
+        resumeKeyRef.current = key
+        applyResume()
+      })
+      .catch(() => {
+        // no Web Crypto (an insecure context): just don't remember
+      })
+    const save = () => persist(true)
+    window.addEventListener('pagehide', save)
+    return () => {
+      cancelled = true
+      window.removeEventListener('pagehide', save)
+      save()
+    }
+  }, [remember, file, fileName, applyResume, persist])
 
   // Stop the sound when the player goes away (e.g. "Start over").
   useEffect(() => {
@@ -227,13 +286,17 @@ export default function AudioPlayer({ file, fileName, noChaptersHint }: Props) {
           const d = e.currentTarget.duration
           setDuration(Number.isFinite(d) ? d : 0)
           setError(null)
+          applyResume()
           syncPosition()
         }}
         onDurationChange={(e) => {
           const d = e.currentTarget.duration
           setDuration(Number.isFinite(d) ? d : 0)
         }}
-        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onTimeUpdate={(e) => {
+          setTime(e.currentTarget.currentTime)
+          persist()
+        }}
         onPlay={() => {
           setPlaying(true)
           setSessionState('playing')
@@ -243,8 +306,13 @@ export default function AudioPlayer({ file, fileName, noChaptersHint }: Props) {
           setPlaying(false)
           setSessionState('paused')
           syncPosition()
+          persist(true)
         }}
-        onEnded={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false)
+          // Finished: next time it starts at the beginning.
+          if (resumeKeyRef.current) clearPosition(resumeKeyRef.current)
+        }}
         onSeeked={syncPosition}
         onRateChange={(e) => {
           setRate(e.currentTarget.playbackRate)
@@ -281,6 +349,22 @@ export default function AudioPlayer({ file, fileName, noChaptersHint }: Props) {
           </p>
         </div>
       </div>
+
+      {resumedAt != null && (
+        <p role="status" className="mt-3 flex flex-wrap items-center gap-x-2 text-xs text-zinc-600 dark:text-zinc-400">
+          <span>Picked up where you left off, at {formatDuration(resumedAt)}.</span>
+          <button
+            type="button"
+            onClick={() => {
+              seek(0)
+              setResumedAt(null)
+            }}
+            className="rounded text-accent-700 underline hover:text-accent-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-accent-400 dark:hover:text-accent-300"
+          >
+            Start from the beginning
+          </button>
+        </p>
+      )}
 
       {error && (
         <div
