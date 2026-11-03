@@ -65,6 +65,9 @@ export async function makeFixtures(): Promise<void> {
     'long.mp3',
   )
 
+  // Not audio at all, but named like it: the converter can't read it.
+  writeFileSync(fixture('broken.mp3'), Buffer.from('this is not an mp3 file '.repeat(200)))
+
   // A cue sheet for pauses.mp3 as a ripper would write it: Windows line ends,
   // named after a WAV, chapters at the middle of each pause (16.25 s, 33.75 s).
   writeFileSync(

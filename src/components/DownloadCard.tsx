@@ -5,6 +5,7 @@ import { AlertTriangle, Check, CheckCircle2, Download, RotateCcw } from 'lucide-
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { formatBytes } from '@/lib/audio/format'
 import OutputPreview from '@/components/OutputPreview'
+import WhereToListen from '@/components/WhereToListen'
 
 function sanitizeFilename(value: string): string {
   return value.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim()
@@ -183,6 +184,7 @@ export default function DownloadCard() {
         </div>
       )}
 
+      <WhereToListen />
       <OutputPreview file={outputBlob} fileName={resolved} />
     </div>
   )

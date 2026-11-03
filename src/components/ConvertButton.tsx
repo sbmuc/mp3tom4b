@@ -47,8 +47,16 @@ export default function ConvertButton() {
       // Reveal hidden form errors and move focus to the first missing field
       // so screen-reader users get an immediate, clear signal.
       setSubmitAttempted(true)
-      if (!filesOk || !readableOk) {
-        document.getElementById('dropzone')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (!filesOk) {
+        const zone = document.getElementById('dropzone')
+        zone?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        zone?.focus({ preventScroll: true })
+      } else if (!readableOk) {
+        // The row says what's wrong and its remove button fixes it. The drop
+        // zone sits at the top of the page, so the row could stay out of view.
+        const row = document.querySelector<HTMLElement>('[data-unreadable]')
+        row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        row?.querySelector<HTMLElement>('[data-remove-file]')?.focus({ preventScroll: true })
       } else if (!titleOk) {
         document.getElementById('md-title')?.focus()
       } else if (!authorOk) {

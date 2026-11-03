@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss'
+import plugin from 'tailwindcss/plugin'
 
 const config: Config = {
   // Match the user's OS preference automatically. Switch to 'class' if a
@@ -33,7 +34,11 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // `touch:` styles a phone or tablet: no mouse, a finger as the main pointer.
+    // A laptop with a touchscreen still has a mouse or trackpad, so it isn't one.
+    plugin(({ addVariant }) => addVariant('touch', '@media (hover: none) and (pointer: coarse)')),
+  ],
 }
 
 export default config

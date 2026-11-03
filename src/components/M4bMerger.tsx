@@ -53,6 +53,9 @@ import { isDecodableImage } from '@/lib/image/validate'
 import { fileNameToChapterTitle, formatBytes, formatDuration } from '@/lib/audio/format'
 import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
+import WhereToListen from '@/components/WhereToListen'
+import ToolError from '@/components/ToolError'
+import DropPrompt from '@/components/DropPrompt'
 
 const ACCEPTED_EXTENSIONS = ['.m4b', '.m4a']
 const ACTIVE_STATUSES = new Set(['loading-ffmpeg', 'encoding', 'concatenating', 'muxing'])
@@ -527,7 +530,7 @@ export default function M4bMerger() {
         <input {...getInputProps()} aria-label="Choose M4B files to merge" accept=".m4b,.m4a,audio/mp4,audio/x-m4a,.zip,application/zip" />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
-          {isDragActive ? 'Drop your M4B files here' : rows.length > 0 ? 'Add more files, or click to browse' : 'Drop your M4B files to merge, or click to browse'}
+          {isDragActive ? 'Drop your M4B files here' : rows.length > 0 ? <DropPrompt mouse="Add more files, or click to browse" touch="Tap to add more files" /> : <DropPrompt mouse="Drop your M4B files to merge, or click to browse" touch="Tap to choose the M4B files to merge" />}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
           M4B · M4A · ZIP · two or more files · combined in the order below
@@ -830,17 +833,7 @@ export default function M4bMerger() {
       )}
 
       {progress.status === 'error' && (
-        <div role="alert" className="mt-4 flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
-          <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-          <div className="flex-1">
-            <p className="font-medium">Merge failed.</p>
-            <p className="mt-0.5 break-words">{progress.label || 'An unknown error occurred.'}</p>
-          </div>
-          <button type="button" onClick={() => setProgress(idleProgress)}
-            className="rounded px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-100 dark:text-rose-200 dark:hover:bg-rose-900/40">
-            Dismiss
-          </button>
-        </div>
+        <ToolError title="Merge failed." message={progress.label} onDismiss={() => setProgress(idleProgress)} />
       )}
 
       {resultBlob && downloadUrl && (
@@ -869,6 +862,7 @@ export default function M4bMerger() {
               <RotateCcw size={14} aria-hidden="true" /> Merge another
             </button>
           </div>
+          <WhereToListen />
           <OutputPreview file={resultBlob} fileName={downloadName} />
         </div>
       )}

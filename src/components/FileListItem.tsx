@@ -56,6 +56,7 @@ export default function FileListItem({ file, index }: Props) {
     <li
       ref={setNodeRef}
       style={style}
+      data-unreadable={file.unreadable || undefined}
       className={`flex items-center gap-3 rounded-lg border bg-zinc-50 px-3 py-2 dark:bg-zinc-900 ${
         file.unreadable
           ? 'border-rose-300 dark:border-rose-800'
@@ -135,6 +136,7 @@ export default function FileListItem({ file, index }: Props) {
       <button
         type="button"
         onClick={() => removeFile(file.id)}
+        data-remove-file
         aria-label={`Remove ${file.chapterTitle}`}
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-500 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400"
       >

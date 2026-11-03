@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useDropzone } from 'react-dropzone'
 import {
-  AlertCircle,
   AlertTriangle,
   Check,
   CheckCircle2,
@@ -39,6 +38,9 @@ import { isDecodableImage } from '@/lib/image/validate'
 import { formatBytes } from '@/lib/audio/format'
 import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
+import WhereToListen from '@/components/WhereToListen'
+import ToolError from '@/components/ToolError'
+import DropPrompt from '@/components/DropPrompt'
 
 const ACCEPTED_EXTENSIONS = ['.mp3', '.m4a', '.m4b', '.wav', '.flac', '.ogg', '.opus']
 const BUSY_STATUSES = new Set(['loading-ffmpeg', 'probing', 'encoding'])
@@ -512,7 +514,7 @@ export default function FileChapterizer() {
         <input {...getInputProps()} aria-label="Choose an audio file to add chapters to" accept=".mp3,.m4a,.m4b,.wav,.flac,.ogg,.opus,.cue,audio/*" />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
-          {isDragActive ? 'Drop your audio file here' : 'Drop a single audio file, or click to browse'}
+          {isDragActive ? 'Drop your audio file here' : <DropPrompt mouse="Drop a single audio file, or click to browse" touch="Tap to choose an audio file" />}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
           MP3 · M4A · M4B · WAV · FLAC · OGG · Opus · one long file → chaptered M4B · add its .cue for exact chapters
@@ -833,17 +835,7 @@ export default function FileChapterizer() {
       )}
 
       {progress.status === 'error' && (
-        <div role="alert" className="mt-4 flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
-          <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-          <div className="flex-1">
-            <p className="font-medium">Something went wrong.</p>
-            <p className="mt-0.5 break-words">{progress.label || 'An unknown error occurred.'}</p>
-          </div>
-          <button type="button" onClick={() => setProgress(idleProgress)}
-            className="rounded px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-100 dark:text-rose-200 dark:hover:bg-rose-900/40">
-            Dismiss
-          </button>
-        </div>
+        <ToolError title="Something went wrong." message={progress.label} onDismiss={() => setProgress(idleProgress)} />
       )}
 
       {resultBlob && downloadUrl && (
@@ -872,6 +864,7 @@ export default function FileChapterizer() {
               <RotateCcw size={14} aria-hidden="true" /> Do another
             </button>
           </div>
+          <WhereToListen />
           <OutputPreview file={resultBlob} fileName={downloadName} />
         </div>
       )}

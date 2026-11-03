@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useDropzone } from 'react-dropzone'
 import {
-  AlertCircle,
   AlertTriangle,
   Check,
   CheckCircle2,
@@ -26,6 +25,8 @@ import { extractMetadata } from '@/lib/audio/metadata'
 import { estimateOutputBytes, formatEstimatedSize } from '@/lib/audio/bitrate'
 import { formatBytes, formatDuration } from '@/lib/audio/format'
 import type { Bitrate, ConversionProgress } from '@/types'
+import ToolError from '@/components/ToolError'
+import DropPrompt from '@/components/DropPrompt'
 
 const ACCEPTED_EXTENSIONS = ['.m4b', '.m4a']
 const ACTIVE_STATUSES = new Set(['loading-ffmpeg', 'encoding', 'muxing'])
@@ -180,7 +181,7 @@ export default function M4bSplitter() {
         <input {...getInputProps()} aria-label="Choose an M4B to split into MP3s" accept=".m4b,.m4a,audio/mp4,audio/x-m4a" />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
-          {isDragActive ? 'Drop your M4B here' : 'Drop an M4B, or click to browse'}
+          {isDragActive ? 'Drop your M4B here' : <DropPrompt mouse="Drop an M4B, or click to browse" touch="Tap to choose an M4B" />}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
           M4B · M4A · one file · split into per-chapter MP3s
@@ -352,23 +353,7 @@ export default function M4bSplitter() {
       )}
 
       {progress.status === 'error' && (
-        <div
-          role="alert"
-          className="mt-4 flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200"
-        >
-          <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-          <div className="flex-1">
-            <p className="font-medium">Split failed.</p>
-            <p className="mt-0.5 break-words">{progress.label || 'An unknown error occurred.'}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setProgress(idleProgress)}
-            className="rounded px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-100 dark:text-rose-200 dark:hover:bg-rose-900/40"
-          >
-            Dismiss
-          </button>
-        </div>
+        <ToolError title="Split failed." message={progress.label} onDismiss={() => setProgress(idleProgress)} />
       )}
 
       {result && downloadUrl && (

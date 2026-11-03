@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.16.0] — 2026-11-03
+
+### Added
+- **Where to listen.** Every new audiobook (from the converter, the merger and Add chapters) now comes with a short guide to getting it into Apple Books on a Mac, onto an iPhone, iPad or Android phone, into Audiobookshelf, or into the site's own M4B player. The FAQ answers the same question.
+- When a tool fails, the error now says where to report it if it keeps happening: a GitHub issue or an email.
+
+### Changed
+- Clicking Convert while a file can't be read now takes you to that file and its remove button, instead of to the top of the page.
+- On phones and tablets the drop zones say "Tap to choose …" instead of "Drop …, or click to browse".
+- The example values in the book details ("e.g. The Hobbit") no longer look like filled-in fields.
+
+---
+
 ## [1.15.0] — 2026-11-03
 
 ### Added

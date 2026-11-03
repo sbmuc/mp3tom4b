@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { formatEta } from '@/lib/format/eta'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
+import ToolError from '@/components/ToolError'
 
 const ACTIVE_STATUSES = new Set([
   'loading-ffmpeg',
@@ -110,23 +110,7 @@ export default function ProgressBar() {
 
   if (progress.status === 'error') {
     return (
-      <div
-        role="alert"
-        className="mt-4 flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200"
-      >
-        <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-        <div className="flex-1">
-          <p className="font-medium">Conversion failed.</p>
-          <p className="mt-0.5 break-words">{progress.label || 'An unknown error occurred.'}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setProgress({ status: 'idle', percent: 0, label: '' })}
-          className="rounded px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-100 dark:text-rose-200 dark:hover:bg-rose-900/40"
-        >
-          Dismiss
-        </button>
-      </div>
+      <ToolError title="Conversion failed." message={progress.label} onDismiss={() => setProgress({ status: 'idle', percent: 0, label: '' })} />
     )
   }
 
