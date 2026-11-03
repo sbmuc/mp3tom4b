@@ -333,9 +333,10 @@ export default function DropZone() {
           }
 
           if (folderNameRef.current) {
-            const coverPart = coverSetThisDrop ? ' and a cover image' : ''
+            // The cover may have been next to the ZIP rather than in it.
+            const coverPart = coverSetThisDrop ? ', and a cover image' : ''
             addNotice(
-              `Added ${newFiles.length} audio file${newFiles.length !== 1 ? 's' : ''}${coverPart} from "${folderNameRef.current}".`
+              `Added ${newFiles.length} audio file${newFiles.length !== 1 ? 's' : ''} from "${folderNameRef.current}"${coverPart}.`
             )
           }
         }

@@ -113,7 +113,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Auto-generated filename in `{Author} - {Title}.m4b` format.
 - Custom filename input — override the auto-generated name; the `.m4b` extension is added if missing, and a "reset" button restores the auto name.
 - "Start over" button to clear all state and begin a new conversion.
-- "Where to listen" with every new book (converter, merger, add-chapters): how to get the M4B into Apple Books on a Mac, onto an iPhone or iPad (Finder sync, or the Files app plus a player like BookPlayer), onto Android (Voice, Smart AudioBook Player), into Audiobookshelf, or into the site's own M4B player. The FAQ has the same answer.
+- "Where to listen" with every new book (converter, merger, add-chapters): how to get the M4B into Apple Books on a Mac, onto an iPhone or iPad (Finder sync, or the Files app plus a player like BookPlayer), onto Android (Voice, Smart AudioBook Player), into Audiobookshelf, or into the site's own M4B player. The FAQ has the same answer, and the iPhone and Android rows link to their guides.
 - Preview: play the result in the page before downloading (chapter list, chapter skipping, speed) to check the chapters land on the audio. Offered on every tool that produces an M4B: converter, compressor, chapter editor, merger, and add-chapters.
 
 ## Compress an existing M4B
@@ -171,6 +171,9 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - `/merge-m4b` — landing page for merging several M4B files into one audiobook.
 - `/add-chapters-to-mp3` — landing page for turning a single audio file into a chaptered M4B.
 - `/m4b-player` — landing page for playing an M4B audiobook in the browser.
+- `/librivox-to-m4b` — the converter with a LibriVox hero and steps: check for LibriVox's own M4B first, then drop the "Whole book (zip file)" and the cover art (the ZIP holds only the MP3s), type the narrator; with a FAQ on public domain, group readers and bitrate.
+- Guides `/m4b-on-iphone` (Apple Books via Finder on a Mac or iTunes on Windows, or BookPlayer from the Files app) and `/m4b-on-android` (USB or cloud, then Voice or another audiobook app), each with troubleshooting links to Add chapters, the editor and the compressor.
+- Every page's footer has a Guides row; guide pages link each other and the main tools ("More guides and tools") and carry FAQPage structured data.
 
 ## SEO
 

@@ -30,7 +30,7 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   },
   {
     q: 'How do I get the M4B into Apple Books or onto my phone?',
-    a: 'On a Mac, drag the file into the Books app; it shows up under Audiobooks. For an iPhone or iPad, connect it to your Mac, select it in Finder and sync the book on the Audiobooks tab (on Windows, use iTunes), or save the file to the Files app and open it in a free player such as BookPlayer. On Android, copy the file to your phone and open it in an audiobook app such as Voice or Smart AudioBook Player. For Audiobookshelf and other audiobook servers, put it in your audiobooks folder, one folder per book, and scan the library. On any computer, the M4B player on this site plays it in your browser, chapters included.',
+    a: 'On a Mac, drag the file into the Books app; it shows up under Audiobooks. For an iPhone or iPad, connect it to your Mac, select it in Finder and sync the book on the Audiobooks tab (on Windows, use iTunes), or save the file to the Files app and open it in a free player such as BookPlayer. On Android, copy the file to your phone and open it in an audiobook app such as Voice or Smart AudioBook Player. For Audiobookshelf and other audiobook servers, put it in your audiobooks folder, one folder per book, and scan the library. On any computer, the M4B player on this site plays it in your browser, chapters included. The guides M4B on iPhone and M4B on Android go through it step by step.',
     aNode: (
       <>
         On a Mac, drag the file into the Books app; it shows up under Audiobooks. For an iPhone or iPad, connect it
@@ -42,7 +42,15 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
         <Link href="/m4b-player" className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400">
           M4B player
         </Link>{' '}
-        plays it in your browser, chapters included.
+        plays it in your browser, chapters included. Step by step:{' '}
+        <Link href="/m4b-on-iphone" className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400">
+          M4B on iPhone
+        </Link>{' '}
+        and{' '}
+        <Link href="/m4b-on-android" className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400">
+          M4B on Android
+        </Link>
+        .
       </>
     ),
   },
@@ -67,7 +75,19 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   },
   {
     q: 'Can I drop a ZIP file?',
-    a: 'Yes. Drop the ZIP as you downloaded it, from Google Drive, Dropbox, LibriVox or elsewhere, and the audio files inside are unpacked right in your browser, in folder and name order, with a cover image if there is one. Google Drive splits big downloads into several ZIPs; drop them all at once. The merge tool takes ZIPs of M4B files the same way. Unpacking happens on your device, so nothing is uploaded for this either.',
+    a: 'Yes. Drop the ZIP as you downloaded it, from Google Drive, Dropbox, LibriVox or elsewhere, and the audio files inside are unpacked right in your browser, in folder and name order, with a cover image if there is one. Google Drive splits big downloads into several ZIPs; drop them all at once. The merge tool takes ZIPs of M4B files the same way. Unpacking happens on your device, so nothing is uploaded for this either. For LibriVox books, see LibriVox to M4B.',
+    aNode: (
+      <>
+        Yes. Drop the ZIP as you downloaded it, from Google Drive, Dropbox, LibriVox or elsewhere, and the audio files
+        inside are unpacked right in your browser, in folder and name order, with a cover image if there is one. Google
+        Drive splits big downloads into several ZIPs; drop them all at once. The merge tool takes ZIPs of M4B files the
+        same way. Unpacking happens on your device, so nothing is uploaded for this either. For LibriVox books, see{' '}
+        <Link href="/librivox-to-m4b" className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400">
+          LibriVox to M4B
+        </Link>
+        .
+      </>
+    ),
   },
   {
     q: 'Are there file size limits?',

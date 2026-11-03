@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.17.0] — 2026-11-03
+
+### Added
+- **Guides.** Three new pages, linked from every page's footer: *M4B on iPhone* (Apple Books from a Mac or a Windows PC, or BookPlayer without a computer), *M4B on Android* (getting the file over, and Voice or another audiobook app), and *LibriVox to M4B* (the converter, with how to turn a LibriVox ZIP and its cover into one M4B). "Where to listen" and the FAQ link to them.
+
+### Fixed
+- After dropping a ZIP with a cover next to it, the notice no longer says the cover came from the ZIP.
+
+---
+
 ## [1.16.0] — 2026-11-03
 
 ### Added
