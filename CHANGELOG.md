@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Edit chapters & tags, straight from the result.** Every tool that makes an M4B now has a button that opens the finished file in the editor, so fixing a chapter title, a tag or the cover takes seconds, without downloading and dropping it again.
 
 ### Changed
-- **Chapter titles without track numbers.** When every file's title starts with its number, like LibriVox's "01 - The Happy Prince", the number is left out: "The Happy Prince". Titles where only some start with a number, like "1984", are kept as they are.
+- **Chapter titles without track numbers.** When every file's title starts with its number, like LibriVox's "01 - The Happy Prince", the number is left out: "The Happy Prince". Titles where only some start with a number, like "1984", are kept as they are, and so are numbers that are all that tells the chapters apart ("01 Book Title", "1 of 3").
 
 ---
 

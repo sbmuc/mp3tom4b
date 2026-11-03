@@ -53,6 +53,20 @@ describe('stripTrackNumbers', () => {
     expect(stripTrackNumbers(['1 - Part A', '1 - Part B'])).toEqual(['1 - Part A', '1 - Part B'])
   })
 
+  it('keeps the numbers when they are all that tells the chapters apart', () => {
+    const sameBook = ['01 Harry Potter and the Goblet of Fire', '02 Harry Potter and the Goblet of Fire']
+    expect(stripTrackNumbers(sameBook)).toBe(sameBook)
+    const parts = ['1 of 3', '2 of 3', '3 of 3']
+    expect(stripTrackNumbers(parts)).toBe(parts)
+    const letters = ['1 John', '2 John', '3 john']
+    expect(stripTrackNumbers(letters)).toBe(letters)
+  })
+
+  it('leaves disc-track numbering alone', () => {
+    const titles = ['1 01 Opening', '1 02 Middle', '2 01 End']
+    expect(stripTrackNumbers(titles)).toBe(titles)
+  })
+
   it('leaves a single file alone', () => {
     expect(stripTrackNumbers(['01 - Only Chapter'])).toEqual(['01 - Only Chapter'])
   })
