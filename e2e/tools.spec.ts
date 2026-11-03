@@ -27,6 +27,7 @@ const test = base.extend<{ consoleErrors: string[] }>({
 const PAGES = [
   '/', '/about', '/faq', '/privacy', '/compress-m4b', '/edit-m4b-chapters', '/merge-m4b', '/m4b-to-mp3',
   '/add-chapters-to-mp3', '/m4b-player', '/flac-to-m4b', '/wav-to-m4b', '/m4a-to-m4b', '/ogg-to-m4b', '/opus-to-m4b',
+  '/librivox-to-m4b', '/m4b-on-iphone', '/m4b-on-android',
 ]
 
 test('every page loads with its heading', async ({ page }) => {

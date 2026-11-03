@@ -15,13 +15,23 @@ export default function WhereToListen() {
       how: (
         <>
           Connect it to your Mac, select it in Finder and sync the book on the Audiobooks tab (on Windows: iTunes).
-          Without a computer: save the file to the Files app and open it in a free player such as BookPlayer.
+          Without a computer: save the file to the Files app and open it in a free player such as BookPlayer.{' '}
+          <a href="/m4b-on-iphone" target="_blank" rel="noopener" className={linkClass}>
+            Step by step
+          </a>
         </>
       ),
     },
     {
       where: 'Android',
-      how: 'Copy the file to your phone and open it in an audiobook app such as Voice or Smart AudioBook Player.',
+      how: (
+        <>
+          Copy the file to your phone and open it in an audiobook app such as Voice or Smart AudioBook Player.{' '}
+          <a href="/m4b-on-android" target="_blank" rel="noopener" className={linkClass}>
+            Step by step
+          </a>
+        </>
+      ),
     },
     {
       where: 'Audiobookshelf',

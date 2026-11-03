@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { GUIDES } from '@/lib/guides'
 
 const navLinkClass =
   'inline-flex min-h-[44px] items-center px-2 -mx-2 transition-colors hover:text-zinc-900 dark:hover:text-zinc-100'
@@ -46,6 +47,15 @@ export default function Footer() {
           >
             Burcevski ICT
           </a>
+        </nav>
+
+        <nav aria-label="Guides" className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+          <span className="inline-flex min-h-[44px] items-center">Guides:</span>
+          {GUIDES.map(({ href, label }) => (
+            <Link key={href} href={href} className={navLinkClass}>
+              {label}
+            </Link>
+          ))}
         </nav>
 
         <div className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
