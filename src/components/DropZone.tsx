@@ -8,7 +8,7 @@ import { useConversionStore } from '@/lib/store/conversionStore'
 import { guessType, isZipFile, unzipFiles } from '@/lib/archive/zip'
 import { decodeCueBytes, parseCue } from '@/lib/audio/cue'
 import { validateFiles } from '@/lib/audio/validate'
-import { fileNameToChapterTitle } from '@/lib/audio/format'
+import { fileNameToChapterTitle, stripTrackNumbers } from '@/lib/audio/format'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { isDecodableImage } from '@/lib/image/validate'
 import { getFFmpeg } from '@/lib/ffmpeg/client'
@@ -308,6 +308,14 @@ export default function DropZone() {
             pool.push({ id: newFile.id, name: file.name, size: file.size, durationMs: candidate.durationMs })
             if (!firstAcceptedExtraction) firstAcceptedExtraction = extracted
           }
+
+          // "01 - The Happy Prince" → "The Happy Prince" when the whole drop is
+          // numbered like that (LibriVox, most rips). Unreadable files don't count.
+          const readable = newFiles.filter((f) => !f.unreadable)
+          stripTrackNumbers(readable.map((f) => f.chapterTitle)).forEach((title, i) => {
+            readable[i].chapterTitle = title
+            readable[i].originalChapterTitle = title
+          })
 
           if (newFiles.length > 0) addFiles(newFiles)
           if (wasEmpty && firstAcceptedExtraction) applyAutoMetadata(firstAcceptedExtraction)
