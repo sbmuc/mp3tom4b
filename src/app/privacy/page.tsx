@@ -13,7 +13,7 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 text-zinc-700 dark:text-zinc-300">
       <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Last updated: 1 November 2026</p>
+      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Last updated: 3 November 2026</p>
 
       <h2 className="mt-10 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
         Your audio files
@@ -30,6 +30,17 @@ export default function PrivacyPage() {
       <p className="mt-2">
         Cover images and the metadata you type (title, author, narrator, year, genre) are also
         processed only in your browser and end up only in the M4B file you download.
+      </p>
+
+      <h2 className="mt-8 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+        Your place in a book
+      </h2>
+      <p className="mt-2">
+        The M4B player remembers where you stopped in each book, so it can pick up there next
+        time. That position is kept in your browser&apos;s own storage on your device, under a
+        scrambled code made from the file&apos;s name and size, and is never sent anywhere. It is
+        forgotten when you finish the book; clearing this site&apos;s data in your browser removes
+        it too.
       </p>
 
       <h2 className="mt-8 text-xl font-semibold text-zinc-900 dark:text-zinc-100">

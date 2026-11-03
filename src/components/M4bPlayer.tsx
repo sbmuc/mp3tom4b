@@ -16,7 +16,8 @@ function hasAcceptedExtension(name: string): boolean {
 
 /**
  * Drop an audiobook, play it. The file is handed to the browser's own audio
- * element through a local blob: URL; nothing is uploaded or stored.
+ * element through a local blob: URL; nothing is uploaded. The only thing kept
+ * is the position in each book, in this browser (lib/audio/resume.ts).
  */
 export default function M4bPlayer() {
   const [file, setFile] = useState<File | null>(null)
@@ -92,6 +93,7 @@ export default function M4bPlayer() {
             key={fileKey}
             file={file}
             fileName={file.name}
+            remember
             noChaptersHint={
               /\.mp3$/i.test(file.name) ? (
                 <>

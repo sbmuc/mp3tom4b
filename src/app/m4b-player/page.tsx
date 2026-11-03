@@ -42,7 +42,7 @@ const FAQS = [
   },
   {
     q: 'Is my audiobook uploaded?',
-    a: 'No. Your browser plays the file straight from your device with its own built-in audio player. Nothing about the file is sent to a server, and nothing is kept after you close the tab.',
+    a: 'No. Your browser plays the file straight from your device with its own built-in audio player. Nothing about the file is sent to a server. The only thing kept is your place in the book, in your browser on this device.',
   },
   {
     q: 'Why don\'t I see any chapters?',
@@ -50,7 +50,7 @@ const FAQS = [
   },
   {
     q: 'Does it remember where I stopped?',
-    a: 'No. The player stores nothing between visits, so note the chapter if you want to come back to it. For everyday listening, an audiobook app on your phone (such as Apple Books or BookPlayer on iPhone) remembers your place and works offline.',
+    a: 'Yes, in this browser on this device. Open the same file again and it picks up where you stopped, with a button to start from the beginning instead. Your place is saved in the browser\'s own storage under a scrambled code made from the file name and size, never sent anywhere, and forgotten when you finish the book or clear the site\'s data. On your phone, an audiobook app such as Apple Books or BookPlayer does the same and works offline.',
   },
   {
     q: 'Can I change the playback speed?',
