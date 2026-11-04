@@ -1,4 +1,4 @@
-import { failureReason } from '@/lib/ffmpeg/errors'
+import { failureDetails, failureReason } from '@/lib/ffmpeg/errors'
 
 /** Event properties: counts, sizes, durations and settings only. */
 export type EventData = Record<string, string | number | boolean>
@@ -39,9 +39,10 @@ export function trackEvent(name: string, data?: EventData): void {
 export type ToolName = 'convert' | 'compress' | 'split' | 'edit' | 'merge' | 'chapterize' | 'detect_silence'
 
 /**
- * A tool run that ended in an error (not a cancel). Sends the kind of failure
- * only, never the message, which can contain file or chapter names.
+ * A tool run that ended in an error (not a cancel). Sends the kind of failure,
+ * and where known ffmpeg's exit code and the step, never the message, which
+ * can contain file or chapter names.
  */
 export function trackFailure(tool: ToolName, err: unknown, data: EventData = {}): void {
-  trackEvent('tool_failed', { tool, reason: failureReason(err), ...data })
+  trackEvent('tool_failed', { tool, reason: failureReason(err), ...failureDetails(err), ...data })
 }

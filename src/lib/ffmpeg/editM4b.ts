@@ -8,6 +8,7 @@ import { mountBlobs, takeBlob, unmount } from './files'
 import { buildFFMetadata, buildGlobalMetadata } from './chapters'
 import type { ChapterMark } from './types'
 import { resizeCoverImage } from '@/lib/image/resize'
+import { runFFmpeg } from './run'
 
 const OUTPUT_PATH = 'edit_out.m4b'
 const META_PATH = 'edit_meta.ffmeta'
@@ -154,7 +155,7 @@ export async function editM4B(opts: EditOptions): Promise<Blob> {
     tempPaths.push(OUTPUT_PATH)
     ffmpeg.on('log', onLog)
     try {
-      await ffmpeg.exec(args)
+      await runFFmpeg(ffmpeg, args)
     } finally {
       ffmpeg.off('log', onLog)
     }

@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { Loader2, Wand2, X } from 'lucide-react'
 import { trackEvent, trackFailure } from '@/lib/analytics'
+import { resetFFmpegAfterFailure } from '@/lib/ffmpeg/client'
 import { convertToM4B } from '@/lib/ffmpeg/convert'
 import { useConversionStore } from '@/lib/store/conversionStore'
 
@@ -102,6 +103,7 @@ export default function ConvertButton() {
       // User input is preserved for retry.
       if (!cancelledRef.current) {
         trackFailure('convert', err, { ...shape, elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        resetFFmpegAfterFailure()
       }
     }
   }

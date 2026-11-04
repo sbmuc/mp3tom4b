@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { entryBlob, isJunkEntry, readZipEntries, unzipFiles } from '@/lib/archive/zip'
+import { createStoredZip, entryBlob, isJunkEntry, readZipEntries, unzipFiles } from '@/lib/archive/zip'
 
 const bytes = (n: number, seed: number) => Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed) % 251)
 const asFile = (data: Uint8Array, name = 'book.zip') => new File([data as Uint8Array<ArrayBuffer>], name)
@@ -114,3 +114,25 @@ function zip64WithOneStoredEntry(name: string, data: Uint8Array): Uint8Array {
   parts.push(cat(le(0x06054b50, 4), le(0, 2), le(0, 2), le(0xffff, 2), le(0xffff, 2), le(0xffffffff, 4), le(0xffffffff, 4), le(0, 2)))
   return cat(...parts)
 }
+
+describe('createStoredZip', () => {
+  it('makes a stored ZIP, file by file, that reads back byte for byte', async () => {
+    const a = bytes(70_000, 4)
+    const b = bytes(1234, 5)
+    const out = createStoredZip()
+    out.add('01 - The Happy Prince.mp3', a)
+    out.add('02 - Hörspiel – Teil 2.mp3', b)
+    const archive = out.finish()
+    expect(archive.type).toBe('application/zip')
+    expect(archive.size).toBeGreaterThan(a.length + b.length)
+
+    const zip = new File([archive], 'book.zip')
+    const entries = await readZipEntries(zip)
+    expect(entries.map((e) => [e.name, e.method, e.size])).toEqual([
+      ['01 - The Happy Prince.mp3', 0, 70_000],
+      ['02 - Hörspiel – Teil 2.mp3', 0, 1234],
+    ])
+    expect(await text(await entryBlob(zip, entries[0]))).toEqual(a)
+    expect(await text(await entryBlob(zip, entries[1]))).toEqual(b)
+  })
+})

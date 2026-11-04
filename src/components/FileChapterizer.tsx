@@ -30,7 +30,7 @@ import {
   type ChapterizeCoverMode,
 } from '@/lib/ffmpeg/chapterize'
 import { probeDurationMs } from '@/lib/ffmpeg/probe'
-import { getFFmpeg, terminateFFmpeg } from '@/lib/ffmpeg/client'
+import { getFFmpeg, resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
@@ -368,7 +368,10 @@ export default function FileChapterizer() {
       trackEvent('chapters_detected', { chapterCount: result.starts.length, pauses: result.pauses })
     } catch (err) {
       // error surfaced via onProgress
-      if (!cancelledRef.current) trackFailure('detect_silence', err)
+      if (!cancelledRef.current) {
+        trackFailure('detect_silence', err)
+        resetFFmpegAfterFailure()
+      }
     }
   }
 
@@ -475,7 +478,10 @@ export default function FileChapterizer() {
       })
     } catch (err) {
       // Error surfaced via the onProgress 'error' event.
-      if (!cancelledRef.current) trackFailure('chapterize', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+      if (!cancelledRef.current) {
+        trackFailure('chapterize', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        resetFFmpegAfterFailure()
+      }
     }
   }
 

@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.18.1] — 2026-11-04
+
+### Fixed
+- **Trying again after a failure now works in the same tab.** When a conversion failed, for example because the browser ran out of memory, a second attempt could fail straight away until the page was reloaded. Every tool now starts the next attempt fresh.
+- **Running out of memory is recognised as such.** Some memory failures showed a cryptic message instead of the advice to close other tabs or pick a lower bitrate; they now get that advice. A damaged input file is reported as one too.
+- **M4B to MP3 uses far less memory on long books.** The MP3s go into the ZIP as they are made, instead of all of them being held in memory and then copied once more into the ZIP.
+
+### Changed
+- Failure counts now also carry the encoder's error code and the step that failed (never a file or chapter name), so problems can be found and fixed. The privacy policy says so.
+
+---
+
 ## [1.18.0] — 2026-11-03
 
 ### Added

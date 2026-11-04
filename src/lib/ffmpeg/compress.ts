@@ -9,6 +9,7 @@ import { humanizeFfmpegError } from './errors'
 import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
 import { encodeConcurrency, encodeSegmentsInWorkers } from './segments'
 import { parseChapters, type Chapter } from './splitChapters'
+import { runFFmpeg } from './run'
 
 const OUTPUT_PATH = 'compress_out.m4b'
 const META_PATH = 'compress_meta.ffmeta'
@@ -177,7 +178,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
       }
 
       emit({ status: 'encoding', percent: 8, label: 'Splitting into chapters…' })
-      await ffmpeg.exec([
+      await runFFmpeg(ffmpeg, [
         '-hide_banner', '-i', inputPath, '-vn', '-c:a', 'copy',
         '-f', 'segment', '-segment_times', buildSegmentTimes(chapters),
         '-segment_list', SEG_LIST_PATH, '-segment_list_type', 'csv',
@@ -230,7 +231,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
 
       emit({ status: 'muxing', percent: 92, label: 'Finalizing audiobook…' })
       tempPaths.push(OUTPUT_PATH)
-      await ffmpeg.exec(buildParallelMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
+      await runFFmpeg(ffmpeg, buildParallelMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
       await unmount(ffmpeg, PARTS_DIR)
 
       const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
@@ -257,7 +258,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
     ffmpeg.on('progress', onProg)
     ffmpeg.on('log', onLog)
     try {
-      await ffmpeg.exec(buildCompressArgs({ input: inputPath, output: OUTPUT_PATH, bitrate, hasCover }))
+      await runFFmpeg(ffmpeg, buildCompressArgs({ input: inputPath, output: OUTPUT_PATH, bitrate, hasCover }))
     } finally {
       ffmpeg.off('progress', onProg)
       ffmpeg.off('log', onLog)

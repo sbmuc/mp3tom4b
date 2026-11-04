@@ -10,6 +10,7 @@ import type { ChapterMark } from './types'
 import type { Chapter } from './splitChapters'
 import type { AudioStreamInfo } from './probeM4b'
 import { resizeCoverImage } from '@/lib/image/resize'
+import { runFFmpeg } from './run'
 
 const OUTPUT_PATH = 'merge_out.m4b'
 const META_PATH = 'merge_meta.ffmeta'
@@ -277,7 +278,8 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
       tempPaths.push(out)
       ffmpeg.on('progress', onProg)
       try {
-        await ffmpeg.exec(
+        await runFFmpeg(
+          ffmpeg,
           reencode
             ? buildPartEncodeArgs({ input: inputPath, output: out, bitrate, target })
             : buildPartCopyArgs({ input: inputPath, output: out }),
@@ -314,7 +316,7 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
     tempPaths.push(OUTPUT_PATH)
     ffmpeg.on('log', onLog)
     try {
-      await ffmpeg.exec(buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
+      await runFFmpeg(ffmpeg, buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
     } finally {
       ffmpeg.off('log', onLog)
     }

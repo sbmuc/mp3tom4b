@@ -1,11 +1,12 @@
 'use client'
 
-import { zip } from 'fflate'
+import { createStoredZip } from '@/lib/archive/zip'
 import type { Bitrate, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { humanizeFfmpegError } from './errors'
 import { mountBlobs, takeBytes, unmount } from './files'
 import type { Chapter } from './splitChapters'
+import { runFFmpeg } from './run'
 
 // The source is mounted, not copied in (see files.ts).
 const INPUT_DIR = '/mnt_split_in'
@@ -101,7 +102,11 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
     const total = segments.length
     const padWidth = Math.max(2, String(total).length)
 
-    const outputs: { name: string; bytes: Uint8Array<ArrayBuffer> }[] = []
+    // Each MP3 goes into the ZIP (or becomes the single file) as soon as it's
+    // made, so a whole book of MP3s is never held in the page's memory, and
+    // the archive isn't a second copy of it.
+    const archive = total > 1 ? createStoredZip() : null
+    let single: { blob: Blob; name: string } | null = null
 
     for (let i = 0; i < total; i++) {
       const ch = segments[i]
@@ -117,7 +122,8 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
       })
 
       temp.push(outName)
-      await ffmpeg.exec(
+      await runFFmpeg(
+        ffmpeg,
         buildSplitChapterArgs({
           input: inName,
           output: outName,
@@ -129,35 +135,23 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
       )
 
       const bytes = await takeBytes(ffmpeg, outName)
-      const displayName =
-        total > 1 ? `${String(i + 1).padStart(padWidth, '0')} - ${sanitize(titleText)}.mp3` : `${bookBase}.mp3`
-      outputs.push({ name: displayName, bytes })
+      if (archive) {
+        archive.add(`${String(i + 1).padStart(padWidth, '0')} - ${sanitize(titleText)}.mp3`, bytes)
+      } else {
+        single = { blob: new Blob([bytes], { type: 'audio/mpeg' }), name: `${bookBase}.mp3` }
+      }
     }
     await unmount(ffmpeg, INPUT_DIR)
 
-    if (outputs.length === 1) {
+    if (!archive) {
       emit({ status: 'done', percent: 100, label: 'Done.' })
-      return {
-        blob: new Blob([outputs[0].bytes], { type: 'audio/mpeg' }),
-        filename: outputs[0].name,
-        count: 1,
-      }
+      return { blob: single!.blob, filename: single!.name, count: 1 }
     }
 
     emit({ status: 'muxing', percent: 95, label: 'Packaging ZIP…' })
-    const entries: Record<string, Uint8Array> = {}
-    for (const out of outputs) entries[out.name] = out.bytes
-    const zipped = await new Promise<Uint8Array>((resolve, reject) => {
-      // level 0 (STORE): MP3 is already compressed, so don't waste time re-deflating.
-      zip(entries, { level: 0 }, (err, data) => (err ? reject(err) : resolve(data)))
-    })
-
+    const blob = archive.finish()
     emit({ status: 'done', percent: 100, label: 'Done.' })
-    return {
-      blob: new Blob([zipped as Uint8Array<ArrayBuffer>], { type: 'application/zip' }),
-      filename: `${bookBase}.zip`,
-      count: outputs.length,
-    }
+    return { blob, filename: `${bookBase}.zip`, count: total }
   } catch (err) {
     console.error('mp3tom4b split failed:', err)
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })

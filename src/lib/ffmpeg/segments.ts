@@ -3,6 +3,7 @@
 import { createWorkerFFmpeg, releaseWorkerFFmpeg } from './client'
 import { mountBlobs, takeBytes, unmount } from './files'
 import { decodedAudioSeconds } from './mp4Duration'
+import { runFFmpeg } from './run'
 
 const SOURCE_DIR = '/mnt_segment'
 
@@ -53,7 +54,7 @@ export async function encodeSegmentsInWorkers(
         try {
           await mountBlobs(worker, SOURCE_DIR, [{ name: input, data: segments[idx] }])
           try {
-            await worker.exec(o.args(`${SOURCE_DIR}/${input}`, output))
+            await runFFmpeg(worker, o.args(`${SOURCE_DIR}/${input}`, output))
           } finally {
             await unmount(worker, SOURCE_DIR)
           }

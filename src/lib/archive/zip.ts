@@ -3,7 +3,10 @@
  * memory: the central directory is read from the end of the file, each entry
  * is a slice of the archive, and deflated entries are inflated by the
  * browser's own DecompressionStream. Everything stays on the device.
+ * Also making one (createStoredZip), the same way: a file at a time.
  */
+
+import { Zip, ZipPassThrough } from 'fflate'
 
 export interface ZipEntry {
   /** Full path inside the archive, e.g. "Book/CD1/01 Intro.mp3". */
@@ -236,4 +239,40 @@ const TYPES: Record<string, string> = {
 /** MIME type for an unpacked audio or image file, from its extension. */
 export function guessType(name: string): string {
   return TYPES[name.slice(name.lastIndexOf('.') + 1).toLowerCase()] ?? ''
+}
+
+export interface StoredZip {
+  /** Add a file. Its bytes go into the archive right away and needn't be kept. */
+  add(name: string, data: Uint8Array): void
+  /** Write the central directory; the archive as one Blob. */
+  finish(): Blob
+}
+
+/**
+ * A ZIP made one file at a time, stored (not compressed: for audio, which is
+ * compressed already). Each piece fflate writes becomes a Blob straight away,
+ * which the browser can keep outside the page's memory, so a whole book of
+ * MP3s never sits in memory at once, and the archive isn't another copy of it.
+ */
+export function createStoredZip(): StoredZip {
+  const parts: Blob[] = []
+  let failure: Error | null = null
+  // fflate calls back synchronously for stored entries, inside add() and end().
+  const zip = new Zip((err, chunk) => {
+    if (err) failure = err
+    else parts.push(new Blob([chunk as Uint8Array<ArrayBuffer>]))
+  })
+  return {
+    add(name, data) {
+      if (failure) throw failure
+      const entry = new ZipPassThrough(name)
+      zip.add(entry)
+      entry.push(data, true)
+    },
+    finish() {
+      zip.end()
+      if (failure) throw failure
+      return new Blob(parts, { type: 'application/zip' })
+    },
+  }
 }

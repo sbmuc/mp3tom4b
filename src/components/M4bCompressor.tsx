@@ -18,7 +18,7 @@ import {
 import { trackEvent, trackFailure } from '@/lib/analytics'
 import { compressM4B } from '@/lib/ffmpeg/compress'
 import { probeM4bInfo, type M4bProbeInfo } from '@/lib/ffmpeg/probeM4b'
-import { terminateFFmpeg } from '@/lib/ffmpeg/client'
+import { resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
@@ -160,7 +160,10 @@ export default function M4bCompressor() {
       })
     } catch (err) {
       // Error is surfaced via the onProgress 'error' event.
-      if (!cancelledRef.current) trackFailure('compress', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+      if (!cancelledRef.current) {
+        trackFailure('compress', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        resetFFmpegAfterFailure()
+      }
     }
   }
 

@@ -18,7 +18,7 @@ import {
 import { trackEvent, trackFailure } from '@/lib/analytics'
 import { splitM4B, type SplitResult } from '@/lib/ffmpeg/split'
 import { probeChapters, type Chapter } from '@/lib/ffmpeg/splitChapters'
-import { terminateFFmpeg } from '@/lib/ffmpeg/client'
+import { resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
@@ -140,7 +140,10 @@ export default function M4bSplitter() {
       })
     } catch (err) {
       // Error surfaced via the onProgress 'error' event.
-      if (!cancelledRef.current) trackFailure('split', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+      if (!cancelledRef.current) {
+        trackFailure('split', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        resetFFmpegAfterFailure()
+      }
     }
   }
 

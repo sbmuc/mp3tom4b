@@ -149,3 +149,15 @@ export function terminateFFmpeg(): void {
   activeWorkers.clear()
   loadPromise = null
 }
+
+/**
+ * After a run that failed (not a cancel): start the next one on a fresh
+ * engine. A run that died, out of memory or trapped, leaves its allocations
+ * in the wasm heap, which never shrinks, and can leave mounts and files
+ * behind, so a retry on the same instance starts with less memory or fails at
+ * once (seen in the field: a second attempt failing after 0 s). The core
+ * stays cached, so the reload takes about a second.
+ */
+export function resetFFmpegAfterFailure(): void {
+  terminateFFmpeg()
+}
