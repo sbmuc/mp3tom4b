@@ -131,6 +131,20 @@ test('compressor: a chaptered M4B gets smaller and keeps its chapters', async ({
   await expect(page.getByText('2 chapters')).toBeVisible()
 })
 
+test('compressor: after a failed run, the next one in the same tab works', async ({ page, consoleErrors }) => {
+  await page.goto('/compress-m4b')
+  await page.getByLabel('Choose an M4B to compress').setInputFiles(fixture('cut-off.m4b'))
+  await page.getByRole('button', { name: 'Compress M4B' }).click()
+  await expect(page.getByText('Compression failed.')).toBeVisible()
+  // The tool logs the failure on purpose; it has to be the only error, and the right kind.
+  expect(consoleErrors.splice(0)).toEqual([expect.stringContaining("FFmpegExitError: ffmpeg couldn't read the input")])
+  await expect(page.getByRole('link', { name: 'open an issue on GitHub' })).toBeVisible()
+
+  await page.getByLabel('Choose an M4B to compress').setInputFiles(fixture('book.m4b'))
+  await page.getByRole('button', { name: 'Compress M4B' }).click()
+  await expect(page.getByText('Your compressed audiobook is ready')).toBeVisible()
+})
+
 test('M4B to MP3: one MP3 per chapter', async ({ page }) => {
   await page.goto('/m4b-to-mp3')
   await page.getByLabel('Choose an M4B to split into MP3s').setInputFiles(fixture('book.m4b'))

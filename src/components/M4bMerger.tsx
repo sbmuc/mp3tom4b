@@ -44,7 +44,7 @@ import {
 } from '@/lib/ffmpeg/mergeM4b'
 import { probeChapters, type Chapter } from '@/lib/ffmpeg/splitChapters'
 import { probeM4bInfo } from '@/lib/ffmpeg/probeM4b'
-import { terminateFFmpeg } from '@/lib/ffmpeg/client'
+import { resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { guessType, isZipFile, unzipFiles } from '@/lib/archive/zip'
@@ -492,7 +492,10 @@ export default function M4bMerger() {
       })
     } catch (err) {
       // Error surfaced via the onProgress 'error' event.
-      if (!cancelledRef.current) trackFailure('merge', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+      if (!cancelledRef.current) {
+        trackFailure('merge', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        resetFFmpegAfterFailure()
+      }
     }
   }
 

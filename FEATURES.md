@@ -70,6 +70,8 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Output is a single M4B file with chapter markers, embedded cover art, and full audiobook metadata, optimised for streaming/seek (`+faststart`).
 - Output is tagged as an Audiobook (media type `stik=2`) with gapless playback, so players shelve it under audiobooks and keep the resume position.
 - Warns before you close the tab or navigate away while a conversion or compression is still running.
+- Every step that must succeed runs through `runFFmpeg` (`src/lib/ffmpeg/run.ts`): a non-zero ffmpeg exit stops the run there, named by what ffmpeg logged (out of memory, unreadable input, or the exit code), instead of failing a step later on a missing output. The log is only read in the page, never sent.
+- After a failed run (not a cancel) every tool starts the next on a fresh engine (`resetFFmpegAfterFailure`), so a retry in the same tab gets all the memory again.
 
 ## Split an M4B (M4B → MP3)
 
@@ -192,7 +194,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - All file processing happens in the browser via WebAssembly. No file is uploaded.
 - The only network calls during normal use are: loading the page itself, loading ffmpeg.wasm on first conversion, and (only on explicit "Look up online" click) sending title/author/narrator to iTunes Search and/or Open Library.
-- Cookieless analytics: Vercel Analytics for page views, visitors, countries and referrers, and Umami (`src/lib/analytics.ts`) for anonymous per-tool events only (its automatic page views are off, because through the proxy it sees Vercel's IP, not the visitor's): success, and failure with only the kind of error, carrying counts, sizes, durations and settings, never file names or content. Umami is served through `/stats` on our own domain, counts only www.mp3tom4b.com, and honours Do Not Track.
+- Cookieless analytics: Vercel Analytics for page views, visitors, countries and referrers, and Umami (`src/lib/analytics.ts`) for anonymous per-tool events only (its automatic page views are off, because through the proxy it sees Vercel's IP, not the visitor's): success, and failure with the kind of error (`failureReason`: out_of_memory, unreadable_input, ffmpeg_exit, file_system, engine_stopped, interrupted, other) plus ffmpeg's exit code and the converter's step where known (`failureDetails`), never the message, carrying counts, sizes, durations and settings, never file names or content. Umami is served through `/stats` on our own domain, counts only www.mp3tom4b.com, and honours Do Not Track.
 - The only thing kept between visits is the M4B player's position per book, in localStorage on the device, keyed by a hash rather than the file name (plus a flag that the engine was downloaded before).
 - No third-party tracking scripts, no ads, no sign-up.
 - Source code is open on GitHub for independent auditing.

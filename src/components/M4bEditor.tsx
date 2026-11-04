@@ -21,7 +21,7 @@ import {
 import { trackEvent, trackFailure } from '@/lib/analytics'
 import { editM4B, type CoverMode } from '@/lib/ffmpeg/editM4b'
 import { probeChapters } from '@/lib/ffmpeg/splitChapters'
-import { terminateFFmpeg } from '@/lib/ffmpeg/client'
+import { resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
@@ -313,7 +313,10 @@ export default function M4bEditor() {
       })
     } catch (err) {
       // Error surfaced via the onProgress 'error' event.
-      if (!cancelledRef.current) trackFailure('edit', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+      if (!cancelledRef.current) {
+        trackFailure('edit', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        resetFFmpegAfterFailure()
+      }
     }
   }
 

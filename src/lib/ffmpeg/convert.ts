@@ -20,6 +20,7 @@ import { humanizeFfmpegError } from './errors'
 import { mountBlobs, ownedBytes, unmount } from './files'
 import { decodedAudioSeconds } from './mp4Duration'
 import { probeDurationMs } from './probe'
+import { runFFmpeg } from './run'
 
 // Mutex for the singleton FFmpeg instance. Concurrent calls into the same
 // ffmpeg.wasm instance corrupt its wasm heap (manifests as
@@ -65,8 +66,10 @@ function fileExtension(name: string): string {
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : 'bin'
 }
 
-async function safeDelete(path: string) {
-  const ffmpeg = await getFFmpeg()
+// Takes the run's own instance: after a cancel it is terminated, and fetching
+// "the" instance again would load a fresh one only to delete files that are
+// already gone with the old one.
+async function safeDelete(ffmpeg: FFmpeg, path: string) {
   try {
     await ffmpeg.deleteFile(path)
   } catch {
@@ -150,7 +153,7 @@ async function encodeFilesParallel(
           )
           try {
             await tagged('encoding', () =>
-              worker.exec(buildEncodeArgs({ input: `${SOURCE_DIR}/${inPath}`, output: outPath, bitrate, target })),
+              runFFmpeg(worker, buildEncodeArgs({ input: `${SOURCE_DIR}/${inPath}`, output: outPath, bitrate, target })),
             )
           } finally {
             await unmount(worker, SOURCE_DIR)
@@ -369,7 +372,11 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     ffmpeg.on('progress', muxProgress)
     ffmpeg.on('log', muxLog)
     try {
-      await ffmpeg.exec(muxArgs)
+      await runFFmpeg(ffmpeg, muxArgs)
+    } catch (err) {
+      // Named like the encode steps ("encoding chapter 3/10: …"), so the
+      // failure report can say which step it was.
+      throw new Error(`joining chapters: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       ffmpeg.off('progress', muxProgress)
       ffmpeg.off('log', muxLog)
@@ -378,7 +385,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     // Free everything but the output before reading it out: this is the peak.
     await unmount(ffmpeg, PARTS_DIR)
     const data = await ffmpeg.readFile(OUTPUT_PATH)
-    await safeDelete(OUTPUT_PATH)
+    await safeDelete(ffmpeg, OUTPUT_PATH)
     const blob = new Blob([ownedBytes(data)], { type: 'audio/mp4' })
 
     emit({ status: 'done', percent: 100, label: 'Done.' })
@@ -390,7 +397,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
   } finally {
     await unmount(ffmpeg, PARTS_DIR)
     for (const path of tempPaths) {
-      await safeDelete(path)
+      await safeDelete(ffmpeg, path)
     }
   }
 }

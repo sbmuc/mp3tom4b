@@ -3,7 +3,7 @@
  * ffmpeg-core in Node (tests/integration/nodeFFmpeg.ts) so nothing binary is
  * committed: sine tones with tags, a cover, and two chaptered M4Bs.
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { NodeFFmpeg } from '../tests/integration/nodeFFmpeg'
@@ -73,6 +73,9 @@ export async function makeFixtures(): Promise<void> {
     ['-f', 'lavfi', '-i', 'sine=frequency=300:duration=960:sample_rate=8000', '-ac', '1', '-c:a', 'libmp3lame', '-b:a', '8k'],
     'long.mp3',
   )
+
+  // An M4B cut off halfway: its header promises audio that isn't there.
+  writeFileSync(fixture('cut-off.m4b'), readFileSync(fixture('book.m4b')).subarray(0, 20_000))
 
   // Not audio at all, but named like it: the converter can't read it.
   writeFileSync(fixture('broken.mp3'), Buffer.from('this is not an mp3 file '.repeat(200)))

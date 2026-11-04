@@ -11,6 +11,7 @@ import { buildMergeMuxArgs } from './mergeM4b'
 import { encodeConcurrency, encodeSegmentsInWorkers } from './segments'
 import { oneAtATime } from './serial'
 import { resizeCoverImage } from '@/lib/image/resize'
+import { runFFmpeg } from './run'
 
 const OUTPUT_PATH = 'chapterize_out.m4b'
 const META_PATH = 'chapterize_meta.ffmeta'
@@ -355,7 +356,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
     if (useParallel) {
       // 1. Split the input into pieces by stream copy (fast, low memory).
       emit({ status: 'encoding', percent: 6, label: 'Splitting into chapters…' })
-      await ffmpeg.exec([
+      await runFFmpeg(ffmpeg, [
         '-hide_banner', '-i', inputPath, '-map', '0:a', '-c:a', 'copy',
         '-f', 'segment', '-segment_times', buildSegmentTimes(boundaries),
         '-segment_list', SEG_LIST_PATH, '-segment_list_type', 'csv',
@@ -408,7 +409,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
 
       emit({ status: 'muxing', percent: 88, label: 'Finalizing audiobook…' })
       tempPaths.push(OUTPUT_PATH)
-      await ffmpeg.exec(buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
+      await runFFmpeg(ffmpeg, buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
       await unmount(ffmpeg, PARTS_DIR)
 
       const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
@@ -431,7 +432,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
     ffmpeg.on('progress', onProg)
     ffmpeg.on('log', onLog)
     try {
-      await ffmpeg.exec(buildChapterizeArgs({ input: inputPath, coverPath, metaPath: META_PATH, bitrate, output: OUTPUT_PATH }))
+      await runFFmpeg(ffmpeg, buildChapterizeArgs({ input: inputPath, coverPath, metaPath: META_PATH, bitrate, output: OUTPUT_PATH }))
     } finally {
       ffmpeg.off('progress', onProg)
       ffmpeg.off('log', onLog)

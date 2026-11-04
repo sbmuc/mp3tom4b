@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OUT_OF_MEMORY, failureReason, humanizeFfmpegError } from '@/lib/ffmpeg/errors'
+import { OUT_OF_MEMORY, failureDetails, failureReason, humanizeFfmpegError } from '@/lib/ffmpeg/errors'
 
 describe('humanizeFfmpegError', () => {
   it('explains running out of memory, however the browser reports it', () => {
@@ -27,5 +27,32 @@ describe('failureReason', () => {
     expect(failureReason(1)).toBe('unreadable_input')
     expect(failureReason(new Error('chapter 3/10: Invalid data found when processing input'))).toBe('unreadable_input')
     expect(failureReason(new Error('something else'))).toBe('other')
+  })
+})
+
+describe('failures from ffmpeg runs', () => {
+  it('counts an ffmpeg allocation failure as out of memory and says so', () => {
+    const err = new Error('joining chapters: ffmpeg ran out of memory (exit code 1)')
+    expect(failureReason(err)).toBe('out_of_memory')
+    expect(humanizeFfmpegError(err)).toBe(OUT_OF_MEMORY)
+    expect(failureReason(new Error('Aborted(OOM). Build with -sASSERTIONS for more info.'))).toBe('out_of_memory')
+  })
+
+  it('tells exit codes, a stopped engine and file-system errors apart', () => {
+    expect(failureReason(new Error('encoding chapter 2/5: ffmpeg exited with code 1'))).toBe('ffmpeg_exit')
+    expect(failureReason(new Error('ffmpeg is not loaded, call `await ffmpeg.load()` first'))).toBe('engine_stopped')
+    expect(failureReason(new Error('called FFmpeg.terminate()'))).toBe('engine_stopped')
+    expect(failureReason(new Error('reading encoded output of chapter 1/1: FS error'))).toBe('file_system')
+    expect(failureReason(new Error("encoding chapter 1/3: ffmpeg couldn't read the input (exit code 1)"))).toBe('unreadable_input')
+  })
+})
+
+describe('failureDetails', () => {
+  it('sends the exit code and step, never the message', () => {
+    expect(failureDetails(new Error('encoding chapter 2/5: ffmpeg exited with code 1'))).toEqual({ exitCode: 1, step: 'encoding' })
+    expect(failureDetails(new Error('reading encoded output of chapter 1/1: FS error'))).toEqual({ step: 'reading_output' })
+    expect(failureDetails(new Error('joining chapters: ffmpeg ran out of memory (exit code 1)'))).toEqual({ exitCode: 1, step: 'joining_chapters' })
+    expect(failureDetails(234)).toEqual({ exitCode: 234 })
+    expect(failureDetails(new Error('Something about "My Book - Chapter 1.mp3"'))).toEqual({})
   })
 })
