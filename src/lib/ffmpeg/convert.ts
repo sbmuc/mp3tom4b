@@ -21,6 +21,7 @@ import { mountBlobs, ownedBytes, unmount } from './files'
 import { decodedAudioSeconds } from './mp4Duration'
 import { probeDurationMs } from './probe'
 import { runFFmpeg } from './run'
+import { MIN_MEASURED_MS } from '@/lib/format/eta'
 
 // Mutex for the singleton FFmpeg instance. Concurrent calls into the same
 // ffmpeg.wasm instance corrupt its wasm heap (manifests as
@@ -92,6 +93,44 @@ function encodeConcurrency(fileCount: number): number {
  * can be copy-joined. Returns the encoded parts as Blobs, for the join to
  * mount, and each part's decoded length in seconds (null if unreadable).
  */
+/**
+ * How much each file counts towards the encoding progress: its length, so the
+ * bar (and the time left projected from it) moves with the audio done. A
+ * 27-minute chapter and an 11-hour file used to count the same, which made
+ * the estimate jump between minutes and an hour. A file of unknown length
+ * counts as an average one. Pure + testable.
+ */
+export function encodeWeights(durationsSec: Array<number | null>): number[] {
+  const known = durationsSec.filter((d): d is number => d != null && d > 0)
+  const average = known.length > 0 ? known.reduce((a, b) => a + b, 0) / known.length : 1
+  return durationsSec.map((d) => (d != null && d > 0 ? d : average))
+}
+
+/**
+ * Time left to encode: the files still being encoded and the queue played out
+ * over the workers, each file going to whichever worker frees up first, at the
+ * pace measured so far (ms per second of audio, per worker). Unlike a
+ * straight projection it sees the tail coming: when one long file is left,
+ * the other workers sit idle and the end takes longer. Pure + testable.
+ */
+export function simulateEncodeMs(o: {
+  /** Audio seconds still to encode of each file in progress, one per busy worker. */
+  active: number[]
+  /** Audio seconds of each file not started yet, in queue order. */
+  queued: number[]
+  workers: number
+  msPerAudioSec: number
+}): number {
+  const freeAt = o.active.map((sec) => sec * o.msPerAudioSec)
+  while (freeAt.length < o.workers) freeAt.push(0)
+  for (const sec of o.queued) {
+    let next = 0
+    for (let w = 1; w < freeAt.length; w++) if (freeAt[w] < freeAt[next]) next = w
+    freeAt[next] += sec * o.msPerAudioSec
+  }
+  return Math.max(0, ...freeAt)
+}
+
 async function encodeFilesParallel(
   files: AudioFile[],
   segments: Array<{ ext: string }>,
@@ -105,18 +144,41 @@ async function encodeFilesParallel(
   // Per-file encode progress (0–1). Updated by whichever worker holds the file.
   const perFileProgress = new Array<number>(total).fill(0)
   let completedCount = 0
+  const weights = encodeWeights(files.map((f) => f.duration))
+  const totalWeight = weights.reduce((a, b) => a + b, 0)
+  // When each file was picked up and finished, for the pace per worker.
+  const startedAt = new Array<number | null>(total).fill(null)
+  const finishedAt = new Array<number | null>(total).fill(null)
+  const queue: number[] = Array.from({ length: total }, (_, i) => i)
+  const concurrency = encodeConcurrency(total)
 
-  function emitProgress() {
-    const sumProgress = perFileProgress.reduce((a, b) => a + b, 0)
-    const overall = 10 + Math.round((sumProgress / total) * 70)
-    emit({
-      status: 'encoding',
-      percent: Math.min(80, overall),
-      label: `Encoding chapters… (${completedCount} of ${total} done)`,
-    })
+  /** Time left, from the pace so far; undefined until there's enough to go on. */
+  function remainingMs(): number | undefined {
+    const now = Date.now()
+    let busyMs = 0
+    let doneSec = 0
+    const active: number[] = []
+    for (let i = 0; i < total; i++) {
+      const start = startedAt[i]
+      if (start == null) continue
+      busyMs += (finishedAt[i] ?? now) - start
+      doneSec += perFileProgress[i] * weights[i]
+      if (finishedAt[i] == null) active.push((1 - perFileProgress[i]) * weights[i])
+    }
+    if (busyMs < MIN_MEASURED_MS || doneSec <= 0) return undefined
+    return simulateEncodeMs({ active, queued: queue.map((i) => weights[i]), workers: concurrency, msPerAudioSec: busyMs / doneSec })
   }
 
-  const queue: number[] = Array.from({ length: total }, (_, i) => i)
+  function emitProgress() {
+    const fraction = perFileProgress.reduce((sum, p, i) => sum + p * weights[i], 0) / totalWeight
+    emit({
+      status: 'encoding',
+      percent: Math.min(80, 10 + Math.round(fraction * 70)),
+      label: `Encoding chapters… (${completedCount} of ${total} done)`,
+      fraction,
+      remainingMs: remainingMs(),
+    })
+  }
 
   async function runWorker() {
     const worker = await createWorkerFFmpeg()
@@ -124,6 +186,7 @@ async function encodeFilesParallel(
       while (true) {
         const idx = queue.shift()
         if (idx === undefined) break
+        startedAt[idx] = Date.now()
 
         const f = files[idx]
         const ext = segments[idx].ext
@@ -164,6 +227,7 @@ async function encodeFilesParallel(
         } finally {
           worker.off('progress', onProgress)
           perFileProgress[idx] = 1
+          finishedAt[idx] = Date.now()
           completedCount++
           emitProgress()
           try { await worker.deleteFile(outPath) } catch { /* ignore */ }
@@ -174,7 +238,6 @@ async function encodeFilesParallel(
     }
   }
 
-  const concurrency = encodeConcurrency(total)
   await Promise.all(Array.from({ length: concurrency }, () => runWorker()))
   return { parts, decodedSec }
 }

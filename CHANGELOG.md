@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.18.2] — 2026-11-05
+
+### Fixed
+- **A steadier "time remaining".** With chapters of very different lengths, say short chapters and one file of 11 hours, the estimate could jump from 11 minutes to an hour and back. Progress now counts each file by its length, and the estimate plans the remaining files over the parallel encoders, so it sees a long last file coming. It also counts down smoothly instead of standing still and jumping.
+- **More out-of-memory failures are recognised.** ffmpeg words some of them differently ("Error allocating…"); they now get the advice to close other tabs or pick a lower bitrate too.
+
+---
+
 ## [1.18.1] — 2026-11-04
 
 ### Fixed

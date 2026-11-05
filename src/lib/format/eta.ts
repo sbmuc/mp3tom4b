@@ -1,21 +1,31 @@
+/** A point in a job's progress: when, and how much of it was done (0–1). */
+export interface ProgressPoint {
+  ms: number
+  fraction: number
+}
+
+/** With less measured than this, the pace says too little to project from. */
+export const MIN_MEASURED_MS = 8000
+
 /**
- * Human-readable estimated time remaining.
- *
- * `elapsedMs` and `percent` (0–100) must both refer to the same work window —
- * typically the encoding phase only, so that fast early phases (ffmpeg load,
- * probing) don't skew the projection.
- *
- * Returns null when there is too little data to project meaningfully or the
- * remaining time is trivially short.
+ * Time left at `nowMs`, from the average pace between `start` and the latest
+ * `sample`. The average over the whole step, not over the last few updates:
+ * those swing with whichever chapters happen to finish (an estimate jumping
+ * from 11 minutes to an hour), the whole step doesn't. Measured from the
+ * sample, so it counts down between updates. null while there's too little
+ * to go on, or when the step is all but done.
  */
-export function formatEta(elapsedMs: number, percent: number): string | null {
-  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return null
-  if (!Number.isFinite(percent) || percent < 5 || percent >= 99) return null
+export function projectRemainingMs(start: ProgressPoint, sample: ProgressPoint, nowMs: number): number | null {
+  const measured = sample.ms - start.ms
+  const done = sample.fraction - start.fraction
+  if (measured < MIN_MEASURED_MS || done < 0.01 || sample.fraction >= 0.99) return null
+  return Math.max(0, ((1 - sample.fraction) * measured) / done - (nowMs - sample.ms))
+}
 
-  const totalMs = elapsedMs * (100 / percent)
-  const remainingMs = totalMs - elapsedMs
-  const remainingS = Math.round(remainingMs / 1000)
-
+/** "~3m 0s remaining". null under 5 s, where it would only flicker. */
+export function formatRemaining(ms: number): string | null {
+  if (!Number.isFinite(ms)) return null
+  const remainingS = Math.round(ms / 1000)
   if (remainingS < 5) return null
   if (remainingS < 60) return `~${remainingS}s remaining`
 

@@ -20,9 +20,12 @@ export class FFmpegExitError extends Error {
   }
 }
 
-// What ffmpeg logs when an allocation fails (ENOMEM): with memory growth
-// enabled the wasm heap doesn't abort, malloc just returns NULL.
-const OUT_OF_MEMORY_LOG = /Cannot allocate memory|Out of memory|ENOMEM/i
+// What ffmpeg logs when an allocation fails: with memory growth enabled the
+// wasm heap doesn't abort, malloc returns NULL and ffmpeg says so in its own
+// words, e.g. "Out of memory" when the 2 GB heap is full, or "Error
+// allocating the encoding context." (both seen in tests/integration/
+// outOfMemory.test.ts).
+const OUT_OF_MEMORY_LOG = /Cannot allocate memory|Out of memory|ENOMEM|Error allocating|Failed to allocate|Could not allocate/i
 // What it logs for input it can't make sense of: a damaged or cut-off file.
 const UNREADABLE_LOG = /Invalid data found when processing input|moov atom not found|could not find codec parameters/i
 

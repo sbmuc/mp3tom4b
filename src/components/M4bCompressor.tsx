@@ -73,7 +73,7 @@ export default function M4bCompressor() {
 
   // Keep the screen awake so a long compression isn't paused by device sleep.
   useWakeLock(isRunning)
-  const eta = useEta(progress.percent, isRunning)
+  const eta = useEta(progress.percent / 100, isRunning)
 
   // Warn before leaving while a compression is running — closing the tab
   // throws away all in-progress work.

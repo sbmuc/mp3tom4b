@@ -147,7 +147,7 @@ These came up during planning and got rejected with clear reasoning. Recorded so
 
 ## Tech debt (from the Next.js 16 upgrade, Nov 2026)
 
-- **`react-hooks/set-state-in-effect`** — eslint-config-next 16 flags 23 places that call setState inside an effect (an extra render each; behaviour is correct). The rule is set to `warn` in `eslint.config.mjs`; rewrite them (derive state during render, or key components) and turn it back to `error`.
+- **`react-hooks/set-state-in-effect`** — eslint-config-next 16 flags 21 places (was 23) that call setState inside an effect (an extra render each; behaviour is correct). The rule is set to `warn` in `eslint.config.mjs`; rewrite them (derive state during render, or key components) and turn it back to `error`.
 - **Turbopack** — builds use `next build --webpack` because Turbopack can't bundle @ffmpeg/ffmpeg's `new Worker(new URL(variable, import.meta.url))`. Revisit when @ffmpeg/ffmpeg or Turbopack changes.
 - **Editor title from tags** — `extractMetadata` takes the book title from the album tag (right for chapter MP3s); an M4B with only a title tag shows its file name in the editor instead. Fall back to the title tag for single-file books.
 

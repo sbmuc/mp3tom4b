@@ -1,43 +1,49 @@
 import { describe, expect, it } from 'vitest'
-import { formatEta } from '@/lib/format/eta'
+import { formatRemaining, projectRemainingMs } from '@/lib/format/eta'
 
-describe('formatEta', () => {
-  it('returns null below the 5% confidence threshold', () => {
-    expect(formatEta(1000, 0)).toBeNull()
-    expect(formatEta(1000, 4.9)).toBeNull()
-    expect(formatEta(1000, -1)).toBeNull()
+describe('formatRemaining', () => {
+  it('returns null under 5 s, where it would only flicker', () => {
+    expect(formatRemaining(4_000)).toBeNull()
+    expect(formatRemaining(Number.NaN)).toBeNull()
   })
 
-  it('returns null at or above 99% (long-tail finalize)', () => {
-    expect(formatEta(60_000, 99)).toBeNull()
-    expect(formatEta(60_000, 99.5)).toBeNull()
-    expect(formatEta(60_000, 100)).toBeNull()
+  it('formats seconds, minutes and hours', () => {
+    expect(formatRemaining(40_000)).toBe('~40s remaining')
+    expect(formatRemaining(180_000)).toBe('~3m 0s remaining')
+    expect(formatRemaining(400_000)).toBe('~6m 40s remaining')
+    expect(formatRemaining(220 * 60_000)).toBe('~3h 40m remaining')
+  })
+})
+
+describe('projectRemainingMs', () => {
+  const start = { ms: 0, fraction: 0 }
+
+  it('projects from the average pace since the start', () => {
+    // A quarter done in 60 s: three quarters (180 s) to go.
+    expect(projectRemainingMs(start, { ms: 60_000, fraction: 0.25 }, 60_000)).toBe(180_000)
+    // Measured from a later start point, its own pace counts.
+    expect(projectRemainingMs({ ms: 10_000, fraction: 0.1 }, { ms: 70_000, fraction: 0.4 }, 70_000)).toBeCloseTo(120_000)
   })
 
-  it('returns null for non-positive elapsed time', () => {
-    expect(formatEta(0, 50)).toBeNull()
-    expect(formatEta(-1, 50)).toBeNull()
+  it('counts down between updates instead of standing still', () => {
+    const sample = { ms: 60_000, fraction: 0.25 }
+    expect(projectRemainingMs(start, sample, 90_000)).toBe(150_000)
+    expect(projectRemainingMs(start, sample, 300_000)).toBe(0)
   })
 
-  it('returns null when projected remaining is under 5s', () => {
-    // 95% in 95s → ETA ≈ 5s, exactly at the cutoff. Use 96% so it's < 5s.
-    expect(formatEta(96_000, 96)).toBeNull()
+  it('waits until there is something to go on, and stops near the end', () => {
+    expect(projectRemainingMs(start, { ms: 5_000, fraction: 0.2 }, 5_000)).toBeNull() // under 8 s measured
+    expect(projectRemainingMs(start, { ms: 60_000, fraction: 0.005 }, 60_000)).toBeNull() // hardly moved
+    expect(projectRemainingMs(start, { ms: 60_000, fraction: 0.995 }, 60_000)).toBeNull() // all but done
   })
 
-  it('formats sub-minute estimates as seconds', () => {
-    // 20% in 10s → total 50s, remaining 40s
-    expect(formatEta(10_000, 20)).toBe('~40s remaining')
-  })
-
-  it('formats sub-hour estimates as minutes + seconds', () => {
-    // 25% in 60s → total 240s, remaining 180s = 3m 0s
-    expect(formatEta(60_000, 25)).toBe('~3m 0s remaining')
-    // 20% in 100s → total 500s, remaining 400s = 6m 40s
-    expect(formatEta(100_000, 20)).toBe('~6m 40s remaining')
-  })
-
-  it('formats multi-hour estimates as hours + minutes', () => {
-    // 12% in 30 min → total 250 min, remaining 220 min = 3h 40m
-    expect(formatEta(30 * 60 * 1000, 12)).toBe('~3h 40m remaining')
+  it("doesn't swing with how one stretch went", () => {
+    // Steady pace overall, one slow stretch at the end: the estimate stays
+    // near the true 200 s left instead of jumping to the slow stretch's pace.
+    const before = projectRemainingMs(start, { ms: 100_000, fraction: 0.5 }, 100_000)
+    const afterSlowStretch = projectRemainingMs(start, { ms: 120_000, fraction: 0.52 }, 120_000)
+    expect(before).toBe(100_000)
+    expect(afterSlowStretch).toBeGreaterThan(100_000)
+    expect(afterSlowStretch).toBeLessThan(115_000)
   })
 })

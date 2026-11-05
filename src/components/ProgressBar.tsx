@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect } from 'react'
 import { useConversionStore } from '@/lib/store/conversionStore'
-import { formatEta } from '@/lib/format/eta'
+import { useEta } from '@/lib/hooks/useEta'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import ToolError from '@/components/ToolError'
 
@@ -14,24 +14,14 @@ const ACTIVE_STATUSES = new Set([
   'muxing',
 ])
 
-// Encoding occupies global percent range 10–80. Map to 0–100 for ETA math.
+// Encoding occupies global percent range 10–80; the time left is projected
+// over that step only, where nearly all the time goes.
 const ENC_START = 10
-const ENC_END = 80
-const ENC_SPAN = ENC_END - ENC_START
-
-// Rolling window: keep the last N (timestamp, encodingPct) samples for rate smoothing.
-const WINDOW = 6
+const ENC_SPAN = 80 - ENC_START
 
 export default function ProgressBar() {
   const progress = useConversionStore((s) => s.progress)
   const setProgress = useConversionStore((s) => s.setProgress)
-
-  // Timestamp when the encoding phase began (not the overall job start).
-  const encodingStartRef = useRef<number | null>(null)
-  // Rolling samples: [nowMs, encodingPct] pairs for rate smoothing.
-  const samplesRef = useRef<Array<[number, number]>>([])
-
-  const [eta, setEta] = useState<string | null>(null)
 
   const isActive = ACTIVE_STATUSES.has(progress.status)
 
@@ -51,60 +41,11 @@ export default function ProgressBar() {
   // (which can pause the wasm worker and break long-running conversions).
   useWakeLock(isActive)
 
-  useEffect(() => {
-    if (!isActive) {
-      encodingStartRef.current = null
-      samplesRef.current = []
-      setEta(null)
-      return
-    }
-
-    if (progress.status !== 'encoding') {
-      // Outside the encoding window — no meaningful ETA to show.
-      setEta(null)
-      return
-    }
-
-    const now = performance.now()
-
-    // Record when encoding first starts.
-    if (encodingStartRef.current == null) {
-      encodingStartRef.current = now
-      samplesRef.current = []
-    }
-
-    // Map global percent → encoding-local percent (0–100).
-    const encPct = Math.max(0, Math.min(100, ((progress.percent - ENC_START) / ENC_SPAN) * 100))
-
-    // Accumulate rolling window samples.
-    const samples = samplesRef.current
-    samples.push([now, encPct])
-    if (samples.length > WINDOW) samples.shift()
-
-    // Need at least 2 samples and some elapsed time before projecting.
-    const encodingElapsed = now - encodingStartRef.current
-    if (samples.length < 2 || encodingElapsed < 8000) {
-      setEta(null)
-      return
-    }
-
-    // Use the oldest sample in the window for a smoothed rate.
-    const [oldestMs, oldestPct] = samples[0]
-    const windowElapsed = now - oldestMs
-    const windowProgress = encPct - oldestPct
-
-    if (windowElapsed <= 0 || windowProgress <= 0) {
-      setEta(null)
-      return
-    }
-
-    // Project: if current pace holds, how long to reach 100%?
-    // formatEta expects (elapsed, percent) — synthesise an equivalent linear
-    // pair so it computes the same remaining time as (100 - encPct) * msPerPct.
-    const msPerPct = windowElapsed / windowProgress
-    const syntheticElapsed = encPct * msPerPct
-    setEta(formatEta(syntheticElapsed, encPct))
-  }, [isActive, progress.percent, progress.status])
+  const eta = useEta(
+    progress.fraction ?? (progress.percent - ENC_START) / ENC_SPAN,
+    progress.status === 'encoding',
+    progress.remainingMs,
+  )
 
   if (progress.status === 'idle' || progress.status === 'done') return null
 

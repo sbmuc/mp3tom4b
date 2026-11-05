@@ -1,65 +1,73 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { formatEta } from '@/lib/format/eta'
-
-const WINDOW = 6
-const MIN_ELAPSED_MS = 8000
+import { formatRemaining, projectRemainingMs, type ProgressPoint } from '@/lib/format/eta'
 
 /**
- * Rolling-window "time remaining" for a long-running job.
+ * "Time left" for a long-running step, from the average pace since it started
+ * moving (see projectRemainingMs), refreshed every second so it counts down
+ * between progress updates instead of standing still and then jumping.
  *
- * Projects from the recent rate of progress rather than the average since the
- * start, so a slow warm-up (loading ffmpeg, probing) doesn't skew the estimate.
- * Returns null until there is enough data to project meaningfully — callers
- * simply render nothing in that case.
- *
- * `percent` is the job's overall 0–100 progress; `active` resets the projection
- * when it goes false (job finished, cancelled, or errored).
+ * `fraction` is the step's progress (0–1); when `active` goes false (done,
+ * cancelled, failed) the estimate is cleared. `projectedMs`, when the step
+ * knows better (the converter plays out its queue of files), is used instead
+ * and counted down the same way. Returns null until there is enough to go
+ * on; callers then render nothing.
  */
-export function useEta(percent: number, active: boolean): string | null {
+export function useEta(fraction: number, active: boolean, projectedMs?: number): string | null {
   const [eta, setEta] = useState<string | null>(null)
-  const startRef = useRef<number | null>(null)
-  const samplesRef = useRef<[number, number][]>([])
+  const startRef = useRef<ProgressPoint | null>(null)
+  const sampleRef = useRef<ProgressPoint | null>(null)
+  const movingRef = useRef(false)
+  const projectedRef = useRef<{ ms: number; remainingMs: number } | null>(null)
+
+  useEffect(() => {
+    projectedRef.current = active && projectedMs != null ? { ms: Date.now(), remainingMs: projectedMs } : null
+  }, [projectedMs, active])
 
   useEffect(() => {
     if (!active) {
       startRef.current = null
-      samplesRef.current = []
-      setEta(null)
+      sampleRef.current = null
+      movingRef.current = false
       return
     }
-
-    const now = Date.now()
-    if (startRef.current == null) {
-      startRef.current = now
-      samplesRef.current = []
-    }
-
-    const pct = Math.max(0, Math.min(100, percent))
-    const samples = samplesRef.current
-    samples.push([now, pct])
-    if (samples.length > WINDOW) samples.shift()
-
-    if (samples.length < 2 || now - startRef.current < MIN_ELAPSED_MS) {
-      setEta(null)
+    const point = { ms: Date.now(), fraction: Math.max(0, Math.min(1, fraction)) }
+    const start = startRef.current
+    if (!start) {
+      startRef.current = point
       return
     }
-
-    // Smoothed rate over the window's oldest sample.
-    const [oldestMs, oldestPct] = samples[0]
-    const windowElapsed = now - oldestMs
-    const windowProgress = pct - oldestPct
-    if (windowElapsed <= 0 || windowProgress <= 0) {
-      setEta(null)
+    if (point.fraction <= (sampleRef.current ?? start).fraction) return
+    // The clock starts at the first movement: loading the engine or reading
+    // the input before it isn't slow progress.
+    if (!movingRef.current) {
+      movingRef.current = true
+      startRef.current = point
       return
     }
+    sampleRef.current = point
+  }, [fraction, active])
 
-    // formatEta expects (elapsed, percent) — synthesise a linear pair that
-    // yields the same remaining time as (100 - pct) * msPerPct.
-    const msPerPct = windowElapsed / windowProgress
-    setEta(formatEta(pct * msPerPct, pct))
-  }, [percent, active])
+  useEffect(() => {
+    if (!active) return
+    const id = setInterval(() => {
+      const now = Date.now()
+      const projected = projectedRef.current
+      const start = startRef.current
+      const sample = sampleRef.current
+      const ms = projected
+        ? Math.max(0, projected.remainingMs - (now - projected.ms))
+        : start && sample
+          ? projectRemainingMs(start, sample, now)
+          : null
+      setEta(ms == null ? null : formatRemaining(ms))
+    }, 1000)
+    return () => {
+      clearInterval(id)
+      setEta(null)
+    }
+  }, [active])
 
   return eta
 }

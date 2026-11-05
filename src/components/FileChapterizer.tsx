@@ -159,7 +159,7 @@ export default function FileChapterizer() {
   const isDetecting = progress.status === 'probing'
 
   useWakeLock(isBusy)
-  const eta = useEta(progress.percent, isBusy)
+  const eta = useEta(progress.percent / 100, isBusy)
 
   useEffect(() => {
     if (!isBusy) return
