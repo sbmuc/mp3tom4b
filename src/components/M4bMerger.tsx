@@ -198,7 +198,7 @@ export default function M4bMerger() {
   const isRunning = ACTIVE_STATUSES.has(progress.status)
 
   useWakeLock(isRunning)
-  const eta = useEta(progress.percent, isRunning)
+  const eta = useEta(progress.percent / 100, isRunning)
 
   const sensors = useSensors(
     useSensor(PointerSensor),

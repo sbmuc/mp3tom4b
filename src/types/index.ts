@@ -91,4 +91,11 @@ export interface ConversionProgress {
   percent: number
   /** Human-readable step label */
   label: string
+  /**
+   * Share of the current long step done (0–1), finer than `percent`, weighed
+   * by audio length. Set while encoding, for the time-left estimate.
+   */
+  fraction?: number
+  /** Time left for that step (ms) when the step can tell better than its pace alone. */
+  remainingMs?: number
 }

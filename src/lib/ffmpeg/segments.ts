@@ -17,15 +17,17 @@ export function encodeConcurrency(count: number): number {
  * Re-encode split segments across a pool of worker instances. Each worker
  * mounts its segment (never copied in), encodes it, and hands the result back
  * as a Blob. Returns the encoded parts and each part's decoded length in
- * seconds (null if unreadable). `onProgress` gets the summed per-segment
- * progress (0..count) and how many segments are done.
+ * seconds (null if unreadable). `onProgress` gets the share of the work done
+ * (0..1) and how many segments are done. Segments are stream-copied pieces
+ * of one file, so each weighs by its size: a 50-minute chapter moves the bar
+ * five times as far as a 10-minute one, and the bar keeps pace with the clock.
  */
 export async function encodeSegmentsInWorkers(
   segments: Blob[],
   o: {
     ext: string
     args: (input: string, output: string) => string[]
-    onProgress: (progressSum: number, completed: number) => void
+    onProgress: (doneFraction: number, completed: number) => void
   },
 ): Promise<{ parts: Blob[]; decodedSec: Array<number | null> }> {
   const count = segments.length
@@ -33,7 +35,9 @@ export async function encodeSegmentsInWorkers(
   const decodedSec = new Array<number | null>(count).fill(null)
   const perSeg = new Array<number>(count).fill(0)
   let completed = 0
-  const report = () => o.onProgress(perSeg.reduce((a, b) => a + b, 0), completed)
+  const totalSize = segments.reduce((sum, seg) => sum + seg.size, 0) || 1
+  const report = () =>
+    o.onProgress(perSeg.reduce((sum, p, i) => sum + p * segments[i].size, 0) / totalSize, completed)
 
   const queue = Array.from({ length: count }, (_, i) => i)
 

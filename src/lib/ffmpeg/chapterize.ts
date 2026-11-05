@@ -383,10 +383,10 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
       const { parts, decodedSec } = await encodeSegmentsInWorkers(segments, {
         ext: segExt,
         args: (input, output) => buildSegmentEncodeArgs({ input, output, bitrate }),
-        onProgress: (sum, done) =>
+        onProgress: (fraction, done) =>
           emit({
             status: 'encoding',
-            percent: Math.min(85, 10 + Math.round((sum / segCount) * 75)),
+            percent: Math.min(85, 10 + Math.round(fraction * 75)),
             label: `Encoding chapters… (${done} of ${segCount} done)`,
           }),
       })

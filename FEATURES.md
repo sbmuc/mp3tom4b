@@ -65,7 +65,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Chapter markers are placed from each encoded chapter's real length, so they stay aligned with the audio at every chapter of a long book.
 - Memory use follows the finished audiobook, not the sources: source files are read straight from disk as ffmpeg needs them, each encoded chapter is handed to the browser as soon as it is done, and the result is copied out once. Joining takes two to three times the size of the finished M4B.
 - Multi-stage progress bar with human-readable labels (loading ffmpeg, probing, encoding chapter X of Y, muxing, finalizing).
-- Estimated time remaining once conversion has settled into a stable phase.
+- Estimated time remaining while encoding: progress weighs each file by its length (`encodeWeights`), and the time left plays out the remaining files over the workers at the pace measured per worker (`simulateEncodeMs`), so one long file at the end is foreseen instead of making the estimate jump. It counts down every second between updates.
 - ffmpeg.wasm runs entirely in-browser; nothing is uploaded.
 - Output is a single M4B file with chapter markers, embedded cover art, and full audiobook metadata, optimised for streaming/seek (`+faststart`).
 - Output is tagged as an Audiobook (media type `stik=2`) with gapless playback, so players shelve it under audiobooks and keep the resume position.
@@ -154,7 +154,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Keyboard-accessible interactive elements; ARIA labels on icon-only buttons and on every file input; light-mode text and icon buttons meet WCAG AA contrast (the wordmark's "m4b" is accent-700 in light mode).
 - aria-live progress announcements during conversion.
 - Keeps the screen awake during conversion, compression, and splitting (while the tab is in the foreground) so a long job isn't interrupted by display sleep.
-- Estimated time remaining on every long-running tool, projected from the recent rate of progress.
+- Estimated time remaining on every long-running tool (`useEta`), from the average pace since the step started moving rather than the last few updates, counting down every second; parallel chapter encodes weigh each chapter by its size.
 - The one-time ~31 MB engine download is named in the progress label on first use, rather than looking like a stall; later visits (served from the browser cache) just say "Loading converter…".
 - Touch-sized (44px) drag, reset, and remove controls.
 - Drop zones say "Tap to choose …" on phones and tablets (no mouse, a finger as the main pointer) and "Drop …, or click to browse" elsewhere.

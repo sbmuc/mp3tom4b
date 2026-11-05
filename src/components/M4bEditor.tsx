@@ -112,7 +112,7 @@ export default function M4bEditor() {
   const isRunning = ACTIVE_STATUSES.has(progress.status)
 
   useWakeLock(isRunning)
-  const eta = useEta(progress.percent, isRunning)
+  const eta = useEta(progress.percent / 100, isRunning)
 
   useEffect(() => {
     if (!isRunning) return

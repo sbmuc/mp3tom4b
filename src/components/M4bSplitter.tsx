@@ -62,7 +62,7 @@ export default function M4bSplitter() {
 
   // Keep the screen awake so a long split isn't paused by device sleep.
   useWakeLock(isRunning)
-  const eta = useEta(progress.percent, isRunning)
+  const eta = useEta(progress.percent / 100, isRunning)
 
   useEffect(() => {
     if (!isRunning) return

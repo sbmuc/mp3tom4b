@@ -204,10 +204,10 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
       const { parts, decodedSec } = await encodeSegmentsInWorkers(segments, {
         ext: 'm4a',
         args: (input, output) => buildSegmentEncodeArgs({ input, output, bitrate }),
-        onProgress: (sum, done) =>
+        onProgress: (fraction, done) =>
           emit({
             status: 'encoding',
-            percent: Math.min(90, 15 + Math.round((sum / count) * 75)),
+            percent: Math.min(90, 15 + Math.round(fraction * 75)),
             label: `Compressing chapters… (${done} of ${count} done)`,
           }),
       })
