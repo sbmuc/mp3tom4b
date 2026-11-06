@@ -22,7 +22,7 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   },
   {
     q: 'Is this really private? Are my files uploaded?',
-    a: 'The entire conversion runs locally in your browser using a WebAssembly build of FFmpeg. You can confirm this by opening your browser\'s network tab while converting: there are no audio uploads. The source code is published on GitHub so you can audit it.',
+    a: 'The entire conversion runs locally in your browser using a WebAssembly build of FFmpeg. You can confirm this by opening your browser\'s network tab while converting: there are no audio uploads. The source code is published on GitHub so you can audit it. On top of that, the site\'s Content Security Policy tells your browser to block any connection except to this site (and, only for the optional metadata lookup, to iTunes and Open Library), so an upload couldn\'t happen even by mistake.',
   },
   {
     q: 'Which audio file types are supported?',
