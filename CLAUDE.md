@@ -68,7 +68,7 @@ Users skew technical-curious but not necessarily developers. UX must be obvious 
 - **Icons:** lucide-react
 - **State:** Zustand (lightweight, no boilerplate)
 - **Hosting:** Vercel (free tier)
-- **Analytics:** Vercel Analytics (free tier: page views, visitors, countries, referrers) + Umami Cloud (free tier: anonymous per-tool success/failure events only, via `src/lib/analytics.ts`, proxied through `/stats`; auto page views off because the proxy hides the visitor's IP) — both cookieless
+- **Analytics:** Vercel Analytics (free tier: page views, visitors, countries, referrers) + Umami Cloud (free tier: anonymous per-tool success/failure events only, via `src/lib/analytics.ts`; the tracker is a pinned, reviewed copy at `public/stats/script.js` and only its event endpoint is proxied through `/stats`; auto page views off because the proxy hides the visitor's IP) — both cookieless
 
 ### Why client-side?
 
@@ -447,4 +447,4 @@ When prompting Claude Code:
 3. **Prefer the boring choice.** This is utility software. Stable, well-known libraries beat clever new ones.
 4. **Ask for tests on lib/ functions** even though V1 ships without a full suite — pure functions in `lib/ffmpeg/`, `lib/audio/`, `lib/image/` should have unit tests from the start.
 5. **No new dependencies without justification.** Each package added is weight on the wasm bundle and load time.
-6. **The privacy claim is a contract.** No analytics that ping on file selection, no error reporting that sends file metadata, no third-party scripts that could read DOM contents. If something would break the "files never leave your browser" promise, it doesn't ship. This isn't paranoia — it's literally the entire reason this tool exists instead of using CloudConvert.
+6. **The privacy claim is a contract.** No analytics that ping on file selection, no error reporting that sends file metadata, no third-party scripts that could read DOM contents. If something would break the "files never leave your browser" promise, it doesn't ship. This isn't paranoia — it's literally the entire reason this tool exists instead of using CloudConvert. The Content Security Policy in `next.config.js` enforces it in the browser: a new external host (an API, a CDN, a font) must be added there deliberately, and the browser tests fail on any blocked request.

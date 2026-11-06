@@ -13,7 +13,7 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 text-zinc-700 dark:text-zinc-300">
       <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Last updated: 4 November 2026</p>
+      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Last updated: 6 November 2026</p>
 
       <h2 className="mt-10 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
         Your audio files
@@ -22,6 +22,11 @@ export default function PrivacyPage() {
         Audio files you drop into mp3tom4b are processed entirely in your browser via WebAssembly.
         They are never uploaded, transmitted, stored, or shared. The only place they exist outside
         your device is wherever you choose to save the resulting M4B.
+      </p>
+      <p className="mt-2">
+        Your browser enforces this too: the site&apos;s Content Security Policy only lets its pages
+        connect to this site itself and, for the optional metadata lookup below, to iTunes and Open
+        Library. A request anywhere else is blocked by the browser before it leaves your device.
       </p>
 
       <h2 className="mt-8 text-xl font-semibold text-zinc-900 dark:text-zinc-100">

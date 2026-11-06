@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.19.1] — 2026-11-06
+
+### Security
+- **The browser now enforces the privacy promise.** A Content Security Policy only lets the site's pages connect to the site itself and, for the optional metadata lookup, to iTunes and Open Library; any other connection is blocked by the browser. The privacy policy and the FAQ say so.
+- The anonymous-usage script (Umami) is now a reviewed copy on this site instead of being fetched live from Umami, so it can only change through a reviewed update. (Umami's own copy changed on 5 November.)
+- Standard security headers: no MIME sniffing, a stricter referrer policy, unused browser features (camera, microphone, location, payment, USB) switched off, and the site can't be framed by other sites.
+
+---
+
 ## [1.19.0] — 2026-11-06
 
 ### Added
