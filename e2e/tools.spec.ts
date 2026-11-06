@@ -86,6 +86,18 @@ test('converter: shared track numbers are left out of the chapter titles', async
   await expect(page.getByLabel('Chapter title').last()).toHaveValue('Closing')
 })
 
+test('converter: a bitrate above what the files hold is explained', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+  await page.getByText('Show advanced options').click()
+  await page.getByRole('radio', { name: /^256 kbps/ }).check()
+  await expect(page.getByText(/Your audio is 64 kbps, so a higher bitrate makes the M4B bigger, not better/)).toBeVisible()
+  await page.getByRole('button', { name: 'Use 64 kbps' }).click()
+  await expect(page.getByRole('radio', { name: /^64 kbps/ })).toBeChecked()
+  await expect(page.getByText(/Your audio is 64 kbps/)).toHaveCount(0)
+})
+
 test('converter: Convert with an unreadable file goes to that file', async ({ page }) => {
   await page.goto('/')
   await page

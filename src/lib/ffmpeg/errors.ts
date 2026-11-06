@@ -2,6 +2,16 @@
 // a trap, a failed ArrayBuffer, or ffmpeg's ENOMEM line (see run.ts).
 const OUT_OF_MEMORY_PATTERN = /memory access out of bounds|out of memory|allocation failed|Cannot allocate memory|Aborted\(OOM\)/i
 
+// The browser couldn't read back a Blob (Chrome: "NotReadableError … could
+// not be read"). Seen joining about 3.8 GB of encoded chapters, which the browser
+// could no longer hold; reading a source file it means the file moved.
+const NOT_READABLE_PATTERN = /NotReadableError|could not be read, typically due to permission problems/i
+// Steps that read the encoded parts kept in the page, not the user's files.
+const PART_STEP_PATTERN = /^(joining chapters|reading encoded output of)\b/i
+
+export const TOO_BIG_FOR_BROWSER =
+  "This audiobook is too big for your browser to put together. Pick a lower bitrate, or convert the book in two parts."
+
 export const OUT_OF_MEMORY =
   'Your browser ran out of memory. Close other tabs and try again; a lower bitrate or a shorter audiobook needs less memory.'
 
@@ -18,6 +28,13 @@ export function humanizeFfmpegError(err: unknown): string {
   // matter; the number of files doesn't.
   if (OUT_OF_MEMORY_PATTERN.test(raw)) {
     return OUT_OF_MEMORY
+  }
+
+  if (NOT_READABLE_PATTERN.test(raw)) {
+    if (PART_STEP_PATTERN.test(raw)) return TOO_BIG_FOR_BROWSER
+    // "reading chapter 3/10: NotReadableError …": keep which file it was.
+    const prefix = /^[^:]*chapter \d+\/\d+: /i.exec(raw)?.[0] ?? ''
+    return `${prefix}the file couldn't be read any more. Was it moved, renamed or deleted while converting? Keep the files where they are until it's done.`
   }
 
   // Wasm aborted (instance terminated mid-execution — often a cancel).
@@ -47,11 +64,14 @@ export type FailureReason =
   | 'ffmpeg_exit'
   | 'file_system'
   | 'engine_stopped'
+  | 'browser_storage'
+  | 'source_moved'
   | 'other'
 
 export function failureReason(err: unknown): FailureReason {
   const raw = extractMessage(err)
   if (err === 28 || OUT_OF_MEMORY_PATTERN.test(raw)) return 'out_of_memory'
+  if (NOT_READABLE_PATTERN.test(raw)) return PART_STEP_PATTERN.test(raw) ? 'browser_storage' : 'source_moved'
   if (/Aborted\(\)|RuntimeError: unreachable/i.test(raw)) return 'interrupted'
   if (err === 1 || /invalid data|could ?n[o']t read|corrupt|unsupported codec/i.test(raw)) return 'unreadable_input'
   // A step's ffmpeg run failed for a reason other than memory (run.ts).
