@@ -21,18 +21,18 @@ describe('simulateEncodeMs', () => {
   it('sees the tail coming when one long file is left for one worker', () => {
     // 3 workers, 1 ms per audio second. Short files finish fast, then one
     // worker alone takes the 600 s file: 610 ms, not (total work / 3).
-    const ms = simulateEncodeMs({ active: [10, 10, 10], queued: [10, 10, 600], workers: 3, msPerAudioSec: 1 })
+    const ms = simulateEncodeMs({ activeMs: [10, 10, 10], queued: [10, 10, 600], workers: 3, msPerAudioSec: 1 })
     expect(ms).toBe(610)
     const naive = (10 * 5 + 600) / 3
     expect(ms).toBeGreaterThan(naive * 2.5)
   })
 
   it('spreads even files over the workers', () => {
-    expect(simulateEncodeMs({ active: [5, 5, 5], queued: [5, 5, 5], workers: 3, msPerAudioSec: 2 })).toBe(20)
+    expect(simulateEncodeMs({ activeMs: [10, 10, 10], queued: [5, 5, 5], workers: 3, msPerAudioSec: 2 })).toBe(20)
   })
 
   it('uses idle workers for the queue', () => {
-    expect(simulateEncodeMs({ active: [30], queued: [10, 10], workers: 3, msPerAudioSec: 1 })).toBe(30)
-    expect(simulateEncodeMs({ active: [], queued: [], workers: 3, msPerAudioSec: 1 })).toBe(0)
+    expect(simulateEncodeMs({ activeMs: [30], queued: [10, 10], workers: 3, msPerAudioSec: 1 })).toBe(30)
+    expect(simulateEncodeMs({ activeMs: [], queued: [], workers: 3, msPerAudioSec: 1 })).toBe(0)
   })
 })

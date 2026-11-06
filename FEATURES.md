@@ -59,13 +59,15 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - Bitrate selector: 64 (default), 96, 128, 192, 256 kbps.
 - Smart bitrate default — suggested bitrate is bumped automatically when source files are lossless or above 256 kbps and the genre is non-audiobook.
-- Estimated output size preview that updates with bitrate changes ("~340 MB at 64 kbps").
+- Estimated output size preview that updates with bitrate changes ("~340 MB at 64 kbps"), at the bitrate the encoder really reaches: it tops out by sample rate (`aacCeilingKbps`, measured: ~110 kbps at 22 kHz, ~220 at 44.1 kHz), so 256 kbps on 22 kHz audio is shown as "at ~112 kbps".
+- When the chosen bitrate is higher than the audio can use, a note says why and offers the setting that keeps everything (`bitrateAdvice`): the files are lossy at a lower bitrate ("Your audio is 64 kbps, so a higher bitrate makes the M4B bigger, not better"), or their sample rate caps the encoder.
+- Above about 2 GB estimated (`LIKELY_TOO_BIG_BYTES`), a warning before converting that the book may not come together in the browser, with its size at 64 kbps.
 - Mixed sources join cleanly: every chapter is encoded to one common sample rate (the highest source rate, up to 48 kHz) and channel layout (mono only when every source is mono), so files from different rips, recorders, or formats can be combined.
 - AAC `.m4a` inputs that already share identical audio settings and are at or below the chosen bitrate are joined without re-encoding (no quality loss, near-instant); the audio settings are confirmed with ffmpeg first, not taken from the tags.
 - Chapter markers are placed from each encoded chapter's real length, so they stay aligned with the audio at every chapter of a long book.
 - Memory use follows the finished audiobook, not the sources: source files are read straight from disk as ffmpeg needs them, each encoded chapter is handed to the browser as soon as it is done, and the result is copied out once. Joining takes two to three times the size of the finished M4B.
 - Multi-stage progress bar with human-readable labels (loading ffmpeg, probing, encoding chapter X of Y, muxing, finalizing).
-- Estimated time remaining while encoding: progress weighs each file by its length (`encodeWeights`), and the time left plays out the remaining files over the workers at the pace measured per worker (`simulateEncodeMs`), so one long file at the end is foreseen instead of making the estimate jump. It counts down every second between updates.
+- Estimated time remaining while encoding: progress weighs each file by its length (`encodeWeights`), and the time left plays out the remaining files over the workers at the pace measured per worker (`simulateEncodeMs`), so one long file at the end is foreseen instead of making the estimate jump; a file in progress is projected at its own pace once it has shown one. It counts down every second between updates.
 - ffmpeg.wasm runs entirely in-browser; nothing is uploaded.
 - Output is a single M4B file with chapter markers, embedded cover art, and full audiobook metadata, optimised for streaming/seek (`+faststart`).
 - Output is tagged as an Audiobook (media type `stik=2`) with gapless playback, so players shelve it under audiobooks and keep the resume position.

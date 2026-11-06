@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OUT_OF_MEMORY, failureDetails, failureReason, humanizeFfmpegError } from '@/lib/ffmpeg/errors'
+import { OUT_OF_MEMORY, TOO_BIG_FOR_BROWSER, failureDetails, failureReason, humanizeFfmpegError } from '@/lib/ffmpeg/errors'
 
 describe('humanizeFfmpegError', () => {
   it('explains running out of memory, however the browser reports it', () => {
@@ -54,5 +54,22 @@ describe('failureDetails', () => {
     expect(failureDetails(new Error('joining chapters: ffmpeg ran out of memory (exit code 1)'))).toEqual({ exitCode: 1, step: 'joining_chapters' })
     expect(failureDetails(234)).toEqual({ exitCode: 234 })
     expect(failureDetails(new Error('Something about "My Book - Chapter 1.mp3"'))).toEqual({})
+  })
+})
+
+describe('a Blob the browser can no longer read', () => {
+  const chrome = "NotReadableError: Failed to execute 'readAsArrayBuffer' on 'FileReaderSync': The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired."
+
+  it('joining the encoded chapters: the book is too big for the browser', () => {
+    // Seen after 56 minutes, joining about 3.8 GB of encoded chapters in Chrome.
+    const err = new Error(`joining chapters: ${chrome}`)
+    expect(humanizeFfmpegError(err)).toBe(TOO_BIG_FOR_BROWSER)
+    expect(failureReason(err)).toBe('browser_storage')
+  })
+
+  it('reading a source file: it was moved or deleted', () => {
+    const err = new Error(`reading chapter 3/10: ${chrome}`)
+    expect(humanizeFfmpegError(err)).toMatch(/^reading chapter 3\/10: the file couldn't be read any more\. Was it moved/)
+    expect(failureReason(err)).toBe('source_moved')
   })
 })

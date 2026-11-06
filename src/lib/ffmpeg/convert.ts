@@ -114,14 +114,14 @@ export function encodeWeights(durationsSec: Array<number | null>): number[] {
  * the other workers sit idle and the end takes longer. Pure + testable.
  */
 export function simulateEncodeMs(o: {
-  /** Audio seconds still to encode of each file in progress, one per busy worker. */
-  active: number[]
+  /** Time still needed by each file in progress (ms), one per busy worker. */
+  activeMs: number[]
   /** Audio seconds of each file not started yet, in queue order. */
   queued: number[]
   workers: number
   msPerAudioSec: number
 }): number {
-  const freeAt = o.active.map((sec) => sec * o.msPerAudioSec)
+  const freeAt = [...o.activeMs]
   while (freeAt.length < o.workers) freeAt.push(0)
   for (const sec of o.queued) {
     let next = 0
@@ -157,16 +157,28 @@ async function encodeFilesParallel(
     const now = Date.now()
     let busyMs = 0
     let doneSec = 0
-    const active: number[] = []
     for (let i = 0; i < total; i++) {
       const start = startedAt[i]
       if (start == null) continue
       busyMs += (finishedAt[i] ?? now) - start
       doneSec += perFileProgress[i] * weights[i]
-      if (finishedAt[i] == null) active.push((1 - perFileProgress[i]) * weights[i])
     }
     if (busyMs < MIN_MEASURED_MS || doneSec <= 0) return undefined
-    return simulateEncodeMs({ active, queued: queue.map((i) => weights[i]), workers: concurrency, msPerAudioSec: busyMs / doneSec })
+    const msPerAudioSec = busyMs / doneSec
+    // A file in progress goes at its own pace once it has shown one: files
+    // differ a lot (22 kHz mono made into 44.1 kHz stereo took twice as long
+    // per second of audio as a 44.1 kHz stereo file), so the common pace is
+    // only for files not started yet.
+    const activeMs: number[] = []
+    for (let i = 0; i < total; i++) {
+      const start = startedAt[i]
+      if (start == null || finishedAt[i] != null) continue
+      const p = perFileProgress[i]
+      const elapsed = now - start
+      const ownPace = p >= 0.02 && elapsed >= MIN_MEASURED_MS ? elapsed / (p * weights[i]) : msPerAudioSec
+      activeMs.push((1 - p) * weights[i] * ownPace)
+    }
+    return simulateEncodeMs({ activeMs, queued: queue.map((i) => weights[i]), workers: concurrency, msPerAudioSec })
   }
 
   function emitProgress() {

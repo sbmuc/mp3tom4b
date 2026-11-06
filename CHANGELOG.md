@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.19.0] — 2026-11-06
+
+### Added
+- **A note when a higher bitrate won't help.** Converting 64 kbps MP3s at 256 kbps makes the M4B bigger, not better; the bitrate picker now says so and offers the setting that keeps everything ("Use 64 kbps"). It also explains when the sample rate is the limit: on 22 kHz audio the encoder tops out at about 110 kbps, whatever you pick.
+
+- **A warning before a book that is likely too big for the browser.** Above about 2 GB the M4B may not come together: a 3.8 GB book failed after an hour of encoding. The bitrate picker now warns before you start, with the size at 64 kbps.
+
+### Fixed
+- **The size estimate matches what you get.** It assumed the chosen bitrate, but on 22 kHz audio 256 kbps comes out at about 110 kbps, so a book estimated at 5.3 GB came out at 1.9 GB. The estimate now uses what the encoder really reaches.
+- **A clear message when a book is too big after all.** Instead of a technical "NotReadableError" when joining the chapters, it says the book is too big for the browser and what to do. A source file moved or deleted mid-conversion is reported as such too.
+- **A closer time estimate when files differ.** A file being encoded is now projected at its own pace: 22 kHz mono chapters took twice as long per minute of audio as a 44.1 kHz file, which made the estimate about half an hour too high on a mixed set.
+
+---
+
 ## [1.18.2] — 2026-11-05
 
 ### Fixed
