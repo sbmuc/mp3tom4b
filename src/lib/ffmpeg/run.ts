@@ -1,11 +1,12 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 
 /** Why ffmpeg failed, as far as its log tells. */
-export type ExitCause = 'out_of_memory' | 'unreadable_input' | 'unknown'
+export type ExitCause = 'out_of_memory' | 'unreadable_input' | 'damaged_input' | 'unknown'
 
 const MESSAGES: Record<ExitCause, (code: number) => string> = {
   out_of_memory: (code) => `ffmpeg ran out of memory (exit code ${code})`,
   unreadable_input: (code) => `ffmpeg couldn't read the input (exit code ${code})`,
+  damaged_input: (code) => `ffmpeg couldn't decode most of the input (exit code ${code})`,
   unknown: (code) => `ffmpeg exited with code ${code}`,
 }
 
@@ -26,6 +27,10 @@ export class FFmpegExitError extends Error {
 // allocating the encoding context." (both seen in tests/integration/
 // outOfMemory.test.ts).
 const OUT_OF_MEMORY_LOG = /Cannot allocate memory|Out of memory|ENOMEM|Error allocating|Failed to allocate|Could not allocate/i
+// ffmpeg's exit code when most frames failed to decode (more than its
+// -max_error_rate, 2/3 by default): a badly damaged file, or one protected
+// with DRM. Seen in the field after 17 minutes on an M4B.
+const TOO_MANY_DECODE_ERRORS = 69
 // What it logs for input it can't make sense of: a damaged or cut-off file.
 const UNREADABLE_LOG = /Invalid data found when processing input|moov atom not found|could not find codec parameters/i
 
@@ -45,6 +50,7 @@ export async function runFFmpeg(ffmpeg: FFmpeg, args: string[]): Promise<void> {
   ffmpeg.on('log', onLog)
   try {
     const code = await ffmpeg.exec(args)
+    if (code === TOO_MANY_DECODE_ERRORS) throw new FFmpegExitError(code, 'damaged_input')
     if (code !== 0) throw new FFmpegExitError(code, kind)
   } finally {
     ffmpeg.off('log', onLog)

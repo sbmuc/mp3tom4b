@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OUT_OF_MEMORY, TOO_BIG_FOR_BROWSER, failureDetails, failureReason, humanizeFfmpegError } from '@/lib/ffmpeg/errors'
+import { ENGINE_STACK, OUT_OF_MEMORY, TOO_BIG_FOR_BROWSER, failureDetails, failureReason, humanizeFfmpegError } from '@/lib/ffmpeg/errors'
 
 describe('humanizeFfmpegError', () => {
   it('explains running out of memory, however the browser reports it', () => {
@@ -69,7 +69,76 @@ describe('a Blob the browser can no longer read', () => {
 
   it('reading a source file: it was moved or deleted', () => {
     const err = new Error(`reading chapter 3/10: ${chrome}`)
-    expect(humanizeFfmpegError(err)).toMatch(/^reading chapter 3\/10: the file couldn't be read any more\. Was it moved/)
+    expect(humanizeFfmpegError(err)).toMatch(/^Reading chapter 3\/10: the file couldn't be read any more\. Was it moved/)
     expect(failureReason(err)).toBe('source_moved')
+  })
+})
+
+describe('every browser engine, in its own words', () => {
+  // As the ffmpeg worker sends them ("<Class>: message"). Chrome's and Safari's
+  // measured (V8 in Node, JavaScriptCore with macOS's jsc); Firefox's from
+  // SpiderMonkey's ErrorNumbers.msg.
+  const outOfMemory = [
+    'RuntimeError: memory access out of bounds', // Chrome, Edge, Opera
+    'RuntimeError: Out of bounds memory access', // Safari
+    'RuntimeError: index out of bounds', // Firefox
+    'RangeError: Out of memory', // Safari, huge ArrayBuffer
+    'InternalError: out of memory', // Firefox
+    'InternalError: allocation size overflow', // Firefox
+    'RangeError: invalid array length', // Firefox
+    'RangeError: Invalid typed array length: 4294967296', // Chrome
+    'RangeError: failed to grow memory', // Firefox
+    'RangeError: WebAssembly.Memory(): could not allocate memory', // Chrome
+  ]
+  it.each(outOfMemory)('%s is out of memory, with the advice', (text) => {
+    const err = new Error(`encoding chapter 2/26: ${text}`)
+    expect(failureReason(err)).toBe('out_of_memory')
+    expect(humanizeFfmpegError(err)).toBe(OUT_OF_MEMORY)
+  })
+
+  it.each([
+    'RuntimeError: unreachable', // Chrome
+    'RuntimeError: Unreachable code should not be executed', // Safari
+    'RuntimeError: unreachable executed', // Firefox
+    'RuntimeError: Aborted(native code called abort())', // emscripten
+  ])('%s is an interrupted run', (text) => {
+    expect(failureReason(new Error(`encoding chapter 1/1: ${text}`))).toBe('interrupted')
+  })
+
+  it.each(['RangeError: Maximum call stack size exceeded', 'InternalError: too much recursion'])('%s is a stack overflow', (text) => {
+    const err = new Error(`encoding chapter 1/3: ${text}`)
+    expect(failureReason(err)).toBe('stack_overflow')
+    expect(humanizeFfmpegError(err)).toBe(ENGINE_STACK)
+  })
+})
+
+describe('a file that is mostly undecodable', () => {
+  it('says it may be damaged or protected with DRM', () => {
+    // M4B to MP3, after 17 minutes: ffmpeg's exit code 69 (run.ts).
+    const split = new Error("ffmpeg couldn't decode most of the input (exit code 69)")
+    expect(failureReason(split)).toBe('damaged_input')
+    expect(humanizeFfmpegError(split)).toMatch(/^Most of this file couldn't be decoded\. It may be damaged, or protected with DRM/)
+    // The converter keeps which chapter.
+    const convert = new Error("encoding chapter 4/12: ffmpeg couldn't decode most of the input (exit code 69)")
+    expect(humanizeFfmpegError(convert)).toMatch(/^Encoding chapter 4\/12: most of this file couldn't be decoded/)
+    expect(failureDetails(convert)).toEqual({ exitCode: 69, step: 'encoding' })
+  })
+})
+
+describe('the error class, from a fixed list', () => {
+  it('is sent when the message names one', () => {
+    expect(failureDetails(new Error('encoding chapter 1/3: RangeError: Out of memory'))).toEqual({ errorClass: 'RangeError', step: 'encoding' })
+    expect(failureDetails('RuntimeError: unreachable')).toEqual({ errorClass: 'RuntimeError' })
+    expect(failureDetails(new Error('joining chapters: NotReadableError: Failed to execute'))).toMatchObject({ errorClass: 'NotReadableError', step: 'joining_chapters' })
+  })
+
+  it("is the Error's own name when the text names none", () => {
+    expect(failureDetails(new TypeError('x is undefined'))).toEqual({ errorClass: 'TypeError' })
+  })
+
+  it('never passes on anything else', () => {
+    // A chapter called "Secret: the end" must not become a class.
+    expect(failureDetails(new Error('encoding chapter 1/3: Secret: the end'))).toEqual({ step: 'encoding' })
+    expect(failureDetails('Anna Writer: something broke')).toEqual({})
   })
 })
