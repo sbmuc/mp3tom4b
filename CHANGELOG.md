@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.19.2] — 2026-11-09
+
+### Fixed
+- **Out-of-memory failures in Safari and Firefox are recognised.** Each browser words them differently ("Out of bounds memory access" in Safari, "index out of bounds" in Firefox); they showed a technical message instead of the advice to close other tabs or pick a lower bitrate. They now get the advice, like Chrome.
+- **A damaged or DRM-protected file says so.** When most of a file can't be decoded (seen with an M4B after 17 minutes), the message now says it may be damaged or protected with DRM, like books bought from Audible, which no converter can open.
+- The site has a favicon.ico for browsers and services that look for one.
+
+### Changed
+- Failure counts also carry the browser's name for the error (such as "RangeError"), from a fixed list, so the remaining unexplained failures can be told apart. The privacy policy says so.
+
+---
+
 ## [1.19.1] — 2026-11-06
 
 ### Security

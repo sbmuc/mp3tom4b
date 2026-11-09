@@ -13,7 +13,7 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 text-zinc-700 dark:text-zinc-300">
       <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Last updated: 6 November 2026</p>
+      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Last updated: 9 November 2026</p>
 
       <h2 className="mt-10 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
         Your audio files
@@ -56,7 +56,8 @@ export default function PrivacyPage() {
         whether a conversion finished or failed, with figures like the number of files, the
         bitrate, the length of the audiobook, the output size, how long it took and, when it
         failed, the kind of error (for example &ldquo;out of memory&rdquo;), the encoder&apos;s
-        error code and the step it stopped at (such as &ldquo;encoding&rdquo;). Neither sets cookies
+        error code, the step it stopped at (such as &ldquo;encoding&rdquo;) and the browser&apos;s
+        name for the error (such as &ldquo;RangeError&rdquo;), from a fixed list. Neither sets cookies
         or identifies visitors, and neither ever receives your audio, file names, metadata, or
         cover images. Umami&apos;s requests go to Umami Cloud through this site&apos;s own domain,
         and browsers that send Do Not Track aren&apos;t counted by it. No third-party advertising
