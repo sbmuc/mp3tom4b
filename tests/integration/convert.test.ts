@@ -30,7 +30,7 @@ import {
 async function convert(specs: ToneSpec[], opts: { bitrate?: Bitrate; metadata?: Partial<ConversionMetadata> } = {}) {
   const files = await Promise.all(specs.map(async (s, i) => asAudioFile(await toneFile(s), i)))
   const labels: string[] = []
-  const blob = await convertToM4B({
+  const { blob } = await convertToM4B({
     files,
     metadata: { ...META, ...opts.metadata },
     coverFile: null,
@@ -194,3 +194,28 @@ interface NodeFS {
   isDir(mode: number): boolean
   filesystems: { MEMFS: { expandFileStorage(this: unknown, node: { name: string }, capacity: number): void } }
 }
+
+describe('convertToM4B — a partly damaged file', () => {
+  it('says which chapter came out much shorter than its file', async () => {
+    // A 30 s MP3 with its second half scrambled: ffmpeg skips what it can't
+    // decode and exits 0, so this used to pass as a normal conversion.
+    const good = await toneFile(mp3(440, 44100, 1, 6))
+    const whole = new Uint8Array(await (await toneFile(mp3(660, 44100, 1, 30))).arrayBuffer())
+    for (let i = Math.floor(whole.length / 2); i < whole.length; i++) whole[i] = (i * 7919) & 0xff
+    const damaged = new File([whole], 'damaged.mp3')
+    const files = [await asAudioFile(good, 0), await asAudioFile(damaged, 1)]
+    expect(files[1].duration).toBeGreaterThan(29)
+    const result = await convertToM4B({ files, metadata: META, coverFile: null, bitrate: 64 })
+    expect(result.shortChapters).toHaveLength(1)
+    expect(result.shortChapters[0].title).toBe('Chapter 2')
+    expect(result.shortChapters[0].gotSec).toBeLessThan(20)
+  })
+
+  it('reports nothing for whole files', async () => {
+    const files = await Promise.all([mp3(440), mp3(880)].map(async (s, i) => asAudioFile(await toneFile(s), i)))
+    const result = await convertToM4B({ files, metadata: META, coverFile: null, bitrate: 64 })
+    expect(result.shortChapters).toEqual([])
+    expect(result.starts).toHaveLength(2)
+    expect(result.starts[0]).toBe(0)
+  })
+})

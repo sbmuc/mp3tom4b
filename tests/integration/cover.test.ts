@@ -39,7 +39,7 @@ describe('the cover encoder', () => {
   it('embeds a cover in a new book, and the compressor keeps it', async () => {
     const coverFile = await detailedCoverFile()
     const files = await Promise.all([mp3(440), mp3(660)].map(async (s, i) => asAudioFile(await toneFile(s), i)))
-    const book = await convertToM4B({ files, metadata: META, coverFile, bitrate: 64 })
+    const { blob: book } = await convertToM4B({ files, metadata: META, coverFile, bitrate: 64 })
     const a = await analyze(await bytes(book))
     expect(a.cover).toMatch(/mjpeg.*1200x1200.*attached pic/)
     expect(a.decodeErrors).toEqual([])

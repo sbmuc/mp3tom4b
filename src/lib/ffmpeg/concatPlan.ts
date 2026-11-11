@@ -33,12 +33,32 @@ export function pickEncodeTarget(files: Pick<AudioFile, 'sourceSampleRate' | 'so
   return { sampleRate, channels: allMono ? 1 : 2 }
 }
 
-/** ffmpeg args to encode one input to an AAC part at the shared target. */
-export function buildEncodeArgs(o: { input: string; output: string; bitrate: Bitrate; target: EncodeTarget }): string[] {
+/**
+ * ffmpeg args to encode one input to an AAC part at the shared target.
+ * `trim` encodes only that stretch of it (seconds; end null = to the end),
+ * for one piece of a long file. The trim is a filter on the decoded audio,
+ * not an input seek: the decoder runs from the start (about 2500 times
+ * faster than real time), so the cut is exact to the sample, also in a VBR
+ * MP3 where seeking is approximate, and the MP3 bit reservoir is intact.
+ */
+export function buildEncodeArgs(o: {
+  input: string
+  output: string
+  bitrate: Bitrate
+  target: EncodeTarget
+  trim?: { startSec: number; endSec: number | null }
+}): string[] {
+  const trim = o.trim
+    ? [
+        '-af',
+        `atrim=start=${o.trim.startSec.toFixed(6)}${o.trim.endSec != null ? `:end=${o.trim.endSec.toFixed(6)}` : ''},asetpts=PTS-STARTPTS`,
+      ]
+    : []
   return [
     '-hide_banner',
     '-i', o.input,
     '-vn',
+    ...trim,
     '-c:a', 'aac',
     '-b:a', `${o.bitrate}k`,
     '-ar', String(o.target.sampleRate),

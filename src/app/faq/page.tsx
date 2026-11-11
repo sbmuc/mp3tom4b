@@ -26,7 +26,7 @@ const FAQS: { q: string; a: string; aNode?: ReactNode }[] = [
   },
   {
     q: 'Which audio file types are supported?',
-    a: 'MP3, M4A, WAV, FLAC, OGG, and Opus. Mixed formats in a single audiobook are fine, because each file is re-encoded to AAC at the bitrate you choose before being joined.',
+    a: 'MP3, M4A, AAC, WAV, AIFF, FLAC, OGG and Opus, and also WMA, WebM and MKA audio, MPEG layer II (.mp2), and the sound of an MP4 video, such as a recorded lecture. Mixed formats in a single audiobook are fine, because each file is re-encoded to AAC at the bitrate you choose before being joined. Audiobooks with DRM, such as Audible\'s .aax files or .m4p files from the iTunes Store, can\'t be opened by any converter.',
   },
   {
     q: 'How do I get the M4B into Apple Books or onto my phone?',

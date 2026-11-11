@@ -13,7 +13,7 @@ describe.skipIf(!HAVE_FILES)('convertToM4B on real MP3 rips', () => {
     const files = await asDropped(await Promise.all(pick(chapterMp3s(BOOKS.goblet), 4).map(realFile)))
     expect(files.slice(0, 2).map((f) => f.chapterTitle)).toEqual(['The Riddle House', 'The Scar'])
 
-    const out = await convertToM4B({ files, metadata: META, coverFile: null, bitrate: 64 })
+    const { blob: out } = await convertToM4B({ files, metadata: META, coverFile: null, bitrate: 64 })
     const book = await bookInfo(out)
     expectChaptersMatchSources(book, files)
     expect(await audioStream(out)).toMatch(/^aac \(LC\).*44100 Hz, stereo/)
@@ -24,7 +24,7 @@ describe.skipIf(!HAVE_FILES)('convertToM4B on real MP3 rips', () => {
     const files = await asDropped(await Promise.all(pick(chapterMp3s(BOOKS.phoenix), 3).map(realFile)))
     expect(files.map((f) => f.chapterTitle).slice(0, 3)).toEqual(['CH01 DUDLEY DEMENTED', 'CH02 A PECK OF OWLS', 'CH03 THE ADVANCE GUARD'])
 
-    const out = await convertToM4B({ files, metadata: META, coverFile: null, bitrate: 64 })
+    const { blob: out } = await convertToM4B({ files, metadata: META, coverFile: null, bitrate: 64 })
     expectChaptersMatchSources(await bookInfo(out), files)
     // A mono 22 kHz rip stays mono 22 kHz: no upsampling, no fake stereo.
     expect(await audioStream(out)).toMatch(/22050 Hz, mono/)

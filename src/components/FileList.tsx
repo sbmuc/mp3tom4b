@@ -17,6 +17,7 @@ import {
 import { ArrowDownAZ, ArrowDownZA } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { formatBytes } from '@/lib/audio/format'
+import { SORT_INSTRUCTIONS, sortAnnouncements } from '@/lib/a11y/sortAnnouncements'
 import FileListItem from './FileListItem'
 
 const SORT_LABEL = {
@@ -112,6 +113,16 @@ export default function FileList() {
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
+        accessibility={{
+          announcements: sortAnnouncements(
+            files.map((f) => f.id),
+            (id) => {
+              const f = files.find((x) => x.id === id)
+              return f ? f.chapterTitle.trim() || f.file.name : 'The chapter'
+            },
+          ),
+          screenReaderInstructions: SORT_INSTRUCTIONS,
+        }}
       >
         <SortableContext items={files.map((f) => f.id)} strategy={verticalListSortingStrategy}>
           <ul className="flex flex-col gap-2">

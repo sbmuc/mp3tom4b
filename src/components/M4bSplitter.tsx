@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { trackEvent, trackFailure } from '@/lib/analytics'
 import { splitM4B, type SplitResult } from '@/lib/ffmpeg/split'
+import { ENGINE_DOWNLOAD_FAILED, readFailureMessage } from '@/lib/ffmpeg/errors'
 import { probeChapters, type Chapter } from '@/lib/ffmpeg/splitChapters'
 import { resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
@@ -105,8 +106,8 @@ export default function M4bSplitter() {
       const [chaps, meta] = await Promise.all([probeChapters(candidate), extractMetadata(candidate)])
       setChapters(chaps)
       setTags({ album: meta.title, artist: meta.author })
-    } catch {
-      setInputError('Could not read that file. It may be corrupt or not a valid M4B.')
+    } catch (err) {
+      setInputError(readFailureMessage(err, 'Could not read that file. It may be corrupt or not a valid M4B.'))
       setFile(null)
     } finally {
       setProbing(false)
@@ -198,11 +199,16 @@ export default function M4bSplitter() {
         >
           <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
           <span>
-            {inputError} To build an M4B from separate files, use the{' '}
-            <Link href="/" className="underline hover:no-underline">
-              main converter
-            </Link>
-            .
+            {inputError}
+            {inputError !== ENGINE_DOWNLOAD_FAILED && (
+              <>
+                {' '}To build an M4B from separate files, use the{' '}
+                <Link href="/" className="underline hover:no-underline">
+                  main converter
+                </Link>
+                .
+              </>
+            )}
           </span>
         </div>
       )}

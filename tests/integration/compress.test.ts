@@ -39,7 +39,7 @@ describe('compressM4B — parallel path', () => {
   it('keeps every chapter marker on its audio, and keeps titles and tags', async () => {
     const specs = TEN_ODD_CHAPTERS
     const files = await Promise.all(specs.map(async (s, i) => asAudioFile(await toneFile(s), i)))
-    const source = await convertToM4B({
+    const { blob: source } = await convertToM4B({
       files,
       metadata: { ...META, title: 'AC\\DC Live; Part=1' },
       coverFile: null,

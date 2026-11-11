@@ -250,3 +250,90 @@ test('player: plays an M4B and shows its chapters', async ({ page }) => {
   await page.getByRole('button', { name: 'Play', exact: true }).click()
   await expect.poll(() => page.evaluate(() => document.querySelector('audio')?.currentTime ?? 0)).toBeGreaterThan(0)
 })
+
+test("converter: when the engine can't be downloaded it says so, and the retry works", async ({ page, context, consoleErrors }) => {
+  await context.route(/ffmpeg-core\.wasm/, (r) => r.abort())
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  // It used to stay on "Downloading converter… 2%" for good.
+  await expect(page.getByText("The converter couldn't be downloaded.", { exact: false })).toBeVisible()
+  // The blocked download and the tool's own log are the expected errors here.
+  expect(consoleErrors.splice(0).filter((e) => !/Failed to load resource|EngineLoadError/.test(e))).toEqual([])
+
+  await context.unroute(/ffmpeg-core\.wasm/)
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toBeVisible()
+})
+
+test('converter: a new title goes onto the M4B without encoding again; a new order needs a new one', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toBeVisible()
+
+  await page.getByLabel('Chapter title').first().fill('Opening')
+  await expect(page.getByText(/You changed titles, tags or the cover/)).toBeVisible()
+  await page.getByRole('button', { name: 'Update M4B' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toBeVisible()
+  await page.getByText('Preview: listen and check the chapters').click()
+  await expect(page.getByText('Opening').last()).toBeVisible()
+
+  // Sorting used to leave the old M4B up for download as if it were current.
+  await page.getByRole('button', { name: 'Sort Z to A' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toHaveCount(0)
+  await expect(page.getByText(/Your settings changed/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Convert to M4B' })).toBeVisible()
+})
+
+test('converter: AAC, WMA and AIFF files convert too', async ({ page }) => {
+  await page.goto('/')
+  await page
+    .getByLabel('Choose audio files and a cover image')
+    .setInputFiles([fixture('tone.aac'), fixture('tone.wma'), fixture('tone.aiff')])
+  await expect(page.getByText(/^3 files ·/)).toBeVisible()
+  // The files have no tags to fill these from.
+  await page.locator('#md-title').fill('Formats')
+  await page.locator('#md-author').fill('E2E Author')
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toBeVisible()
+  await page.getByText('Preview: listen and check the chapters').click()
+  await expect(page.getByText('3 chapters')).toBeVisible()
+})
+
+test('converter: a DRM book and an M4B are named as such, with links to the M4B tools', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('book.aax'), fixture('book.m4b')])
+  await expect(page.getByText(/book\.aax: it's copy-protected \(DRM\)/)).toBeVisible()
+  await expect(page.getByText(/book\.m4b: it's already an M4B audiobook/)).toBeVisible()
+  await page.getByRole('link', { name: 'Edit chapters', exact: true }).click()
+  await expect(page).toHaveURL(/\/edit-m4b-chapters$/)
+})
+
+test('converter: 32 kbps MP3s get 32 kbps, not twice the size', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('low-1.mp3'), fixture('low-2.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+  await expect(page.getByRole('radio', { name: /^32 kbps/ })).toBeChecked()
+  await expect(page.getByText(/Your audio is 32 kbps, so 32 kbps keeps everything in it/)).toBeVisible()
+})
+
+test('converter: a chapter that came out much shorter than its file is pointed out', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('damaged.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toBeVisible()
+  await expect(page.getByText(/One chapter came out shorter than its file: “Damaged” is 0:1\d of 0:30/)).toBeVisible()
+})
+
+test('converter: the cover zone takes a WebP', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+  await page.getByLabel('Choose a cover image').setInputFiles(fixture('cover.webp'))
+  await expect(page.getByAltText('Cover preview')).toBeVisible()
+  await expect(page.getByText('from drop')).toHaveCount(0)
+})

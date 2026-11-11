@@ -2,7 +2,7 @@ export type AudioFormat = 'mp3' | 'm4a' | 'wav' | 'flac' | 'ogg' | 'opus'
 
 export type Genre = 'Audiobook' | 'Podcast' | 'Lecture' | 'Other'
 
-export type Bitrate = 64 | 96 | 128 | 192 | 256
+export type Bitrate = 32 | 48 | 64 | 96 | 128 | 192 | 256
 
 export interface AudioFile {
   id: string
@@ -98,4 +98,17 @@ export interface ConversionProgress {
   fraction?: number
   /** Time left for that step (ms) when the step can tell better than its pace alone. */
   remainingMs?: number
+}
+
+/**
+ * A chapter whose audio came out much shorter than its file claims: part of
+ * the file couldn't be decoded (damaged), and ffmpeg skipped it without
+ * failing. Shown on the result so it isn't missed.
+ */
+export interface ShortChapter {
+  title: string
+  /** The file's length from its tags or the browser (seconds). */
+  expectedSec: number
+  /** What was decoded and encoded (seconds). */
+  gotSec: number
 }

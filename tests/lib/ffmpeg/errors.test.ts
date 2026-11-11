@@ -142,3 +142,13 @@ describe('the error class, from a fixed list', () => {
     expect(failureDetails('Anna Writer: something broke')).toEqual({})
   })
 })
+
+describe('a failed engine download', () => {
+  it("blames the download, not the user's file", async () => {
+    const { EngineLoadError, ENGINE_DOWNLOAD_FAILED, readFailureMessage, failureDetails } = await import('@/lib/ffmpeg/errors')
+    const err = new EngineLoadError('Failed to fetch')
+    expect(readFailureMessage(err, 'Could not read that file.')).toBe(ENGINE_DOWNLOAD_FAILED)
+    expect(readFailureMessage(new Error('moov atom not found'), 'Could not read that file.')).toBe('Could not read that file.')
+    expect(failureDetails(err)).toEqual({ errorClass: 'EngineLoadError' })
+  })
+})

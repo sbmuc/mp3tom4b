@@ -156,8 +156,8 @@ mp3tom4b/
    - Narrator (optional)
    - Year (optional, 4-digit)
    - Genre (optional, dropdown: Audiobook, Podcast, Lecture, Other)
-6. **Cover image upload** — JPG or PNG, drag or click. Preview thumbnail. Auto-resize to 1200x1200 JPEG before embedding.
-7. **Bitrate selector** — 64 kbps (default for spoken word), 96 kbps, 128 kbps.
+6. **Cover image upload** — JPG, PNG, WebP (any image the browser decodes), drag or click. Preview thumbnail. Saved as a square JPEG of up to 1200×1200 before embedding.
+7. **Bitrate selector** — 64 kbps (default for spoken word), 96 kbps, 128 kbps (since v1.20 also 32/48 for low-bitrate sources and 192/256 under advanced options).
 8. **Convert button** — disabled until at least 1 file + title + author present.
 9. **Progress bar** — show current step (loading ffmpeg, decoding, encoding chapter X of Y, muxing, finalizing). Percentage where possible.
 10. **Download M4B file** — auto-named from `{Author} - {Title}.m4b`. Big "Download" button.
@@ -221,9 +221,9 @@ For each conversion job:
    ...
    ```
 3. **Generate ffmetadata file** in memory with chapter markers.
-4. **Re-encode each input to AAC** at the chosen bitrate (mono if source is mono, stereo otherwise).
+4. **Re-encode each input to AAC** at the chosen bitrate (mono if source is mono, stereo otherwise), on up to three workers; a long file is cut into pieces in its pauses so the workers can share it (`src/lib/ffmpeg/pieces.ts`).
 5. **Concatenate AAC streams** using ffmpeg's concat demuxer.
-6. **Process cover image** — resize to 1200x1200 JPEG, max ~200KB.
+6. **Process cover image** — square JPEG at its own size up to 1200×1200 (never enlarged), quality 0.9 (down to 0.75 above 500 KB), copied into the M4B as is.
 7. **Mux into MP4 container** with:
    - Audio stream
    - Cover art (as `mjpeg` attached pic)

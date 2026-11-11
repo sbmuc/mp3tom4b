@@ -2,7 +2,8 @@
 
 import { createStoredZip } from '@/lib/archive/zip'
 import type { Bitrate, ConversionProgress } from '@/types'
-import { ffmpegLoadingLabel, getFFmpeg } from './client'
+import { ffmpegLoadingLabel } from './client'
+import { loadEngine } from './engine'
 import { humanizeFfmpegError } from './errors'
 import { mountBlobs, takeBytes, unmount } from './files'
 import type { Chapter } from './splitChapters'
@@ -83,7 +84,7 @@ export async function splitM4B(opts: SplitOptions): Promise<SplitResult> {
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
   emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
-  const ffmpeg = await getFFmpeg()
+  const ffmpeg = await loadEngine(emit, 'split')
 
   const inputName = `split_in.${fileExtension(file.name)}`
   const inName = `${INPUT_DIR}/${inputName}`

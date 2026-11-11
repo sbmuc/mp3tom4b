@@ -68,7 +68,7 @@ export default function PrivacyPage() {
         The conversion engine
       </h2>
       <p className="mt-2">
-        On your first conversion, your browser downloads the FFmpeg WebAssembly core (about 31 MB)
+        On your first conversion, your browser downloads the FFmpeg WebAssembly core (about 10 MB to download, 32 MB once unpacked)
         from mp3tom4b&apos;s own domain — it is served directly from this site, not from a
         third-party CDN, and is then cached by your browser for reuse. No data about you or your
         files is sent in that request.

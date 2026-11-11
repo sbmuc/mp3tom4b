@@ -1,7 +1,8 @@
 'use client'
 
 import type { Bitrate, ConversionProgress } from '@/types'
-import { ffmpegLoadingLabel, getFFmpeg } from './client'
+import { ffmpegLoadingLabel } from './client'
+import { loadEngine } from './engine'
 import { replaceChapters } from './chapters'
 import { allKnown, buildTimedConcatList, parseSegmentStarts, remapThroughSegments } from './concatPlan'
 import { COVER_CODEC_ARGS } from './cover'
@@ -139,7 +140,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
   emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
-  const ffmpeg = await getFFmpeg()
+  const ffmpeg = await loadEngine(emit, 'compression')
 
   const inputName = `in.${fileExtension(file.name)}`
   const inputPath = `${INPUT_DIR}/${inputName}`

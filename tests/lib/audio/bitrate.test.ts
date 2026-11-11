@@ -5,7 +5,11 @@ import {
   effectiveKbps,
   estimateOutputBytes,
   formatEstimatedSize,
+  canCompress,
+  compressShrinks,
+  defaultCompressBitrate,
   LIKELY_TOO_BIG_BYTES,
+  lowSourceKbps,
   suggestBitrate,
 } from '@/lib/audio/bitrate'
 
@@ -41,6 +45,44 @@ describe('suggestBitrate', () => {
   it('does not bump when sources are exactly at 256 kbps', () => {
     const files = [{ sourceBitrateKbps: 256 }]
     expect(suggestBitrate({ files, genre: 'Other' })).toBe(64)
+  })
+
+  it('matches low-bitrate books instead of doubling them', () => {
+    // The owner's Order of the Phoenix: 32 kbps MPEG-2 MP3s came out at 64, twice the size.
+    expect(suggestBitrate({ files: [{ sourceBitrateKbps: 32 }, { sourceBitrateKbps: 32 }], genre: 'Audiobook' })).toBe(32)
+    expect(suggestBitrate({ files: [{ sourceBitrateKbps: 40 }], genre: 'Podcast' })).toBe(48)
+    expect(suggestBitrate({ files: [{ sourceBitrateKbps: 48 }], genre: 'Audiobook' })).toBe(48)
+  })
+
+  it('keeps 64 when one file is above 48, lossless, or of unknown bitrate', () => {
+    expect(suggestBitrate({ files: [{ sourceBitrateKbps: 32 }, { sourceBitrateKbps: 56 }], genre: 'Audiobook' })).toBe(64)
+    expect(suggestBitrate({ files: [{ sourceBitrateKbps: 32 }, { sourceLossless: true }], genre: 'Audiobook' })).toBe(64)
+    expect(suggestBitrate({ files: [{ sourceBitrateKbps: 32 }, {}], genre: 'Audiobook' })).toBe(64)
+  })
+})
+
+describe('lowSourceKbps', () => {
+  it('is the highest bitrate when every file is lossy at 48 or less', () => {
+    expect(lowSourceKbps([{ sourceBitrateKbps: 24 }, { sourceBitrateKbps: 32 }])).toBe(32)
+    expect(lowSourceKbps([{ sourceBitrateKbps: 64 }])).toBeNull()
+    expect(lowSourceKbps([])).toBeNull()
+  })
+})
+
+describe('compressor settings', () => {
+  it('starts at 64, or lower when the book is already at about 64', () => {
+    expect(defaultCompressBitrate(128)).toBe(64)
+    expect(defaultCompressBitrate(null)).toBe(64)
+    expect(defaultCompressBitrate(64)).toBe(48)
+    expect(defaultCompressBitrate(50)).toBe(32)
+  })
+
+  it('only offers a setting that makes the book noticeably smaller', () => {
+    expect(compressShrinks(32, 33)).toBe(false)
+    expect(compressShrinks(48, 64)).toBe(true)
+    expect(compressShrinks(64, 64)).toBe(false)
+    expect(canCompress(33)).toBe(false)
+    expect(canCompress(40)).toBe(true)
   })
 })
 
@@ -89,6 +131,10 @@ describe('what the encoder reaches', () => {
 
 describe('bitrateAdvice', () => {
   const mp3 = (kbps: number, rate = 44100, ch: 1 | 2 = 2) => ({ sourceBitrateKbps: kbps, sourceLossless: false, sourceSampleRate: rate, sourceChannels: ch })
+
+  it('points a low-bitrate book to the lower settings', () => {
+    expect(bitrateAdvice(64, [mp3(32, 22050, 1)])).toEqual({ reason: 'source', enough: 32, sourceKbps: 32 })
+  })
 
   it('says nothing when the setting suits the files', () => {
     expect(bitrateAdvice(64, [mp3(64), mp3(64)])).toBeNull()

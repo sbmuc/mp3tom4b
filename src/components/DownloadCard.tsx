@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, CheckCircle2, Download, RotateCcw } from 'lucide-react'
-import { useConversionStore } from '@/lib/store/conversionStore'
-import { formatBytes } from '@/lib/audio/format'
+import { buildKey, useConversionStore } from '@/lib/store/conversionStore'
+import { formatBytes, formatDuration } from '@/lib/audio/format'
+import type { ShortChapter } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
 import WhereToListen from '@/components/WhereToListen'
 import EditResultButton from '@/components/EditResultButton'
@@ -16,11 +17,24 @@ function ensureM4bExtension(name: string): string {
   return /\.m4b$/i.test(name) ? name : `${name}.m4b`
 }
 
+/** "“Half damaged” is 0:15 of 0:30", the first few, then how many more. */
+function shortChapterText(short: ShortChapter[]): string {
+  const named = short
+    .slice(0, 3)
+    .map((c) => `“${c.title}” is ${formatDuration(c.gotSec)} of ${formatDuration(c.expectedSec)}`)
+  const more = short.length > 3 ? `, and ${short.length - 3} more` : ''
+  const which = short.length === 1 ? 'One chapter came out shorter than its file' : `${short.length} chapters came out shorter than their files`
+  return `${which}: ${named.join('; ')}${more}. Part of ${short.length === 1 ? 'that file' : 'those files'} couldn't be read, so ${short.length === 1 ? 'it' : 'they'} may be damaged. Listen to ${short.length === 1 ? 'it' : 'them'} in the preview below, or try another copy.`
+}
+
 export default function DownloadCard() {
   const outputBlob = useConversionStore((s) => s.outputBlob)
   const metadata = useConversionStore((s) => s.metadata)
   const fileCount = useConversionStore((s) => s.files.length)
   const reset = useConversionStore((s) => s.reset)
+  const shortChapters = useConversionStore((s) => s.shortChapters)
+  // Only titles, tags or the cover changed since the last M4B (ConvertButton).
+  const canUpdate = useConversionStore((s) => s.lastBuild != null && s.lastBuild.key === buildKey(s.files, s.bitrate))
   const [url, setUrl] = useState<string | null>(null)
   const [override, setOverride] = useState<string>('')
   const [downloaded, setDownloaded] = useState(false)
@@ -63,8 +77,9 @@ export default function DownloadCard() {
       >
         <RotateCcw size={16} className="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
         <span>
-          Your settings changed, so the previous download no longer matches. Convert again to get an
-          updated audiobook.
+          {canUpdate
+            ? 'You changed titles, tags or the cover. Update the M4B to put them on it: it takes a moment, without encoding the audio again.'
+            : 'Your settings changed, so the previous download no longer matches. Convert again to get an updated audiobook.'}
         </span>
       </div>
     )
@@ -95,6 +110,16 @@ export default function DownloadCard() {
           </p>
         </div>
       </div>
+
+      {shortChapters.length > 0 && (
+        <div
+          role="status"
+          className="mt-3 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100"
+        >
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+          <p>{shortChapterText(shortChapters)}</p>
+        </div>
+      )}
 
       <div className="mt-3">
         <label

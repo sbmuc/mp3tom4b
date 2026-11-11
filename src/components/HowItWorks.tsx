@@ -4,7 +4,7 @@ const STEPS = [
   {
     icon: FilePlus2,
     title: 'Drop your files',
-    body: 'Drag MP3, M4A, WAV, FLAC, OGG, or Opus files into the browser. They stay on your device.',
+    body: 'Drag MP3, M4A, WAV, FLAC, OGG, Opus or other audio files into the browser. They stay on your device.',
   },
   {
     icon: ListMusic,

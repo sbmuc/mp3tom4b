@@ -1,11 +1,12 @@
 'use client'
 
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
-import type { AudioFile, Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
+import type { AudioFile, Bitrate, ConversionMetadata, ConversionProgress, ShortChapter } from '@/types'
 import { readMoov } from '@/lib/audio/mp4Chapters'
 import { resizeCoverImage } from '@/lib/image/resize'
 import { buildChapters, buildFFMetadata, buildGlobalMetadata } from './chapters'
 import { createWorkerFFmpeg, ffmpegLoadingLabel, getFFmpeg, releaseWorkerFFmpeg } from './client'
+import { loadEngine } from './engine'
 import {
   audioStreamSignature,
   buildEncodeArgs,
@@ -15,7 +16,9 @@ import {
   pickEncodeTarget,
   type EncodeTarget,
 } from './concatPlan'
-import { COVER_CODEC_ARGS } from './cover'
+import { OWN_COVER_ARGS } from './cover'
+import { buildJobs, findShortChapters, pauseScanArgs, pickCuts, piecesPerFile, type EncodeJob } from './pieces'
+import { parseSilences } from './chapterize'
 import { humanizeFfmpegError } from './errors'
 import { mountBlobs, ownedBytes, unmount } from './files'
 import { decodedAudioSeconds } from './mp4Duration'
@@ -43,6 +46,15 @@ async function withSingleton<T>(op: (ffmpeg: FFmpeg) => Promise<T>): Promise<T> 
   }
 }
 
+export interface ConvertResult {
+  blob: Blob
+  /** Where each chapter starts in the M4B (ms), and its length: for a quick update. */
+  starts: number[]
+  durationMs: number
+  /** Chapters much shorter than their files: part of the file couldn't be decoded. */
+  shortChapters: ShortChapter[]
+}
+
 export interface ConvertOptions {
   files: AudioFile[]
   metadata: ConversionMetadata
@@ -55,6 +67,7 @@ const inputName = (i: number, ext: string) => `input_${i}.${ext}`
 const encodedName = (i: number) => `enc_${i}.m4a`
 // Sources and encoded parts are mounted, never copied in (see files.ts).
 const SOURCE_DIR = '/mnt_source' // in an encoder worker: the file it is encoding
+const SCAN_DIR = '/mnt_scan' // on the singleton: a long file scanned for pauses
 const PARTS_DIR = '/mnt_parts' // on the singleton: the AAC parts to join
 const partPath = (i: number) => `${PARTS_DIR}/${encodedName(i)}`
 const LIST_PATH = 'concat_list.txt'
@@ -78,21 +91,14 @@ async function safeDelete(ffmpeg: FFmpeg, path: string) {
   }
 }
 
-/** How many files to encode in parallel. Scales with logical CPU count. */
-function encodeConcurrency(fileCount: number): number {
+/** How many workers to encode with. Scales with logical CPU count. */
+function workerCount(): number {
   const cores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency ?? 4) : 4
   // Leave half the cores for the OS + browser main thread.
   // Cap at 3 to keep memory pressure manageable.
-  return Math.min(3, fileCount, Math.max(1, Math.floor(cores / 2)))
+  return Math.min(3, Math.max(1, Math.floor(cores / 2)))
 }
 
-/**
- * Encode all input files to AAC using a pool of parallel ffmpeg worker
- * instances. Each worker handles one file at a time from a shared queue.
- * Every part is encoded to the same sample rate + channel count, so the parts
- * can be copy-joined. Returns the encoded parts as Blobs, for the join to
- * mount, and each part's decoded length in seconds (null if unreadable).
- */
 /**
  * How much each file counts towards the encoding progress: its length, so the
  * bar (and the time left projected from it) moves with the audio done. A
@@ -131,26 +137,93 @@ export function simulateEncodeMs(o: {
   return Math.max(0, ...freeAt)
 }
 
-async function encodeFilesParallel(
+/**
+ * Cut points for the long files: each file that piecesPerFile wants cut is
+ * scanned for pauses (a decode pass, fast next to the encode), and cut in
+ * the middle of the pauses nearest its even split points. Files with no
+ * usable pause stay whole, as before.
+ */
+async function planCuts(
   files: AudioFile[],
-  segments: Array<{ ext: string }>,
+  durationsSec: number[],
+  workers: number,
+  emit: (p: ConversionProgress) => void,
+): Promise<number[][]> {
+  const pieces = piecesPerFile(durationsSec, workers)
+  const cuts: number[][] = files.map(() => [])
+  const toScan = pieces.map((n, i) => (n > 1 ? i : -1)).filter((i) => i >= 0)
+  for (const [k, i] of toScan.entries()) {
+    const ext = fileExtension(files[i].file.name)
+    const name = `scan_${i}.${ext}`
+    const lines: string[] = []
+    const totalMs = durationsSec[i] * 1000
+    const onLog = ({ message }: { message: string }) => {
+      lines.push(message)
+      const ms = logTimeMs(message)
+      if (ms != null && totalMs > 0) {
+        const share = (k + Math.min(1, ms / totalMs)) / toScan.length
+        emit({ status: 'probing', percent: 3 + Math.round(share * 7), label: 'Finding pauses to share the long file between workers…' })
+      }
+    }
+    await withSingleton(async (ffmpeg) => {
+      await mountBlobs(ffmpeg, SCAN_DIR, [{ name, data: files[i].file }])
+      ffmpeg.on('log', onLog)
+      try {
+        // The scan writes nothing; a non-zero exit only means no usable pauses.
+        await ffmpeg.exec(pauseScanArgs(`${SCAN_DIR}/${name}`))
+      } catch {
+        // a failed scan leaves the file whole
+      } finally {
+        ffmpeg.off('log', onLog)
+        await unmount(ffmpeg, SCAN_DIR)
+      }
+    })
+    cuts[i] = pickCuts(durationsSec[i], pieces[i], parseSilences(lines))
+  }
+  return cuts
+}
+
+const LOG_TIME_RE = /time=(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
+
+/** ffmpeg's "time=H:MM:SS.cc" in a log line, in ms. */
+function logTimeMs(message: string): number | null {
+  const m = message.match(LOG_TIME_RE)
+  if (!m) return null
+  return ((Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 100 + Number(m[4].padEnd(2, '0'))) * 10
+}
+
+/**
+ * Encode the book's jobs (whole files, or pieces of long ones) to AAC on a
+ * pool of worker instances, each taking the next job from a shared queue.
+ * Every part is encoded to the same sample rate + channel count, so the parts
+ * can be copy-joined. Returns the parts as Blobs, in job order, for the join
+ * to mount, and each part's decoded length in seconds (null if unreadable).
+ */
+async function encodeJobsParallel(
+  files: AudioFile[],
+  jobs: EncodeJob[],
+  workers: number,
   bitrate: Bitrate,
   target: EncodeTarget,
   emit: (p: ConversionProgress) => void,
 ): Promise<{ parts: Blob[]; decodedSec: Array<number | null> }> {
-  const total = files.length
+  const total = jobs.length
   const parts = new Array<Blob>(total)
   const decodedSec = new Array<number | null>(total).fill(null)
-  // Per-file encode progress (0–1). Updated by whichever worker holds the file.
-  const perFileProgress = new Array<number>(total).fill(0)
-  let completedCount = 0
-  const weights = encodeWeights(files.map((f) => f.duration))
-  const totalWeight = weights.reduce((a, b) => a + b, 0)
-  // When each file was picked up and finished, for the pace per worker.
+  // Per-job encode progress (0–1). Updated by whichever worker holds the job.
+  const perJob = new Array<number>(total).fill(0)
+  const weights = jobs.map((j) => j.weight)
+  const totalWeight = weights.reduce((a, b) => a + b, 0) || 1
+  // Jobs left per file: the label counts files (chapters), not pieces.
+  const jobsLeft = files.map((_, i) => jobs.filter((j) => j.file === i).length)
+  let filesDone = 0
+  // When each job was picked up and finished, for the pace per worker.
   const startedAt = new Array<number | null>(total).fill(null)
   const finishedAt = new Array<number | null>(total).fill(null)
-  const queue: number[] = Array.from({ length: total }, (_, i) => i)
-  const concurrency = encodeConcurrency(total)
+  // Longest first: a long file left to the end kept one worker busy while
+  // the others sat idle. The parts still join in book order.
+  const queue: number[] = Array.from({ length: total }, (_, i) => i).sort((a, b) => weights[b] - weights[a] || a - b)
+  const concurrency = Math.min(workers, total)
 
   /** Time left, from the pace so far; undefined until there's enough to go on. */
   function remainingMs(): number | undefined {
@@ -161,19 +234,19 @@ async function encodeFilesParallel(
       const start = startedAt[i]
       if (start == null) continue
       busyMs += (finishedAt[i] ?? now) - start
-      doneSec += perFileProgress[i] * weights[i]
+      doneSec += perJob[i] * weights[i]
     }
     if (busyMs < MIN_MEASURED_MS || doneSec <= 0) return undefined
     const msPerAudioSec = busyMs / doneSec
-    // A file in progress goes at its own pace once it has shown one: files
+    // A job in progress goes at its own pace once it has shown one: files
     // differ a lot (22 kHz mono made into 44.1 kHz stereo took twice as long
     // per second of audio as a 44.1 kHz stereo file), so the common pace is
-    // only for files not started yet.
+    // only for jobs not started yet.
     const activeMs: number[] = []
     for (let i = 0; i < total; i++) {
       const start = startedAt[i]
       if (start == null || finishedAt[i] != null) continue
-      const p = perFileProgress[i]
+      const p = perJob[i]
       const elapsed = now - start
       const ownPace = p >= 0.02 && elapsed >= MIN_MEASURED_MS ? elapsed / (p * weights[i]) : msPerAudioSec
       activeMs.push((1 - p) * weights[i] * ownPace)
@@ -182,11 +255,11 @@ async function encodeFilesParallel(
   }
 
   function emitProgress() {
-    const fraction = perFileProgress.reduce((sum, p, i) => sum + p * weights[i], 0) / totalWeight
+    const fraction = perJob.reduce((sum, p, i) => sum + p * weights[i], 0) / totalWeight
     emit({
       status: 'encoding',
       percent: Math.min(80, 10 + Math.round(fraction * 70)),
-      label: `Encoding chapters… (${completedCount} of ${total} done)`,
+      label: `Encoding chapters… (${filesDone} of ${files.length} done)`,
       fraction,
       remainingMs: remainingMs(),
     })
@@ -200,13 +273,17 @@ async function encodeFilesParallel(
         if (idx === undefined) break
         startedAt[idx] = Date.now()
 
-        const f = files[idx]
-        const ext = segments[idx].ext
-        const inPath = inputName(idx, ext)
+        const job = jobs[idx]
+        const f = files[job.file]
+        const ext = fileExtension(f.file.name)
+        const inPath = inputName(job.file, ext)
         const outPath = encodedName(idx)
 
-        const onProgress = ({ progress }: { progress: number }) => {
-          perFileProgress[idx] = Math.max(0, Math.min(1, progress))
+        // A piece's progress is its own output time over its own length;
+        // ffmpeg's share is of the whole input, which a piece never fills.
+        const onProgress = ({ progress, time }: { progress: number; time: number }) => {
+          const share = job.trimmed ? time / 1_000_000 / Math.max(1, job.weight) : progress
+          perJob[idx] = Math.max(0, Math.min(1, share))
           emitProgress()
         }
         worker.on('progress', onProgress)
@@ -218,7 +295,7 @@ async function encodeFilesParallel(
             return await fn()
           } catch (err) {
             const orig = err instanceof Error ? err.message : String(err)
-            throw new Error(`${step} chapter ${idx + 1}/${total}: ${orig || 'unknown wasm error'}`)
+            throw new Error(`${step} chapter ${job.file + 1}/${files.length}: ${orig || 'unknown wasm error'}`)
           }
         }
 
@@ -228,7 +305,16 @@ async function encodeFilesParallel(
           )
           try {
             await tagged('encoding', () =>
-              runFFmpeg(worker, buildEncodeArgs({ input: `${SOURCE_DIR}/${inPath}`, output: outPath, bitrate, target })),
+              runFFmpeg(
+                worker,
+                buildEncodeArgs({
+                  input: `${SOURCE_DIR}/${inPath}`,
+                  output: outPath,
+                  bitrate,
+                  target,
+                  trim: job.trimmed ? { startSec: job.startSec, endSec: job.endSec } : undefined,
+                }),
+              ),
             )
           } finally {
             await unmount(worker, SOURCE_DIR)
@@ -238,9 +324,9 @@ async function encodeFilesParallel(
           parts[idx] = new Blob([bytes], { type: 'audio/mp4' })
         } finally {
           worker.off('progress', onProgress)
-          perFileProgress[idx] = 1
+          perJob[idx] = 1
           finishedAt[idx] = Date.now()
-          completedCount++
+          if (--jobsLeft[job.file] === 0) filesDone++
           emitProgress()
           try { await worker.deleteFile(outPath) } catch { /* ignore */ }
         }
@@ -314,14 +400,14 @@ async function mountParts(parts: Blob[]): Promise<void> {
  * Convert a list of audio files into a single chaptered M4B audiobook.
  * All processing happens in-browser via ffmpeg.wasm.
  */
-export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
+export async function convertToM4B(opts: ConvertOptions): Promise<ConvertResult> {
   const { files, metadata, coverFile, bitrate, onProgress } = opts
   if (files.length === 0) throw new Error('No input files provided.')
 
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
   emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
-  const ffmpeg = await getFFmpeg()
+  const ffmpeg = await loadEngine(emit, 'conversion')
 
   // Track all virtual paths created on the singleton FS so we can clean up.
   const tempPaths: string[] = []
@@ -344,41 +430,60 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
         const probeName = `probe_${i}.${ext}`
         durationMs = await probeDurationMs(f.file, probeName)
       }
-      segments.push({ title: f.chapterTitle, durationMs, ext })
+      // A title left blank is written as "Chapter N", as the editor does.
+      segments.push({ title: f.chapterTitle.trim() || `Chapter ${i + 1}`, durationMs, ext })
     }
 
     // 2. Encode or stream-copy inputs to AAC, then register outputs for cleanup.
     // AAC .m4a inputs already at the chosen bitrate are copied as-is when they
     // share one codec config (no CPU cost, no quality loss); everything else
     // goes through the parallel AAC encoding workers at one common target.
-    let decodedSec: Array<number | null> | null = null
+    // Each part's decoded length (one part per file, or several for a long
+    // file cut into pieces), and which file each part belongs to.
+    let partSec: Array<number | null> | null = null
+    let partFile: number[] = files.map((_, i) => i)
     if (mayStreamCopy(files, bitrate)) {
       emit({ status: 'encoding', percent: 10, label: 'Copying chapters (already AAC)…' })
-      decodedSec = await copyIfCompatible(files, emit)
+      partSec = await copyIfCompatible(files, emit)
     }
-    if (!decodedSec) {
+    if (!partSec) {
+      const workers = workerCount()
+      const cuts = await planCuts(files, segments.map((s) => s.durationMs / 1000), workers, emit)
+      const jobs = buildJobs(encodeWeights(segments.map((s) => s.durationMs / 1000)), cuts)
       emit({ status: 'encoding', percent: 10, label: 'Encoding chapters…' })
-      const encoded = await encodeFilesParallel(files, segments, bitrate, pickEncodeTarget(files), emit)
-      decodedSec = encoded.decodedSec
+      const encoded = await encodeJobsParallel(files, jobs, workers, bitrate, pickEncodeTarget(files), emit)
+      partSec = encoded.decodedSec
+      partFile = jobs.map((j) => j.file)
       await mountParts(encoded.parts)
     }
+    const decodedParts = partSec
 
     // 3. Concat list file, with each part's real decoded length so the joined
     // timeline (and the chapter markers below) line up with the audio.
     emit({ status: 'concatenating', percent: 82, label: 'Joining chapters…' })
     const listBody = buildTimedConcatList(
-      segments.map((_, i) => ({ name: partPath(i), durationSec: decodedSec[i] })),
+      decodedParts.map((durationSec, i) => ({ name: partPath(i), durationSec })),
     )
     await ffmpeg.writeFile(LIST_PATH, new TextEncoder().encode(listBody))
     tempPaths.push(LIST_PATH)
+
+    // Each file's decoded length: the sum of its parts (null if one is unknown).
+    const fileSec = files.map((_, i) => {
+      const own = decodedParts.filter((_, k) => partFile[k] === i)
+      return own.every((x): x is number => x != null) ? own.reduce((a, b) => a + b, 0) : null
+    })
 
     // 4. Chapter metadata — boundaries from the encoded parts' decoded lengths
     // (source durations are ~20–45 ms short per part, which adds up).
     const chapters = buildChapters(
       segments.map((s, i) => {
-        const sec = decodedSec[i]
+        const sec = fileSec[i]
         return { title: s.title, durationMs: sec != null ? sec * 1000 : s.durationMs }
       }),
+    )
+    // Much shorter than its file said: part of the file couldn't be decoded.
+    const shortChapters = findShortChapters(
+      segments.map((s, i) => ({ title: s.title, expectedSec: s.durationMs / 1000, gotSec: fileSec[i] })),
     )
     const ffmetaBody = buildFFMetadata(chapters)
     const containerMeta = [';FFMETADATA1', ...buildGlobalMetadata(metadata)].join('\n') + '\n'
@@ -405,7 +510,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
 
     muxArgs.push('-map', '0:a', '-map_metadata', String(hasCover ? 2 : 1))
     if (hasCover) {
-      muxArgs.push('-map', '1', ...COVER_CODEC_ARGS, '-disposition:v', 'attached_pic')
+      muxArgs.push('-map', '1', ...OWN_COVER_ARGS, '-disposition:v', 'attached_pic')
     }
     // stik=2 marks the file as an Audiobook so players file it correctly and
     // remember the resume position; pgap enables gapless playback.
@@ -464,7 +569,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<Blob> {
     const blob = new Blob([ownedBytes(data)], { type: 'audio/mp4' })
 
     emit({ status: 'done', percent: 100, label: 'Done.' })
-    return blob
+    return { blob, starts: chapters.map((c) => c.startMs), durationMs: totalMuxDurationMs, shortChapters }
   } catch (err) {
     console.error('mp3tom4b conversion failed:', err)
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })

@@ -7,17 +7,15 @@ import { Bookmark, BookOpen, Image as ImageIcon, Upload, X } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { guessType, isZipFile, unzipFiles } from '@/lib/archive/zip'
 import { decodeCueBytes, parseCue } from '@/lib/audio/cue'
-import { validateFiles } from '@/lib/audio/validate'
+import { AUDIO_ACCEPT, AUDIO_EXTENSIONS, AUDIO_FORMATS_LABEL, AUDIO_FORMATS_TEXT, isDrmFile, validateFiles } from '@/lib/audio/validate'
 import { fileNameToChapterTitle, stripTrackNumbers } from '@/lib/audio/format'
 import { extractMetadata } from '@/lib/audio/metadata'
-import { isDecodableImage } from '@/lib/image/validate'
+import { IMAGE_ACCEPT, IMAGE_EXTENSIONS, unreadableImageMessage, isDecodableImage } from '@/lib/image/validate'
 import { getFFmpeg } from '@/lib/ffmpeg/client'
 import { probeDurationViaAudioElement } from '@/lib/ffmpeg/probe'
 import type { AudioFile, ExtractedMetadata } from '@/types'
 import DropPrompt from '@/components/DropPrompt'
 
-const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.wav', '.flac', '.ogg', '.opus'])
-const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
 // Sidecar files common in audiobook folders. Still reported when skipped —
 // dropping a folder shouldn't silently swallow things the user can see in it.
 const JUNK_EXTENSIONS = new Set(['.txt', '.nfo', '.log', '.m3u', '.m3u8', '.sfv', '.pdf', '.xml', '.json'])
@@ -33,7 +31,7 @@ function getExt(name: string): string {
   return i >= 0 ? name.slice(i).toLowerCase() : ''
 }
 
-type FileClass = 'audio' | 'image' | 'cue' | 'junk' | 'unknown'
+type FileClass = 'audio' | 'image' | 'cue' | 'drm' | 'junk' | 'unknown'
 
 function classifyFile(file: File): FileClass {
   return classifyName(file.name)
@@ -45,6 +43,7 @@ function classifyName(name: string): FileClass {
   if (AUDIO_EXTENSIONS.has(ext)) return 'audio'
   if (IMAGE_EXTENSIONS.has(ext)) return 'image'
   if (ext === '.cue') return 'cue'
+  if (isDrmFile(name)) return 'drm'
   if (JUNK_EXTENSIONS.has(ext)) return 'junk'
   return 'unknown'
 }
@@ -98,10 +97,24 @@ function findDuplicate(
   return null
 }
 
+interface NoticeLink {
+  href: string
+  label: string
+}
+
 interface DropNotice {
   id: string
   message: string
+  /** Links shown after the message, such as the tools that take an M4B. */
+  links?: NoticeLink[]
 }
+
+const M4B_TOOL_LINKS: NoticeLink[] = [
+  { href: '/edit-m4b-chapters', label: 'Edit chapters' },
+  { href: '/compress-m4b', label: 'Compress' },
+  { href: '/merge-m4b', label: 'Merge' },
+  { href: '/m4b-to-mp3', label: 'Split to MP3' },
+]
 
 export default function DropZone() {
   const addFiles = useConversionStore((s) => s.addFiles)
@@ -117,9 +130,9 @@ export default function DropZone() {
   const noticeTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const folderNameRef = useRef<string | null>(null)
 
-  const addNotice = useCallback((message: string, persist = false): string => {
+  const addNotice = useCallback((message: string, persist = false, links?: NoticeLink[]): string => {
     const id = crypto.randomUUID()
-    setNotices((prev) => [...prev, { id, message }])
+    setNotices((prev) => [...prev, { id, message, links }])
     // "Skipped" / "couldn't read" notices persist until dismissed so they aren't
     // missed in a large drop; informational ones auto-dismiss after 6s.
     if (!persist) {
@@ -161,6 +174,8 @@ export default function DropZone() {
       // Filter hidden files that come through in folder drops (.DS_Store, ._filename, etc.)
       const allFiles = accepted.filter((f) => !f.name.startsWith('.') && !isZipFile(f))
       const skippedNonAudio: string[] = []
+      // Copy-protected books, loose or in a ZIP: named as such, not as "not audio".
+      const drmNames: string[] = []
 
       // ZIPs are unpacked right here in the page; their audio and images join
       // the drop as if they'd been dropped loose.
@@ -176,7 +191,7 @@ export default function DropZone() {
         })
         dismissNotice(progressId)
         allFiles.push(...unpacked.files)
-        skippedNonAudio.push(...unpacked.skipped)
+        for (const name of unpacked.skipped) (isDrmFile(name) ? drmNames : skippedNonAudio).push(name)
         if (unpacked.failed.length > 0) {
           addNotice(`Couldn't unpack ${formatNameList(unpacked.failed.map((f) => `${f.name} (${f.reason})`))}.`, true)
         }
@@ -195,6 +210,7 @@ export default function DropZone() {
           case 'audio': audioFiles.push(file); break
           case 'image': imageFiles.push(file); break
           case 'cue': cueFiles.push(file); break
+          case 'drm': drmNames.push(file.name); break
           default: skippedNonAudio.push(file.name)
         }
       }
@@ -217,7 +233,7 @@ export default function DropZone() {
               addNotice(`Used "${best.name}" as cover. ${rest} other image${rest > 1 ? 's' : ''} ignored.`)
             }
           } else {
-            addNotice(`"${best.name}" could not be read as an image and was skipped.`, true)
+            addNotice(unreadableImageMessage(best, `"${best.name}" could not be read as an image and was skipped.`), true)
           }
         }
       }
@@ -227,7 +243,7 @@ export default function DropZone() {
         const { valid, rejected } = validateFiles(audioFiles)
         if (rejected.length > 0) {
           addNotice(
-            `Skipped ${rejected.length} audio file${rejected.length === 1 ? '' : 's'}: ${formatNameList(rejected.map((f) => f.name))}. Only MP3, M4A, WAV, FLAC, OGG, and Opus are supported.`,
+            `Skipped ${rejected.length} audio file${rejected.length === 1 ? '' : 's'}: ${formatNameList(rejected.map((f) => f.name))}. Supported are ${AUDIO_FORMATS_TEXT}.`,
             true,
           )
         }
@@ -322,7 +338,7 @@ export default function DropZone() {
           if (newFiles.length > 0) applySmartBitrate()
 
           if (wasEmpty && newFiles.length > 0) {
-            // Warm the ffmpeg core now so its ~31 MB one-time download overlaps
+            // Warm the ffmpeg core now so its one-time download (about 10 MB) overlaps
             // with the user filling in metadata, instead of stalling the first
             // click on Convert.
             void getFFmpeg().catch(() => {})
@@ -378,7 +394,15 @@ export default function DropZone() {
       const others = skippedNonAudio.filter((n) => getExt(n) !== '.m4b')
       if (m4bs.length > 0) {
         addNotice(
-          `Skipped ${formatNameList(m4bs)}: ${m4bs.length === 1 ? "it's already an M4B audiobook" : 'they are already M4B audiobooks'}. To shrink, edit, split or merge an M4B, use one of the M4B tools.`,
+          `Skipped ${formatNameList(m4bs)}: ${m4bs.length === 1 ? "it's already an M4B audiobook" : 'they are already M4B audiobooks'}. To change an M4B, use one of the M4B tools:`,
+          true,
+          M4B_TOOL_LINKS,
+        )
+      }
+      if (drmNames.length > 0) {
+        const one = drmNames.length === 1
+        addNotice(
+          `Skipped ${formatNameList(drmNames)}: ${one ? "it's" : "they're"} copy-protected (DRM), as audiobooks from Audible (.aa, .aax) and the iTunes Store (.m4p) are. No converter can open ${one ? 'it' : 'them'}; use a copy without DRM.`,
           true,
         )
       }
@@ -418,14 +442,14 @@ export default function DropZone() {
         <input
           {...getInputProps()}
           aria-label="Choose audio files and a cover image"
-          accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.opus,image/jpeg,image/png,.jpg,.jpeg,.png,.cue,.zip,application/zip"
+          accept={`${AUDIO_ACCEPT},${IMAGE_ACCEPT},.cue,.zip,application/zip`}
         />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your files here' : <DropPrompt mouse="Drop audio files + cover image, or click to browse" touch="Tap to choose audio files and a cover image" />}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-          MP3 · M4A · WAV · FLAC · OGG · Opus · JPG · PNG · CUE · ZIP
+          {AUDIO_FORMATS_LABEL} · JPG · PNG · CUE · ZIP
         </p>
       </div>
 
@@ -435,7 +459,20 @@ export default function DropZone() {
           role="alert"
           className="mt-2 flex items-center justify-between gap-2 rounded-md bg-zinc-100 px-3 py-1.5 text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
         >
-          <span>{n.message}</span>
+          <span>
+            {n.message}
+            {n.links?.map((l, i) => (
+              <span key={l.href}>
+                {i === 0 ? ' ' : ' · '}
+                <Link
+                  href={l.href}
+                  className="text-accent-700 underline hover:text-accent-800 dark:text-accent-400 dark:hover:text-accent-300"
+                >
+                  {l.label}
+                </Link>
+              </span>
+            ))}
+          </span>
           <button
             type="button"
             onClick={() => dismissNotice(n.id)}
@@ -469,7 +506,7 @@ export default function DropZone() {
             </li>
             <li className="flex items-center gap-2">
               <ImageIcon size={14} className="shrink-0 text-accent-600 dark:text-accent-400" aria-hidden="true" />
-              <span>Optional cover art, embedded at 1200×1200</span>
+              <span>Optional cover art, embedded at up to 1200×1200</span>
             </li>
             <li className="flex items-center gap-2">
               <BookOpen size={14} className="shrink-0 text-accent-600 dark:text-accent-400" aria-hidden="true" />

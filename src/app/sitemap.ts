@@ -8,10 +8,10 @@ const BASE = 'https://www.mp3tom4b.com'
 // or yesterday to IndexNow.
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
-    { url: `${BASE}`, lastModified: '2026-11-03', changeFrequency: 'monthly', priority: 1.0 },
+    { url: `${BASE}`, lastModified: '2026-11-10', changeFrequency: 'monthly', priority: 1.0 },
     { url: `${BASE}/about`, lastModified: '2026-05-15', changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${BASE}/faq`, lastModified: '2026-11-06', changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${BASE}/privacy`, lastModified: '2026-11-09', changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${BASE}/faq`, lastModified: '2026-11-10', changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${BASE}/privacy`, lastModified: '2026-11-10', changeFrequency: 'yearly', priority: 0.3 },
     { url: `${BASE}/flac-to-m4b`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/wav-to-m4b`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/m4a-to-m4b`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 0.8 },
@@ -19,9 +19,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/opus-to-m4b`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/compress-m4b`, lastModified: '2026-10-27', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/m4b-to-mp3`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${BASE}/edit-m4b-chapters`, lastModified: '2026-10-27', changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/edit-m4b-chapters`, lastModified: '2026-11-10', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/merge-m4b`, lastModified: '2026-10-26', changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${BASE}/add-chapters-to-mp3`, lastModified: '2026-11-03', changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/add-chapters-to-mp3`, lastModified: '2026-11-10', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/m4b-player`, lastModified: '2026-11-03', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/librivox-to-m4b`, lastModified: '2026-11-03', changeFrequency: 'monthly', priority: 0.7 },
     { url: `${BASE}/m4b-on-iphone`, lastModified: '2026-11-03', changeFrequency: 'monthly', priority: 0.7 },

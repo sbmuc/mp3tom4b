@@ -23,7 +23,7 @@ async function convertTen(): Promise<Blob> {
   const files = await Promise.all(
     TEN_ODD_CHAPTERS.map(async (s, i) => ({ ...(await asAudioFile(await toneFile(s), i)), chapterTitle: TITLES[i] })),
   )
-  return convertToM4B({ files, metadata: META, coverFile: null, bitrate: 64, onProgress: () => {} })
+  return (await convertToM4B({ files, metadata: META, coverFile: null, bitrate: 64, onProgress: () => {} })).blob
 }
 
 describe('player chapter reader on real output', () => {

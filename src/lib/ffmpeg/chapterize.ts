@@ -2,8 +2,9 @@
 
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
+import { loadEngine } from './engine'
 import { allKnown, buildTimedConcatList, parseSegmentStarts, remapThroughSegments } from './concatPlan'
-import { COVER_CODEC_ARGS } from './cover'
+import { OWN_COVER_ARGS } from './cover'
 import { humanizeFfmpegError } from './errors'
 import { buildEditMetadata, type EditChapter } from './editM4b'
 import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
@@ -194,7 +195,8 @@ export function buildChapterizeArgs(o: {
   args.push('-i', o.metaPath)
   const metaIdx = o.coverPath ? 2 : 1
   args.push('-map', '0:a')
-  if (o.coverPath) args.push('-map', '1', ...COVER_CODEC_ARGS, '-disposition:v', 'attached_pic')
+  // The cover is always one we made (resizeCoverImage): copied in as it is.
+  if (o.coverPath) args.push('-map', '1', ...OWN_COVER_ARGS, '-disposition:v', 'attached_pic')
   args.push(
     '-map_metadata', String(metaIdx),
     '-map_chapters', String(metaIdx),
@@ -248,7 +250,15 @@ export async function detectSilenceChapters(
 
   emit({ status: 'probing', percent: 2, label: ffmpegLoadingLabel() })
   // It reads the log, so it takes its turn with the other probes (serial.ts).
-  const lines = await oneAtATime(() => scanForSilence(file, minGapSec, durationMs, emit))
+  let lines: string[]
+  try {
+    lines = await oneAtATime(() => scanForSilence(file, minGapSec, durationMs, emit))
+  } catch (err) {
+    // Without this a failed scan (a mount error) left the bar where it was.
+    console.error('mp3tom4b silence scan failed:', err)
+    emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
+    throw err
+  }
   emit({ status: 'done', percent: 100, label: 'Done.' })
   const silences = parseSilences(lines)
   const inside = silences.filter((s) => {
@@ -324,7 +334,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
   emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
-  const ffmpeg = await getFFmpeg()
+  const ffmpeg = await loadEngine(emit, 'chapterize')
 
   const inputExt = fileExtension(file.name)
   const segExt = segmentExtension(inputExt)
@@ -409,7 +419,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
 
       emit({ status: 'muxing', percent: 88, label: 'Finalizing audiobook…' })
       tempPaths.push(OUTPUT_PATH)
-      await runFFmpeg(ffmpeg, buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
+      await runFFmpeg(ffmpeg, buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH, ownCover: true }))
       await unmount(ffmpeg, PARTS_DIR)
 
       const blob = await takeBlob(ffmpeg, OUTPUT_PATH)

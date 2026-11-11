@@ -4,13 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { ImageIcon, X } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
-import { isDecodableImage } from '@/lib/image/validate'
+import { coverProblem, IMAGE_ACCEPT, IMAGE_FORMATS_LABEL } from '@/lib/image/validate'
 import DropPrompt from '@/components/DropPrompt'
 
-const ACCEPT = {
-  'image/jpeg': ['.jpg', '.jpeg'],
-  'image/png': ['.png'],
-}
 
 export default function CoverUpload() {
   const coverFile = useConversionStore((s) => s.coverFile)
@@ -34,9 +30,12 @@ export default function CoverUpload() {
       const file = accepted[0]
       if (!file) return
       // Validate up front with the same decoder the conversion uses, so a
-      // corrupt image fails here instead of after a long encode.
-      if (!(await isDecodableImage(file))) {
-        setError('That image could not be read. Try a different JPG or PNG.')
+      // corrupt image fails here instead of after a long encode. Every file
+      // gets here: an `accept` filter used to drop WebP, GIF and HEIC
+      // without a word.
+      const problem = await coverProblem(file)
+      if (problem) {
+        setError(problem)
         return
       }
       setError(null)
@@ -47,7 +46,6 @@ export default function CoverUpload() {
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
-    accept: ACCEPT,
     multiple: false,
   })
 
@@ -69,11 +67,11 @@ export default function CoverUpload() {
           aria-label="Upload cover image"
           className={`flex h-[200px] w-[200px] shrink-0 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 ${borderClass}`}
         >
-          <input {...getInputProps()} aria-label="Choose a cover image" />
+          <input {...getInputProps()} aria-label="Choose a cover image" accept={IMAGE_ACCEPT} />
           {previewUrl ? (
             <div className="relative h-full w-full bg-white">
               {/* object-contain + white bg mirrors the actual output, which pads
-                  non-square covers to 1200×1200 on white — so the preview tells
+                  non-square covers to a square on white — so the preview tells
                   the truth instead of showing a cropped square. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -94,7 +92,7 @@ export default function CoverUpload() {
                 <DropPrompt mouse="Drop or click to add cover" touch="Tap to add a cover" />
               </p>
               <p className="mt-1 font-mono text-[10px] text-zinc-500 dark:text-zinc-400">
-                JPG · PNG
+                {IMAGE_FORMATS_LABEL}
               </p>
             </>
           )}
@@ -102,8 +100,8 @@ export default function CoverUpload() {
 
         <div className="flex-1 text-sm text-zinc-600 dark:text-zinc-400">
           <p>
-            Square images work best. Non-square covers are padded to 1200×1200 with a white
-            background and embedded as JPEG.
+            Square images work best. Non-square covers are padded to a square with a white
+            background, and embedded as a JPEG of up to 1200×1200.
           </p>
           {coverFile && (
             <button
