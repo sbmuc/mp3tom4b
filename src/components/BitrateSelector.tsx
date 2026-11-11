@@ -10,6 +10,7 @@ import {
   estimateOutputBytes,
   formatEstimatedSize,
   LIKELY_TOO_BIG_BYTES,
+  lowSourceKbps,
   type BitrateAdvice,
 } from '@/lib/audio/bitrate'
 import { pickEncodeTarget } from '@/lib/ffmpeg/concatPlan'
@@ -22,6 +23,8 @@ interface Option {
 }
 
 const OPTIONS: Option[] = [
+  { value: 32, label: '32 kbps', hint: 'smallest, for audio that is 32 kbps already (spoken word)' },
+  { value: 48, label: '48 kbps', hint: 'small, for audio of 48 kbps or less' },
   { value: 64, label: '64 kbps', hint: 'recommended for audiobooks (spoken word)' },
   { value: 96, label: '96 kbps', hint: 'higher quality (music or audio with effects)' },
   { value: 128, label: '128 kbps', hint: 'best quality for most use cases' },
@@ -102,8 +105,13 @@ export default function BitrateSelector() {
   const at64 = formatEstimatedSize(estimateOutputBytes(totalSeconds, effectiveKbps(DEFAULT_BITRATE, target)))
   const mixedSources = new Set(readable.map((f) => f.sourceBitrateKbps)).size > 1
 
-  // Smart suggestion bumped the bitrate above the standard default automatically.
+  // The smart suggestion picked something other than the standard default.
   const showSmartHint = !bitrateUserTouched && bitrate !== DEFAULT_BITRATE
+  const lowSource = lowSourceKbps(readable)
+  const smartHint =
+    bitrate < DEFAULT_BITRATE && lowSource != null
+      ? `Your audio is ${mixedSources ? 'at most ' : ''}${lowSource} kbps, so ${bitrate} kbps keeps everything in it: the M4B is ${bitrate === 32 ? 'half' : 'three quarters of'} the size it would be at ${DEFAULT_BITRATE}.`
+      : 'Suggested based on your source files.'
 
   return (
     <section aria-label="Output bitrate" className="mt-6">
@@ -137,7 +145,7 @@ export default function BitrateSelector() {
 
         {showSmartHint && (
           <span className="text-xs text-zinc-600 dark:text-zinc-400">
-            Suggested based on your source files.
+            {smartHint}
           </span>
         )}
 

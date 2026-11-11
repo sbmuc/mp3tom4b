@@ -45,12 +45,40 @@ export const TOO_BIG_FOR_BROWSER =
 export const OUT_OF_MEMORY =
   'Your browser ran out of memory. Close other tabs and try again; a lower bitrate or a shorter audiobook needs less memory.'
 
+export const ENGINE_DOWNLOAD_FAILED =
+  "The converter couldn't be downloaded. Check your internet connection, or whether an ad or content blocker stops it, then try again. Your files are still here and haven't been sent anywhere."
+
+/**
+ * The engine (ffmpeg-core) couldn't be fetched: offline, blocked by an
+ * extension or a network filter, or an HTTP error. Thrown by client.ts; the
+ * message is the browser's, which says nothing about the user's files.
+ */
+export class EngineLoadError extends Error {
+  constructor(detail: string) {
+    super(`couldn't download the converter: ${detail}`)
+    this.name = 'EngineLoadError'
+  }
+}
+
+export function isEngineLoadError(err: unknown): boolean {
+  return err instanceof EngineLoadError || (err instanceof Error && err.name === 'EngineLoadError')
+}
+
+/**
+ * What to say when a tool couldn't read a dropped file: the engine message
+ * when it was the engine that failed (the file is fine), else `fallback`.
+ */
+export function readFailureMessage(err: unknown, fallback: string): string {
+  return isEngineLoadError(err) ? ENGINE_DOWNLOAD_FAILED : fallback
+}
+
 /**
  * Map a raw error from ffmpeg.wasm into a user-readable label.
  * ffmpeg.wasm throws numbers (POSIX codes), bare strings, or Error objects
  * with cryptic wasm messages — none of which mean anything to end users.
  */
 export function humanizeFfmpegError(err: unknown): string {
+  if (isEngineLoadError(err)) return ENGINE_DOWNLOAD_FAILED
   const raw = extractMessage(err)
 
   // Memory exhaustion — by far the most common failure on large audiobooks.
@@ -100,9 +128,11 @@ export type FailureReason =
   | 'source_moved'
   | 'damaged_input'
   | 'stack_overflow'
+  | 'engine_download'
   | 'other'
 
 export function failureReason(err: unknown): FailureReason {
+  if (isEngineLoadError(err)) return 'engine_download'
   const raw = extractMessage(err)
   if (err === 28 || OUT_OF_MEMORY_PATTERN.test(raw)) return 'out_of_memory'
   if (NOT_READABLE_PATTERN.test(raw)) return PART_STEP_PATTERN.test(raw) ? 'browser_storage' : 'source_moved'
@@ -126,6 +156,7 @@ const ERROR_CLASSES = new Set([
   'RangeError', 'TypeError', 'RuntimeError', 'InternalError', 'SyntaxError', 'ReferenceError',
   'DOMException', 'NotReadableError', 'NotFoundError', 'NotAllowedError', 'SecurityError', 'AbortError',
   'QuotaExceededError', 'DataCloneError', 'InvalidStateError', 'EncodingError', 'FFmpegExitError',
+  'EngineLoadError',
 ])
 
 /** "encoding chapter 3/10: " or "joining chapters: ", the converter's step prefix. */

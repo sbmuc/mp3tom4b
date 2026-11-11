@@ -46,7 +46,7 @@ const FAQS = [
   },
   {
     q: 'What files can I use, and does quality drop?',
-    a: 'MP3, M4A, M4B, WAV, FLAC, OGG, and Opus. The audio is re-encoded to AAC at the bitrate you choose (64 kbps mono is the audiobook standard and inaudible for speech), with your chapters, cover, and tags written in.',
+    a: 'MP3, M4A, M4B, AAC, WAV, AIFF, FLAC, OGG, Opus, WMA, WebM, MKA, MP2, or the sound of an MP4 video. The audio is re-encoded to AAC at the bitrate you choose (64 kbps mono is the audiobook standard and inaudible for speech), with your chapters, cover, and tags written in.',
   },
   {
     q: 'Are my files uploaded anywhere?',

@@ -1,7 +1,7 @@
 'use client'
 
 import { FFmpeg } from '@ffmpeg/ffmpeg'
-import { toBlobURL } from '@ffmpeg/util'
+import { EngineLoadError } from './errors'
 
 const CORE_VERSION = '0.12.6'
 // Self-hosted ffmpeg-core to keep the privacy promise airtight: no third-party
@@ -18,7 +18,7 @@ let loadPromise: Promise<FFmpeg> | null = null
 
 // Remembers, per browser, that the core has loaded once. A later visit is
 // served from the HTTP cache (immutable header), so the loading label mustn't
-// claim a 31 MB download then. Only a convenience: if storage is blocked, the
+// claim a download then. Only a convenience: if storage is blocked, the
 // label falls back to the first-visit wording.
 export const CORE_SEEN_KEY = `mp3tom4b:ffmpeg-core:${CORE_VERSION}`
 
@@ -53,27 +53,66 @@ const activeWorkers = new Set<FFmpeg>()
 // on shared module state inside @ffmpeg/ffmpeg.
 let workerLoadLock: Promise<void> = Promise.resolve()
 
-/** Lazy-load and cache the singleton FFmpeg instance used for concat + mux. */
+/**
+ * Fetch one core file into a blob: URL. A network failure, a blocked request
+ * or an HTTP error (fetch doesn't reject on a 404, and a page of HTML would
+ * then fail to load as wasm, far from the cause) becomes an EngineLoadError,
+ * so every tool can say the engine couldn't be downloaded.
+ */
+async function coreBlobUrl(url: string, type: string): Promise<string> {
+  let res: Response
+  try {
+    res = await fetch(url)
+  } catch (err) {
+    throw new EngineLoadError(err instanceof Error ? err.message : String(err))
+  }
+  if (!res.ok) throw new EngineLoadError(`HTTP ${res.status} for ${url}`)
+  try {
+    return URL.createObjectURL(new Blob([await res.arrayBuffer()], { type }))
+  } catch (err) {
+    // The connection dropped halfway through the download.
+    throw new EngineLoadError(err instanceof Error ? err.message : String(err))
+  }
+}
+
+/**
+ * Lazy-load and cache the singleton FFmpeg instance used for concat + mux.
+ * A failed load is forgotten, so the next call (a retry) starts over instead
+ * of getting the same rejected promise for the rest of the visit.
+ */
 export async function getFFmpeg(): Promise<FFmpeg> {
   if (instance) return instance
   if (loadPromise) return loadPromise
 
-  loadPromise = (async () => {
-    const ffmpeg = new FFmpeg()
+  const attempt = (async () => {
     if (!coreBlobURL || !wasmBlobURL) {
       ;[coreBlobURL, wasmBlobURL] = await Promise.all([
-        toBlobURL(CORE_JS_URL, 'text/javascript'),
-        toBlobURL(CORE_WASM_URL, 'application/wasm'),
+        coreBlobUrl(CORE_JS_URL, 'text/javascript'),
+        coreBlobUrl(CORE_WASM_URL, 'application/wasm'),
       ])
     }
-    await ffmpeg.load({ coreURL: coreBlobURL, wasmURL: wasmBlobURL })
+    const ffmpeg = new FFmpeg()
+    try {
+      await ffmpeg.load({ coreURL: coreBlobURL, wasmURL: wasmBlobURL })
+    } catch (err) {
+      try {
+        ffmpeg.terminate()
+      } catch {
+        // never started
+      }
+      throw err
+    }
 
     instance = ffmpeg
     rememberCoreSeen()
     return ffmpeg
   })()
+  loadPromise = attempt
+  attempt.catch(() => {
+    if (loadPromise === attempt) loadPromise = null
+  })
 
-  return loadPromise
+  return attempt
 }
 
 /**
@@ -117,13 +156,13 @@ export function isFFmpegLoaded(): boolean {
 }
 
 /**
- * Progress label for the load phase. On a first visit the core is a ~31 MB
+ * Progress label for the load phase. On a first visit the core is a ~10 MB
  * one-time download, which otherwise looks like an unexplained stall; once it's
  * cached (this tab, or an earlier visit) the same step is quick, so don't
  * claim a download then.
  */
 export function ffmpegLoadingLabel(): string {
-  return isFFmpegLoaded() || coreSeenBefore() ? 'Loading converter…' : 'Downloading converter (one-time, ~31 MB)…'
+  return isFFmpegLoaded() || coreSeenBefore() ? 'Loading converter…' : 'Downloading converter (one-time, about 10 MB)…'
 }
 
 /**

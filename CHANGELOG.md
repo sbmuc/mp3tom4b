@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.20.0] — 2026-11-10
+
+### Added
+- **More audio formats.** Besides MP3, M4A, WAV, FLAC, OGG and Opus, the converter and Add chapters now take AAC, AIFF, WMA, WebM, MKA and MP2 files, and the sound of an MP4 video such as a recorded lecture. They were turned away as "not audio" although the converter could read them all.
+- **32 and 48 kbps.** A book that is already 32 kbps (many older rips are) now gets 32 kbps by default, with a note saying why. At 64 it came out twice its size and sounded no better. The compressor offers 32 and 48 kbps too, so a 64 kbps book can still be made smaller.
+- **Damaged files are pointed out.** When part of a file can't be read, the chapter comes out shorter than the file: a 30-second file became a 15-second chapter without a word. The result now names such chapters, with how long they are and should be, so you can check them in the preview.
+
+### Fixed
+- **No more endless "Downloading converter… 2%".** When the converter itself couldn't be downloaded (offline, or blocked by an ad blocker or a network filter), every tool sat still, or said your file was damaged. They now say the download failed and what to check, and trying again works.
+- **Changing a title, a tag or the cover after converting no longer means converting again.** The change is put on the finished M4B in a moment ("Update M4B"), without encoding the audio again. Sorting the list after converting now also clears the old download, which used to stay up as if it were current.
+- **One long file converts about twice as fast.** A book that is one long file used one processor core while the others sat idle. It is now cut into pieces that are encoded side by side (an hour of speech: 64 s before, 31 s now), and the cuts are placed in the pauses, so no join can be heard. The longest files also start first, so a long file at the end of a book no longer keeps the others waiting.
+- **Sharper covers.** Covers were re-compressed twice, the second time at a low quality, and small covers were enlarged to 1200×1200, which made the file bigger without adding detail. A cover is now saved once at high quality, at its own size up to 1200×1200. The cover zone also takes WebP, GIF and BMP images, which it used to ignore without a message. iPhone HEIC photos get a message explaining that only Safari can open them.
+- **Copy-protected books are named as such.** Audible (.aa, .aax) and iTunes Store (.m4p) files now get a message that they are DRM-protected, instead of "not audio". An M4B dropped on the converter links to the M4B tools.
+- **Screen readers name the chapter you move.** Reordering by keyboard used to announce internal ids ("Draggable item 9f9c… was dropped over droppable area 1b7d…"); it now says the chapter's title and its new position.
+- The converter's first download is about 10 MB, not 31 MB as the label said (it is compressed on the way).
+- A chapter title left blank is written as "Chapter N", as in the editor.
+- In Safari, closing a preview while it was still loading (for example by sorting the list after converting) logged an error; the player now lets go of the file first.
+
+---
+
 ## [1.19.2] — 2026-11-09
 
 ### Fixed

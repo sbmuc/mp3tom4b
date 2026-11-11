@@ -44,12 +44,14 @@ import {
 } from '@/lib/ffmpeg/mergeM4b'
 import { probeChapters, type Chapter } from '@/lib/ffmpeg/splitChapters'
 import { probeM4bInfo } from '@/lib/ffmpeg/probeM4b'
+import { SORT_INSTRUCTIONS, sortAnnouncements } from '@/lib/a11y/sortAnnouncements'
+import { ENGINE_DOWNLOAD_FAILED, isEngineLoadError } from '@/lib/ffmpeg/errors'
 import { resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { guessType, isZipFile, unzipFiles } from '@/lib/archive/zip'
 import { extractMetadata } from '@/lib/audio/metadata'
-import { isDecodableImage } from '@/lib/image/validate'
+import { coverProblem, IMAGE_ACCEPT } from '@/lib/image/validate'
 import { fileNameToChapterTitle, formatBytes, formatDuration } from '@/lib/audio/format'
 import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
@@ -291,8 +293,13 @@ export default function M4bMerger() {
             : r,
         ),
       )
-    } catch {
+    } catch (err) {
       setRows((rs) => rs.map((r) => (r.id === id ? { ...r, status: 'error' } : r)))
+      // The engine didn't download: the files are fine, so say what is wrong.
+      if (isEngineLoadError(err)) {
+        setShowConverterHint(false)
+        setInputError(ENGINE_DOWNLOAD_FAILED)
+      }
     }
   }, [])
 
@@ -405,8 +412,9 @@ export default function M4bMerger() {
 
   // ---- cover actions ----
   const replaceCover = async (f: File) => {
-    if (!(await isDecodableImage(f))) {
-      setCoverError('That image could not be read. Try a different JPG or PNG.')
+    const problem = await coverProblem(f)
+    if (problem) {
+      setCoverError(problem)
       return
     }
     setCoverError(null)
@@ -584,7 +592,18 @@ export default function M4bMerger() {
               )}
             </div>
 
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+              accessibility={{
+                announcements: sortAnnouncements(
+                  rows.map((r) => r.id),
+                  (id) => rows.find((r) => r.id === id)?.file.name ?? 'The file',
+                ),
+                screenReaderInstructions: SORT_INSTRUCTIONS,
+              }}
+            >
               <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
                 <ul className="flex flex-col gap-2">
                   {rows.map((row, index) => (
@@ -727,7 +746,7 @@ export default function M4bMerger() {
                     {hadOriginal || coverMode === 'replace' ? 'Upload a different image' : 'Add cover'}
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                      accept={IMAGE_ACCEPT}
                       className="hidden"
                       onChange={(e) => {
                         const f = e.target.files?.[0]

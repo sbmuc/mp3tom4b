@@ -5,7 +5,8 @@ import { Loader2, Wand2, X } from 'lucide-react'
 import { trackEvent, trackFailure } from '@/lib/analytics'
 import { resetFFmpegAfterFailure } from '@/lib/ffmpeg/client'
 import { convertToM4B } from '@/lib/ffmpeg/convert'
-import { useConversionStore } from '@/lib/store/conversionStore'
+import { editM4B } from '@/lib/ffmpeg/editM4b'
+import { buildKey, useConversionStore, type LastBuild } from '@/lib/store/conversionStore'
 
 const ACTIVE_STATUSES = new Set(['loading-ffmpeg', 'probing', 'encoding', 'concatenating', 'muxing'])
 
@@ -19,6 +20,9 @@ export default function ConvertButton() {
   const setOutputBlob = useConversionStore((s) => s.setOutputBlob)
   const cancelConversion = useConversionStore((s) => s.cancelConversion)
   const setSubmitAttempted = useConversionStore((s) => s.setSubmitAttempted)
+  const lastBuild = useConversionStore((s) => s.lastBuild)
+  const setLastBuild = useConversionStore((s) => s.setLastBuild)
+  const setShortChapters = useConversionStore((s) => s.setShortChapters)
 
   // Tracks whether the current conversion was explicitly cancelled so we can
   // suppress the error state that bubbles up after workers are terminated.
@@ -32,6 +36,9 @@ export default function ConvertButton() {
   const unreadableCount = files.filter((f) => f.unreadable).length
   const readableOk = unreadableCount === 0
   const isRunning = ACTIVE_STATUSES.has(progress.status)
+  // Same files, order and bitrate as the last M4B: only titles, tags or the
+  // cover changed, and they go onto that M4B without encoding again.
+  const canUpdate = lastBuild != null && lastBuild.key === buildKey(files, bitrate)
   const invalid = !filesOk || !titleOk || !authorOk || !readableOk
 
   const missing: string[] = []
@@ -41,6 +48,39 @@ export default function ConvertButton() {
   }
   if (!titleOk) missing.push('enter a title')
   if (!authorOk) missing.push('enter an author')
+
+  /**
+   * Put the current titles, tags and cover on the last M4B: a remux with the
+   * audio copied, as the editor does, so it takes a moment instead of a
+   * whole encode. The chapter times stay those of the last M4B.
+   */
+  const updateLastBuild = async (build: LastBuild) => {
+    const startedAt = Date.now()
+    try {
+      const blob = await editM4B({
+        file: new File([build.blob], 'converted.m4b', { type: 'audio/mp4' }),
+        chapters: files.map((f, i) => ({ startMs: build.starts[i] ?? 0, title: f.chapterTitle.trim() || `Chapter ${i + 1}` })),
+        metadata,
+        cover: coverFile === build.cover ? { mode: 'keep' } : coverFile ? { mode: 'replace', file: coverFile } : { mode: 'remove' },
+        durationMs: build.durationMs,
+        onProgress: (p) => {
+          if (cancelledRef.current) return
+          setProgress(p.status === 'muxing' ? { ...p, label: 'Updating titles, tags and cover (no re-encoding)…' } : p)
+        },
+      })
+      setOutputBlob(blob)
+      setLastBuild({ ...build, blob, cover: coverFile })
+      trackEvent('conversion_updated', {
+        fileCount: files.length,
+        elapsedSec: Math.round((Date.now() - startedAt) / 1000),
+      })
+    } catch (err) {
+      if (!cancelledRef.current) {
+        trackFailure('convert', err, { quickUpdate: true, elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        resetFFmpegAfterFailure()
+      }
+    }
+  }
 
   const handleClick = async () => {
     if (isRunning) return
@@ -68,6 +108,14 @@ export default function ConvertButton() {
 
     cancelledRef.current = false
     setOutputBlob(null)
+    if (canUpdate && lastBuild) {
+      await updateLastBuild(lastBuild)
+      return
+    }
+    // Let go of the previous M4B before encoding: a big book shouldn't be
+    // held twice at the moment memory is tightest.
+    setLastBuild(null)
+    setShortChapters([])
     const startedAt = Date.now()
     const shape = {
       fileCount: files.length,
@@ -75,7 +123,7 @@ export default function ConvertButton() {
       audioDurationSec: Math.round(files.reduce((acc, f) => acc + (f.duration ?? 0), 0)),
     }
     try {
-      const blob = await convertToM4B({
+      const result = await convertToM4B({
         files,
         metadata,
         coverFile,
@@ -86,7 +134,16 @@ export default function ConvertButton() {
           if (!cancelledRef.current) setProgress(p)
         },
       })
+      const blob = result.blob
       setOutputBlob(blob)
+      setShortChapters(result.shortChapters)
+      setLastBuild({
+        blob,
+        key: buildKey(files, bitrate),
+        starts: result.starts,
+        durationMs: result.durationMs,
+        cover: coverFile,
+      })
 
       // Funnel telemetry: how often does a landed visitor finish a conversion?
       // Anonymous and cookieless (see lib/analytics.ts): no file content, only
@@ -97,6 +154,7 @@ export default function ConvertButton() {
         outputMb: Math.round((blob.size / (1024 * 1024)) * 10) / 10,
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
         hasCover: coverFile != null,
+        shortChapters: result.shortChapters.length,
       })
     } catch (err) {
       // Errors are surfaced via the onProgress 'error' event above.
@@ -136,7 +194,7 @@ export default function ConvertButton() {
           ) : (
             <Wand2 size={16} aria-hidden="true" />
           )}
-          {isRunning ? 'Converting…' : 'Convert to M4B'}
+          {isRunning ? (canUpdate ? 'Updating…' : 'Converting…') : canUpdate ? 'Update M4B' : 'Convert to M4B'}
         </button>
         {isRunning && (
           <button

@@ -9,3 +9,11 @@
  * file size.
  */
 export const COVER_CODEC_ARGS = ['-c:v', 'mjpeg', '-huffman', 'default']
+
+/**
+ * Output options for a cover we made ourselves (resizeCoverImage: a baseline
+ * JPEG from the browser, sized and compressed as wanted): copied in as it
+ * is. Encoding it again at ffmpeg's default quality threw away much of the
+ * detail resizeCoverImage kept, and copying can't hit the encoder bug above.
+ */
+export const OWN_COVER_ARGS = ['-c:v', 'copy']

@@ -1,8 +1,9 @@
 'use client'
 
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
-import { ffmpegLoadingLabel, getFFmpeg } from './client'
-import { COVER_CODEC_ARGS } from './cover'
+import { ffmpegLoadingLabel } from './client'
+import { loadEngine } from './engine'
+import { COVER_CODEC_ARGS, OWN_COVER_ARGS } from './cover'
 import { humanizeFfmpegError } from './errors'
 import { buildFFMetadata, buildGlobalMetadata } from './chapters'
 import { mountBlobs, takeBlob, unmount } from './files'
@@ -154,20 +155,23 @@ export function buildPartEncodeArgs(o: {
 /**
  * ffmpeg args for the final concat-copy mux: join the uniform intermediates,
  * attach the cover (if any) and our merged chapters/metadata. Pure.
- * `coverPath` null means no cover in the output.
+ * `coverPath` null means no cover in the output. `ownCover`: the cover is
+ * one we made (resizeCoverImage), copied in as it is; otherwise (a cover
+ * taken from one of the input files) it is encoded as a standard JPEG.
  */
 export function buildMergeMuxArgs(o: {
   listPath: string
   coverPath: string | null
   metaPath: string
   output: string
+  ownCover?: boolean
 }): string[] {
   const args = ['-hide_banner', '-f', 'concat', '-safe', '0', '-i', o.listPath]
   if (o.coverPath) args.push('-i', o.coverPath)
   args.push('-i', o.metaPath)
   const metaIdx = o.coverPath ? 2 : 1
   args.push('-map', '0:a')
-  if (o.coverPath) args.push('-map', '1', ...COVER_CODEC_ARGS, '-disposition:v', 'attached_pic')
+  if (o.coverPath) args.push('-map', '1', ...(o.ownCover ? OWN_COVER_ARGS : COVER_CODEC_ARGS), '-disposition:v', 'attached_pic')
   args.push(
     '-map_metadata', String(metaIdx),
     '-map_chapters', String(metaIdx),
@@ -222,7 +226,7 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
   emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
-  const ffmpeg = await getFFmpeg()
+  const ffmpeg = await loadEngine(emit, 'merge')
 
   const tempPaths: string[] = []
   const partBlobs: Blob[] = []
@@ -316,7 +320,10 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
     tempPaths.push(OUTPUT_PATH)
     ffmpeg.on('log', onLog)
     try {
-      await runFFmpeg(ffmpeg, buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
+      await runFFmpeg(
+        ffmpeg,
+        buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH, ownCover: cover.mode === 'replace' }),
+      )
     } finally {
       ffmpeg.off('log', onLog)
     }

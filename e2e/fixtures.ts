@@ -74,6 +74,34 @@ export async function makeFixtures(): Promise<void> {
     'long.mp3',
   )
 
+  // Two 32 kbps mono MP3s, as old rips are: the converter should match them, not double them.
+  for (const n of [1, 2]) {
+    await make(
+      ['-f', 'lavfi', '-i', `sine=frequency=${350 + n * 100}:duration=4:sample_rate=22050`, '-ac', '1', '-c:a', 'libmp3lame', '-b:a', '32k'],
+      `low-${n}.mp3`,
+    )
+  }
+
+  // Formats the converter takes besides the original six.
+  const tone = (hz: number) => ['-f', 'lavfi', '-i', `sine=frequency=${hz}:duration=3`]
+  await make([...tone(300), '-c:a', 'aac', '-f', 'adts'], 'tone.aac')
+  await make([...tone(400), '-c:a', 'wmav2', '-f', 'asf'], 'tone.wma')
+  await make([...tone(500), '-c:a', 'pcm_s16be', '-f', 'aiff'], 'tone.aiff')
+
+  // A WebP cover, which the cover zone used to ignore without a word.
+  await make(['-f', 'lavfi', '-i', 'testsrc=size=400x400:rate=1', '-frames:v', '1', '-c:v', 'libwebp'], 'cover.webp')
+
+  // A 30 s MP3 with its second half scrambled: decodes to about 15 s, without an error.
+  await make([...tone(600).map((x) => x.replace('duration=3', 'duration=30')), '-c:a', 'libmp3lame', '-b:a', '64k'], 'damaged.mp3')
+  {
+    const b = readFileSync(fixture('damaged.mp3'))
+    for (let i = Math.floor(b.length / 2); i < b.length; i++) b[i] = (i * 7919) & 0xff
+    writeFileSync(fixture('damaged.mp3'), b)
+  }
+
+  // Copy-protected books aren't opened; only the name counts here.
+  writeFileSync(fixture('book.aax'), Buffer.from('aax '.repeat(100)))
+
   // An M4B cut off halfway: its header promises audio that isn't there.
   writeFileSync(fixture('cut-off.m4b'), readFileSync(fixture('book.m4b')).subarray(0, 20_000))
 

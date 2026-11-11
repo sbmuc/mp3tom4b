@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AlertTriangle, BookAudio, Loader2, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward } from 'lucide-react'
 import { formatDuration } from '@/lib/audio/format'
 import { clearPosition, loadPosition, resumeKey, savePosition, shouldResume } from '@/lib/audio/resume'
@@ -64,6 +64,21 @@ export default function AudioPlayer({ file, fileName, noChaptersHint, remember =
     setSrc(url)
     return () => URL.revokeObjectURL(url)
   }, [file, fileName])
+
+  // Let the element go of the blob: URL before it is revoked. Safari logs
+  // "WebKitBlobResource error 1" when a preview is closed (the result was
+  // cleared) while it is still reading the file. Only when the element still
+  // has this URL: on a new file it already has the next one.
+  useLayoutEffect(() => {
+    const audio = audioRef.current
+    const own = src
+    return () => {
+      if (!audio || !own || audio.getAttribute('src') !== own) return
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
+    }
+  }, [src])
 
   useEffect(() => {
     let cancelled = false

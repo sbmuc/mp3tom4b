@@ -17,12 +17,20 @@ import {
 } from 'lucide-react'
 import { trackEvent, trackFailure } from '@/lib/analytics'
 import { compressM4B } from '@/lib/ffmpeg/compress'
+import { ENGINE_DOWNLOAD_FAILED, readFailureMessage } from '@/lib/ffmpeg/errors'
 import { probeM4bInfo, type M4bProbeInfo } from '@/lib/ffmpeg/probeM4b'
 import { resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
-import { estimateOutputBytes, formatEstimatedSize } from '@/lib/audio/bitrate'
+import {
+  canCompress,
+  COMPRESS_OPTIONS,
+  compressShrinks,
+  defaultCompressBitrate,
+  estimateOutputBytes,
+  formatEstimatedSize,
+} from '@/lib/audio/bitrate'
 import { formatBytes, formatDuration } from '@/lib/audio/format'
 import type { Bitrate, ConversionProgress } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
@@ -33,11 +41,17 @@ import EditResultButton from '@/components/EditResultButton'
 const ACCEPTED_EXTENSIONS = ['.m4b', '.m4a']
 const ACTIVE_STATUSES = new Set(['loading-ffmpeg', 'encoding'])
 
-const BITRATE_OPTIONS: { value: Bitrate; hint: string }[] = [
-  { value: 64, hint: 'recommended for audiobooks (spoken word)' },
-  { value: 96, hint: 'speech with light music or effects' },
-  { value: 128, hint: 'higher quality, larger file' },
-]
+const BITRATE_HINTS: Record<number, string> = {
+  32: 'smallest, best for spoken word in mono',
+  48: 'small, for spoken word',
+  64: 'recommended for audiobooks (spoken word)',
+  96: 'speech with light music or effects',
+  128: 'higher quality, larger file',
+}
+const BITRATE_OPTIONS: { value: Bitrate; hint: string }[] = COMPRESS_OPTIONS.map((value) => ({
+  value,
+  hint: BITRATE_HINTS[value],
+}))
 
 const idleProgress: ConversionProgress = { status: 'idle', percent: 0, label: '' }
 
@@ -124,8 +138,10 @@ export default function M4bCompressor() {
       ])
       setProbe(info)
       setTags({ title: meta.title, author: meta.author })
-    } catch {
-      setInputError('Could not read that file. It may be corrupt or not a valid M4B.')
+      // A book at about 64 kbps or less starts on a setting that shrinks it.
+      setBitrate(defaultCompressBitrate(info.currentBitrateKbps ?? null))
+    } catch (err) {
+      setInputError(readFailureMessage(err, 'Could not read that file. It may be corrupt or not a valid M4B.'))
       setFile(null)
     } finally {
       setProbing(false)
@@ -187,7 +203,9 @@ export default function M4bCompressor() {
   const estimatedBytes = durationSec > 0 ? estimateOutputBytes(durationSec, bitrate) : 0
   const estimateLabel = formatEstimatedSize(estimatedBytes)
   const currentBitrate = probe?.currentBitrateKbps ?? null
-  const wontShrink = currentBitrate != null && bitrate >= currentBitrate
+  const wontShrink = !compressShrinks(bitrate, currentBitrate)
+  // Already at about the lowest setting: nothing here makes it noticeably smaller.
+  const smallestAlready = !canCompress(currentBitrate)
   const shrinkPercent =
     !wontShrink && file && estimatedBytes > 0 && estimatedBytes < file.size
       ? Math.round((1 - estimatedBytes / file.size) * 100)
@@ -233,11 +251,16 @@ export default function M4bCompressor() {
         >
           <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
           <span>
-            {inputError} To build an M4B from separate MP3/FLAC/WAV files, use the{' '}
-            <Link href="/" className="underline hover:no-underline">
-              main converter
-            </Link>
-            .
+            {inputError}
+            {inputError !== ENGINE_DOWNLOAD_FAILED && (
+              <>
+                {' '}To build an M4B from separate MP3/FLAC/WAV files, use the{' '}
+                <Link href="/" className="underline hover:no-underline">
+                  main converter
+                </Link>
+                .
+              </>
+            )}
           </span>
         </div>
       )}
@@ -337,8 +360,9 @@ export default function M4bCompressor() {
                 className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300"
               >
                 <AlertTriangle size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
-                This file is already at about {currentBitrate} kbps, so {bitrate} kbps will not make it
-                smaller. Pick a lower bitrate to shrink it.
+                {smallestAlready
+                  ? `This file is already at about ${currentBitrate} kbps, close to the lowest setting here (${COMPRESS_OPTIONS[0]} kbps), so compressing it would hardly make it smaller.`
+                  : `This file is already at about ${currentBitrate} kbps, so ${bitrate} kbps will not make it noticeably smaller. Pick a lower bitrate to shrink it.`}
               </p>
             )}
           </section>

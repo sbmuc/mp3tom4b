@@ -6,14 +6,14 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## File handling
 
-- Drag-and-drop input for MP3, M4A, WAV, FLAC, OGG, and Opus files, or ZIP archives of them (unpacked in the browser, in folder and name order; a cover image inside is used as the cover; several ZIPs, like Google Drive's split downloads, can be dropped at once).
+- Drag-and-drop input for MP3, M4A, WAV, FLAC, OGG and Opus files, and also AAC, AIFF, WMA, WebM, MKA, MP2 and the audio of MP4 videos (`AUDIO_EXTENSIONS` in `src/lib/audio/validate.ts`, shared by the converter and Add chapters), or ZIP archives of them (unpacked in the browser, in folder and name order; a cover image inside is used as the cover; several ZIPs, like Google Drive's split downloads, can be dropped at once).
 - Click-to-browse fallback for users who prefer the OS file picker.
 - Multi-file drop in a single action.
 - Mixed drop — drop audio files and a cover image together; each is routed automatically.
 - Folder drop — drop an entire audiobook folder; nested files are flattened, hidden files (`.DS_Store`, `__MACOSX`) are skipped, and the best image inside is picked as the cover.
 - Best-cover selection rules — when multiple images are dropped, the file named `cover.*` / `folder.*` / `front.*` / `album.*` wins, with file size as a tiebreaker.
 - Duplicate detection — files with matching size + duration are skipped silently, and the existing matching row briefly flashes to show what matched.
-- Skipped files are always reported by name — non-audio files (`.txt`, `.pdf`, cue sheets) and rejected audio alike, including when a drop contains nothing usable. Hidden files stay silent.
+- Skipped files are always reported by name — non-audio files (`.txt`, `.pdf`, cue sheets) and rejected audio alike, including when a drop contains nothing usable. Hidden files stay silent. Copy-protected books (Audible `.aa`/`.aax`/`.aaxc`, iTunes Store `.m4p`), loose or in a ZIP, are named as DRM-protected; an M4B gets links to the editor, compressor, merger and splitter.
 - Unreadable files are caught on drop: when neither the tags nor the browser can decode a file, the row is flagged and converting is blocked until it's removed.
 - Mixed-album warning when dropped files appear to come from different audiobooks based on their `album` tags.
 - Per-file remove button.
@@ -47,24 +47,26 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## Cover image
 
-- JPG / PNG / WEBP upload via dedicated cover zone or via mixed drop.
+- Any image the browser can decode — JPG, PNG, WebP, GIF (first frame), BMP, AVIF — via the cover zone, a mixed drop, or the editor's, merger's and Add chapters' cover pickers (`coverProblem` in `src/lib/image/validate.ts`). A HEIC photo that the browser can't open (all but Safari) gets a message saying so, and how to save it as JPG.
 - Live preview that mirrors the embedded result (letterboxed on a white background for non-square images), so what you see is what gets embedded.
 - Corrupt or unreadable images are rejected the moment they are added, rather than failing at the end of a conversion.
-- Auto-resize to 1200×1200 JPEG before embedding; non-square images are padded onto a white background.
+- Saved once as a square JPEG at its own size, up to 1200×1200 (never enlarged), at quality 0.9, stepping down to 0.75 only above 500 KB; non-square images are padded onto a white background. That JPEG is copied into the M4B as it is (`OWN_COVER_ARGS`), not encoded again. A cover kept from an input file (compressor, merger) is encoded with the standard Huffman tables (`COVER_CODEC_ARGS`).
 - Source badge on the cover preview ("from drop" or "from audio file") so users see at a glance how the cover was set.
 - Precedence: a cover picked in the Cover image section beats one dropped with the audio, which beats the one embedded in the audio. A dropped image replaces an embedded or earlier dropped cover; only a picked cover makes a drop say "Cover already set".
 - Remove-cover button.
 
 ## Conversion
 
-- Bitrate selector: 64 (default), 96, 128, 192, 256 kbps.
-- Smart bitrate default — suggested bitrate is bumped automatically when source files are lossless or above 256 kbps and the genre is non-audiobook.
+- Bitrate selector: 32, 48, 64 (default), 96, 128, 192, 256 kbps.
+- Smart bitrate default — when every file is lossy at 48 kbps or less, the smallest setting that keeps them (32 or 48) is picked, with a line saying why (at 64 such a book came out twice its size and no better); when source files are lossless or above 256 kbps and the genre is non-audiobook, it is bumped to 96.
 - Estimated output size preview that updates with bitrate changes ("~340 MB at 64 kbps"), at the bitrate the encoder really reaches: it tops out by sample rate (`aacCeilingKbps`, measured: ~110 kbps at 22 kHz, ~220 at 44.1 kHz), so 256 kbps on 22 kHz audio is shown as "at ~112 kbps".
 - When the chosen bitrate is higher than the audio can use, a note says why and offers the setting that keeps everything (`bitrateAdvice`): the files are lossy at a lower bitrate ("Your audio is 64 kbps, so a higher bitrate makes the M4B bigger, not better"), or their sample rate caps the encoder.
 - Above about 2 GB estimated (`LIKELY_TOO_BIG_BYTES`), a warning before converting that the book may not come together in the browser, with its size at 64 kbps.
 - Mixed sources join cleanly: every chapter is encoded to one common sample rate (the highest source rate, up to 48 kHz) and channel layout (mono only when every source is mono), so files from different rips, recorders, or formats can be combined.
 - AAC `.m4a` inputs that already share identical audio settings and are at or below the chosen bitrate are joined without re-encoding (no quality loss, near-instant); the audio settings are confirmed with ffmpeg first, not taken from the tags.
 - Chapter markers are placed from each encoded chapter's real length, so they stay aligned with the audio at every chapter of a long book.
+- A long file is shared between the workers (`src/lib/ffmpeg/pieces.ts`): a file longer than 20 minutes and longer than a worker's share of the book is cut into up to one piece per worker. The cuts go in the middle of the pause (at least 0.4 s at −35 dB, found with a `silencedetect` pass) nearest each even split point, because every join adds about 30 ms of near-silence; a split point with no pause within 5 minutes is skipped. Each worker decodes the file from the start and trims its piece (`atrim`), so the cut is sample-exact, also in a VBR MP3. The longest jobs are encoded first.
+- A chapter that comes out much shorter than its file says (under 90% and at least 3 s short: part of the file couldn't be decoded, which ffmpeg skips without failing) is named on the result card with both lengths (`findShortChapters`).
 - Memory use follows the finished audiobook, not the sources: source files are read straight from disk as ffmpeg needs them, each encoded chapter is handed to the browser as soon as it is done, and the result is copied out once. Joining takes two to three times the size of the finished M4B.
 - Multi-stage progress bar with human-readable labels (loading ffmpeg, probing, encoding chapter X of Y, muxing, finalizing).
 - Estimated time remaining while encoding: progress weighs each file by its length (`encodeWeights`), and the time left plays out the remaining files over the workers at the pace measured per worker (`simulateEncodeMs`), so one long file at the end is foreseen instead of making the estimate jump; a file in progress is projected at its own pace once it has shown one. It counts down every second between updates.
@@ -75,6 +77,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Every step that must succeed runs through `runFFmpeg` (`src/lib/ffmpeg/run.ts`): a non-zero ffmpeg exit stops the run there, named by what ffmpeg logged (out of memory, unreadable input, or the exit code), instead of failing a step later on a missing output. The log is only read in the page, never sent.
 - Errors are recognised in every browser engine's own words (Chrome/Edge/Opera, Safari, Firefox): out of memory gets the memory advice, a mostly undecodable file (ffmpeg exit 69) says it may be damaged or DRM-protected, a stack overflow says so.
 - After a failed run (not a cancel) every tool starts the next on a fresh engine (`resetFFmpegAfterFailure`), so a retry in the same tab gets all the memory again.
+- When the engine itself can't be downloaded (offline, an ad or content blocker, an HTTP error), every tool says so (`EngineLoadError`, `loadEngine` in `src/lib/ffmpeg/engine.ts`) instead of hanging at "Downloading converter… 2%" or blaming the file, and the next try starts the download again.
 
 ## Split an M4B (M4B → MP3)
 
@@ -110,7 +113,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Three ways to set chapter marks: split evenly into a number of chapters (or one every N minutes), auto-detect chapters from the silent pauses (`silencedetect`, opt-in — a full decode pass with progress + wake lock; pause length and shortest chapter are adjustable, and a line afterwards says how many pauses were found, used and skipped), or enter/adjust the times by hand.
 - Editable chapter table (reused from the editor): first chapter pinned to 0:00:00, add/remove, auto-sort by time, live validation.
 - Metadata form (prefilled from the file) and cover (keep the file's own, upload a new image, or remove).
-- Bitrate 64 / 96 / 128 kbps; the audio stays one continuous stream with chapter markers added over it.
+- Bitrate 32 / 48 / 64 / 96 / 128 kbps (a file of 48 kbps or less starts on the setting that keeps it); the audio stays one continuous stream with chapter markers added over it.
 - Long files are split into chapter-sized pieces and re-encoded in parallel (bounded memory + faster); short files use a single pass. Chapter markers are moved by each re-encoded piece's real length (measured from where the split actually cut), so they stay on the audio at every chapter.
 - Runs entirely in the browser via WebAssembly — the file is never uploaded.
 
@@ -119,6 +122,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Auto-generated filename in `{Author} - {Title}.m4b` format.
 - Custom filename input — override the auto-generated name; the `.m4b` extension is added if missing, and a "reset" button restores the auto name.
 - "Start over" button to clear all state and begin a new conversion.
+- Changing a chapter title, a tag or the cover after converting keeps the M4B: the button becomes "Update M4B", which puts the changes on it in a remux with the audio copied (`editM4B`, `LastBuild` in the store), in a moment instead of a new encode. Adding, removing or reordering files, or another bitrate, needs a new conversion; the old M4B is then let go before encoding, and sorting clears the result too.
 - "Edit chapters & tags" on every result card that makes an M4B (converter, compressor, merger, add-chapters) opens the finished file in the editor, handed over in memory (`src/lib/handoff.ts`), so a fix doesn't need a download, a new drop, or another conversion.
 - "Where to listen" with every new book (converter, merger, add-chapters): how to get the M4B into Apple Books on a Mac, onto an iPhone or iPad (Finder sync, or the Files app plus a player like BookPlayer), onto Android (Voice, Smart AudioBook Player), into Audiobookshelf, or into the site's own M4B player. The FAQ has the same answer, and the iPhone and Android rows link to their guides.
 - Preview: play the result in the page before downloading (chapter list, chapter skipping, speed) to check the chapters land on the audio. Offered on every tool that produces an M4B: converter, compressor, chapter editor, merger, and add-chapters.
@@ -127,10 +131,10 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - Available on the `/compress-m4b` page via a mode toggle: "Shrink an existing M4B" (default) or "Build from separate files".
 - Drop a single finished `.m4b` / `.m4a`; the file is probed in-browser for its duration, chapter count, cover presence, and current bitrate.
-- Re-encodes only the audio stream to a lower AAC bitrate (64 / 96 / 128 kbps) while keeping the original chapters, cover art, and metadata untouched.
+- Re-encodes only the audio stream to a lower AAC bitrate (32 / 48 / 64 / 96 / 128 kbps) while keeping the original chapters, cover art, and metadata untouched. A book already at about 64 kbps or less starts on the highest setting that still shrinks it (`defaultCompressBitrate`).
 - Chaptered books are split at chapter boundaries and re-encoded in parallel across workers (~2–3× faster); chapterless files use a single serial pass. The original chapter markers are moved by each re-encoded piece's real length, so they stay on the audio; titles and tags are kept as they were.
 - Estimated output size and expected space saving ("about 50% smaller") update with the chosen bitrate.
-- Compression is disabled when the chosen bitrate is not lower than the source's current bitrate (it wouldn't shrink the file).
+- Compression is disabled when the chosen bitrate wouldn't make the file noticeably smaller (it must be at most 90% of the current bitrate); a book already at about the lowest setting is told so.
 - Download filename derived from the file's embedded tags (`{Author} - {Title}.m4b`), falling back to the original name.
 - Like the main converter, everything runs in the browser — the file is never uploaded.
 
@@ -158,8 +162,9 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - aria-live progress announcements during conversion.
 - Keeps the screen awake during conversion, compression, and splitting (while the tab is in the foreground) so a long job isn't interrupted by display sleep.
 - Estimated time remaining on every long-running tool (`useEta`), from the average pace since the step started moving rather than the last few updates, counting down every second; parallel chapter encodes weigh each chapter by its size.
-- The one-time ~31 MB engine download is named in the progress label on first use, rather than looking like a stall; later visits (served from the browser cache) just say "Loading converter…".
+- The one-time engine download (about 10 MB compressed, 32 MB unpacked) is named in the progress label on first use, rather than looking like a stall; later visits (served from the browser cache) just say "Loading converter…".
 - Touch-sized (44px) drag, reset, and remove controls.
+- Keyboard reordering (converter list, merger) is announced with the item's title and position ("Intro moved to position 3 of 6"), not dnd-kit's internal ids (`src/lib/a11y/sortAnnouncements.ts`).
 - Drop zones say "Tap to choose …" on phones and tablets (no mouse, a finger as the main pointer) and "Drop …, or click to browse" elsewhere.
 - Clicking Convert before it's ready goes to the first thing missing: the empty drop zone, the unreadable file's remove button, or the title or author field.
 - The metadata form's example values read "e.g. The Hobbit", so they aren't mistaken for filled-in fields.
@@ -197,7 +202,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 - All file processing happens in the browser via WebAssembly. No file is uploaded.
 - The only network calls during normal use are: loading the page itself, loading ffmpeg.wasm on first conversion, and (only on explicit "Look up online" click) sending title/author/narrator to iTunes Search and/or Open Library.
-- Cookieless analytics: Vercel Analytics for page views, visitors, countries and referrers, and Umami (`src/lib/analytics.ts`) for anonymous per-tool events only (its automatic page views are off, because through the proxy it sees Vercel's IP, not the visitor's): success, and failure with the kind of error (`failureReason`: out_of_memory, unreadable_input, damaged_input, ffmpeg_exit, file_system, engine_stopped, browser_storage, source_moved, stack_overflow, interrupted, other) plus ffmpeg's exit code, the converter's step and the error's class from a fixed list where known (`failureDetails`), never the message, carrying counts, sizes, durations and settings, never file names or content. Umami is served through `/stats` on our own domain, counts only www.mp3tom4b.com, and honours Do Not Track.
+- Cookieless analytics: Vercel Analytics for page views, visitors, countries and referrers, and Umami (`src/lib/analytics.ts`) for anonymous per-tool events only (its automatic page views are off, because through the proxy it sees Vercel's IP, not the visitor's): success, and failure with the kind of error (`failureReason`: out_of_memory, unreadable_input, damaged_input, ffmpeg_exit, file_system, engine_stopped, engine_download, browser_storage, source_moved, stack_overflow, interrupted, other) plus ffmpeg's exit code, the converter's step and the error's class from a fixed list where known (`failureDetails`), never the message, carrying counts, sizes, durations and settings, never file names or content. Umami is served through `/stats` on our own domain, counts only www.mp3tom4b.com, and honours Do Not Track.
 - The only thing kept between visits is the M4B player's position per book, in localStorage on the device, keyed by a hash rather than the file name (plus a flag that the engine was downloaded before).
 - Content Security Policy (next.config.js): pages may connect only to this site, iTunes Search, Open Library and iTunes artwork (`*.mzstatic.com`); scripts only from this site (plus inline Next bootstrap, `blob:` and `wasm-unsafe-eval` for the ffmpeg worker); media and images from `blob:`; no framing. Not applied in `next dev`; preview deploys also allow Vercel's toolbar. Every tool runs under it in the browser tests.
 - Security headers: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` switching off camera, microphone, geolocation, payment and USB, `X-Frame-Options: DENY`, no `X-Powered-By`.
@@ -213,7 +218,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Browser smoke tests (`npm run test:e2e`, Playwright, `e2e/`): every page loads, the Tools menu, and each of the seven tools end to end in a real Chrome on files generated with the site's own ffmpeg-core (a dropped cover beating embedded art, chapters in the preview, silence detection, playback). Requests to Umami and Vercel Analytics are blocked so test runs never count.
 - Production check (`.github/workflows/production-check.yml`): the same browser tests against www.mp3tom4b.com daily at 06:00 UTC, after every production deploy, and on demand; a failure emails the owner with the Playwright report attached.
 - Real-file tests (`npm run test:real`, `REAL_FULL=1` for whole books) that run every tool on the owner's own audiobooks, kept outside the repo and skipped when absent: two very different MP3 rips, 9- and 27-hour M4Bs from other tools, an 11-hour single MP3, and Google Drive ZIPs.
-- Integration tests (`npm run test:integration`) that run the real converter, compressor, chapterizer, and MP3 splitter against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy (never after the sound, no drift), the M4A copy path, metadata escaping, a 120-chapter split on one instance, nothing left behind after a failed join, files dropped together each read correctly, and covers embedded and kept — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
+- Integration tests (`npm run test:integration`) that run the real converter, compressor, chapterizer, and MP3 splitter against the shipped ffmpeg-core in Node: mixed sample rates, mono among stereo, chapter-marker accuracy (never after the sound, no drift), the M4A copy path, a long file cut into pieces only in its pauses (`longFile.test.ts`: no gap where pieces join, markers after it still on the audio), a partly damaged file reported as short, metadata escaping, a 120-chapter split on one instance, nothing left behind after a failed join, files dropped together each read correctly, and covers embedded and kept — checking decode errors, pitch per chapter, and marker positions, and on macOS also decoding the result with Apple's own decoder.
 - The ffmpeg-core JS is patched (`scripts/patch-ffmpeg-core.mjs`): one instance can run any number of commands (the stock core crashed after about 65 MP3 encodes), and mounted files are read 1 MB at a time instead of 32 KB, so reading from disk is as fast as reading from memory. Covers are encoded with standard JPEG Huffman tables (`src/lib/ffmpeg/cover.ts`): the core's optimal-table encoder overruns its buffer on many real covers.
 - Every tool mounts its inputs instead of copying them in (`src/lib/ffmpeg/files.ts`): ffmpeg reads them from disk as it needs them, intermediate pieces go to the browser as Blobs, and each output is read out once.
 - Lighthouse-targeted performance: instant first paint, ffmpeg.wasm loaded lazily on first conversion and cached thereafter.

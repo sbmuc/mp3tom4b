@@ -14,7 +14,7 @@ const PROBE_DIR = '/mnt_probe'
  * (mp3, m4a, wav, ogg, opus and on most browsers flac).
  *
  * Exported so the drop zone can cheaply tell "unreadable" from "no duration in
- * the tags" without pulling in the ~31 MB ffmpeg core.
+ * the tags" without pulling in the ffmpeg core.
  */
 export function probeDurationViaAudioElement(file: File): Promise<number | null> {
   return new Promise((resolve) => {

@@ -18,7 +18,7 @@ import { META, analyze, asAudioFile, expectChaptersMatchAudio, mp3, toneFile, ty
 
 async function book(specs: ToneSpec[], title: string): Promise<File> {
   const files = await Promise.all(specs.map(async (s, i) => asAudioFile(await toneFile(s), i)))
-  const blob = await convertToM4B({ files, metadata: { ...META, title }, coverFile: null, bitrate: 64 })
+  const { blob } = await convertToM4B({ files, metadata: { ...META, title }, coverFile: null, bitrate: 64 })
   return new File([blob], `${title}.m4b`)
 }
 

@@ -22,6 +22,8 @@ import {
 import { trackEvent, trackFailure } from '@/lib/analytics'
 import { takeChapterizerHandoff } from '@/lib/handoff'
 import { decodeCueBytes, isCueFile, parseCue, type CueChapter } from '@/lib/audio/cue'
+import { AUDIO_ACCEPT, AUDIO_EXTENSIONS, AUDIO_FORMATS_LABEL, AUDIO_FORMATS_TEXT } from '@/lib/audio/validate'
+import { lowSourceKbps, suggestBitrate } from '@/lib/audio/bitrate'
 import {
   chapterizeFile,
   describeSilenceResult,
@@ -34,7 +36,7 @@ import { getFFmpeg, resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpe
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
-import { isDecodableImage } from '@/lib/image/validate'
+import { coverProblem, IMAGE_ACCEPT } from '@/lib/image/validate'
 import { formatBytes } from '@/lib/audio/format'
 import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
@@ -43,10 +45,11 @@ import ToolError from '@/components/ToolError'
 import DropPrompt from '@/components/DropPrompt'
 import EditResultButton from '@/components/EditResultButton'
 
-const ACCEPTED_EXTENSIONS = ['.mp3', '.m4a', '.m4b', '.wav', '.flac', '.ogg', '.opus']
+// Every audio format the converter takes, plus a finished M4B.
+const ACCEPTED_EXTENSIONS = [...AUDIO_EXTENSIONS, '.m4b']
 const BUSY_STATUSES = new Set(['loading-ffmpeg', 'probing', 'encoding'])
 const GENRES: Genre[] = ['Audiobook', 'Podcast', 'Lecture', 'Other']
-const BITRATES: Bitrate[] = [64, 96, 128]
+const BITRATES: Bitrate[] = [32, 48, 64, 96, 128]
 const idleProgress: ConversionProgress = { status: 'idle', percent: 0, label: '' }
 
 interface Row {
@@ -131,6 +134,8 @@ export default function FileChapterizer() {
   })
   const [durationMs, setDurationMs] = useState(0)
   const [bitrate, setBitrate] = useState<Bitrate>(64)
+  // The file's own bitrate when it is lossy at 48 kbps or less.
+  const [lowSource, setLowSource] = useState<number | null>(null)
 
   // Generators
   const [equalValue, setEqualValue] = useState('10')
@@ -211,6 +216,7 @@ export default function FileChapterizer() {
     setMetadata({ title: '', author: '', narrator: '', year: '', genre: 'Audiobook' })
     setDurationMs(0)
     setBitrate(64)
+    setLowSource(null)
     setEqualNote(null)
     setSilenceNote(null)
     setCoverMode('keep')
@@ -232,7 +238,7 @@ export default function FileChapterizer() {
         setInputError(
           cueFile
             ? 'Drop the audio file together with its cue sheet.'
-            : 'That file type is not supported. Drop an MP3, M4A, M4B, WAV, FLAC, OGG, or Opus file.',
+            : `That file type is not supported. Drop an M4B or an ${AUDIO_FORMATS_TEXT} file.`,
         )
       }
       return
@@ -247,7 +253,7 @@ export default function FileChapterizer() {
     setCoverError(null)
     setFile(candidate)
     setProbing(true)
-    // Warm the ffmpeg core so its one-time ~31 MB download overlaps with the
+    // Warm the ffmpeg core so its one-time download (about 10 MB) overlaps with the
     // user setting up chapters, instead of stalling the first conversion.
     void getFFmpeg().catch(() => {})
 
@@ -295,6 +301,11 @@ export default function FileChapterizer() {
         genre: meta.genre ?? 'Audiobook',
       })
       setOriginalCoverFile(meta.coverFile ?? null)
+      // A file of 48 kbps or less starts on the setting that keeps it: at 64
+      // the M4B would be bigger and no better.
+      const low = lowSourceKbps([meta])
+      setLowSource(low)
+      setBitrate(low != null ? suggestBitrate({ files: [meta], genre: 'Audiobook' }) : 64)
     } catch {
       setInputError('Could not read that file. It may be corrupt or an unsupported codec.')
       setFile(null)
@@ -377,8 +388,9 @@ export default function FileChapterizer() {
 
   // ---- cover actions ----
   const replaceCover = async (f: File) => {
-    if (!(await isDecodableImage(f))) {
-      setCoverError('That image could not be read. Try a different JPG or PNG.')
+    const problem = await coverProblem(f)
+    if (problem) {
+      setCoverError(problem)
       return
     }
     setCoverError(null)
@@ -518,13 +530,13 @@ export default function FileChapterizer() {
             : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
-        <input {...getInputProps()} aria-label="Choose an audio file to add chapters to" accept=".mp3,.m4a,.m4b,.wav,.flac,.ogg,.opus,.cue,audio/*" />
+        <input {...getInputProps()} aria-label="Choose an audio file to add chapters to" accept={`${AUDIO_ACCEPT},.m4b,.cue`} />
         <Upload size={32} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
         <p className="mt-3 text-base font-medium text-zinc-800 dark:text-zinc-100">
           {isDragActive ? 'Drop your audio file here' : <DropPrompt mouse="Drop a single audio file, or click to browse" touch="Tap to choose an audio file" />}
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-          MP3 · M4A · M4B · WAV · FLAC · OGG · Opus · one long file → chaptered M4B · add its .cue for exact chapters
+          {AUDIO_FORMATS_LABEL} · M4B · one long file → chaptered M4B · add its .cue for exact chapters
         </p>
       </div>
 
@@ -755,7 +767,7 @@ export default function FileChapterizer() {
                     <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 focus-within:ring-2 focus-within:ring-accent-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">
                       <ImageIcon size={12} aria-hidden="true" />
                       {hadOriginal || coverMode === 'replace' ? 'Replace' : 'Add cover'}
-                      <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" className="hidden"
+                      <input type="file" accept={IMAGE_ACCEPT} className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0]
                           if (f) void replaceCover(f)
@@ -793,7 +805,11 @@ export default function FileChapterizer() {
                   </button>
                 ))}
               </div>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">64 kbps mono is the audiobook standard.</p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                {lowSource != null && bitrate < 64
+                  ? `Your file is ${lowSource} kbps, so ${bitrate} kbps keeps everything in it.`
+                  : '64 kbps is the audiobook standard.'}
+              </p>
             </div>
           </section>
 

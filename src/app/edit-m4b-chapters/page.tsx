@@ -42,7 +42,7 @@ const FAQS = [
   },
   {
     q: 'How do I change the cover of an M4B?',
-    a: 'Drop the M4B, then click "Replace image" under Cover (or "Add cover" if it has none) and pick a JPG or PNG. It\'s fitted to 1200×1200 and embedded when you save. "Remove cover" takes it out.',
+    a: 'Drop the M4B, then click "Replace image" under Cover (or "Add cover" if it has none) and pick a JPG, PNG or WebP. It\'s fitted to a square of up to 1200×1200 and embedded when you save. "Remove cover" takes it out.',
   },
   {
     q: 'Are my files uploaded anywhere?',

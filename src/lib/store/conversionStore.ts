@@ -15,11 +15,43 @@ import type {
   ExtractedMetadata,
   Genre,
   MetadataSource,
+  ShortChapter,
   SortDirection,
 } from '@/types'
 
 function sortFilesNatural(files: AudioFile[], direction: 'asc' | 'desc'): AudioFile[] {
   return orderBy(files, [(f) => f.file.name], [direction])
+}
+
+/** Same files in the same order. */
+function sameOrder(a: AudioFile[], b: AudioFile[]): boolean {
+  return a.length === b.length && a.every((f, i) => f.id === b[i].id)
+}
+
+/**
+ * What an encoded M4B depends on: which files, in which order, at which
+ * bitrate. While this stays the same, titles, tags and the cover can be put
+ * on the last M4B without encoding again (see LastBuild).
+ */
+export function buildKey(files: Pick<AudioFile, 'id'>[], bitrate: Bitrate): string {
+  return `${files.map((f) => f.id).join('|')}@${bitrate}`
+}
+
+/**
+ * The last M4B the converter made. Editing a title, a tag or the cover used
+ * to throw the result away and start the whole encode again; with this the
+ * change goes onto the M4B in a quick remux (no re-encode). It is dropped as
+ * soon as the files, their order or the bitrate change, so a big book doesn't
+ * stay in memory for an encode that can't use it.
+ */
+export interface LastBuild {
+  blob: Blob
+  key: string
+  /** Where each chapter starts in that M4B (ms), one per file, and its length. */
+  starts: number[]
+  durationMs: number
+  /** The cover it carries: the exact File, so a new pick is told apart. */
+  cover: File | null
 }
 
 let duplicateTimeout: ReturnType<typeof setTimeout> | null = null
@@ -87,6 +119,11 @@ interface ConversionStore {
   setProgress: (progress: ConversionProgress) => void
   outputBlob: Blob | null
   setOutputBlob: (blob: Blob | null) => void
+  lastBuild: LastBuild | null
+  setLastBuild: (build: LastBuild | null) => void
+  /** Chapters that came out much shorter than their files (see convert.ts). */
+  shortChapters: ShortChapter[]
+  setShortChapters: (short: ShortChapter[]) => void
   /** Cancel a running conversion. Files and metadata are preserved for retry. */
   cancelConversion: () => void
 
@@ -121,14 +158,14 @@ export const useConversionStore = create<ConversionStore>((set) => ({
     set((state) => {
       const merged = [...state.files, ...incoming]
       // Custom order is sticky: new drops append to the end without re-sorting.
-      if (state.sortDirection === 'custom') return { files: merged, outputBlob: null }
-      return { files: sortFilesNatural(merged, state.sortDirection), outputBlob: null }
+      if (state.sortDirection === 'custom') return { files: merged, outputBlob: null, lastBuild: null }
+      return { files: sortFilesNatural(merged, state.sortDirection), outputBlob: null, lastBuild: null }
     }),
   removeFile: (id) =>
     set((state) => {
       const files = state.files.filter((f) => f.id !== id)
       // A cue sheet belongs to the file it came with; with no files left it goes too.
-      return { files, outputBlob: null, cue: files.length > 0 ? state.cue : null }
+      return { files, outputBlob: null, lastBuild: null, cue: files.length > 0 ? state.cue : null }
     }),
   reorderFiles: (activeId, overId) =>
     set((state) => {
@@ -138,13 +175,16 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       if (from === -1 || to === -1) return {}
       const [moved] = files.splice(from, 1)
       files.splice(to, 0, moved)
-      return { files, sortDirection: 'custom', outputBlob: null }
+      return { files, sortDirection: 'custom', outputBlob: null, lastBuild: null }
     }),
   setSortDirection: (direction) =>
-    set((state) => ({
-      files: sortFilesNatural(state.files, direction),
-      sortDirection: direction,
-    })),
+    set((state) => {
+      const files = sortFilesNatural(state.files, direction)
+      // A new order is a new book: the M4B made in the old one no longer
+      // matches (it used to stay on the page, ready to download).
+      if (sameOrder(files, state.files)) return { files, sortDirection: direction }
+      return { files, sortDirection: direction, outputBlob: null, lastBuild: null }
+    }),
   updateChapterTitle: (id, title) =>
     set((state) => ({
       files: state.files.map((f) => (f.id === id ? { ...f, chapterTitle: title } : f)),
@@ -235,13 +275,18 @@ export const useConversionStore = create<ConversionStore>((set) => ({
 
   bitrate: DEFAULT_BITRATE,
   bitrateUserTouched: false,
-  setBitrate: (bitrate) => set({ bitrate, bitrateUserTouched: true, outputBlob: null }),
+  setBitrate: (bitrate) =>
+    set((state) =>
+      bitrate === state.bitrate
+        ? { bitrateUserTouched: true }
+        : { bitrate, bitrateUserTouched: true, outputBlob: null, lastBuild: null },
+    ),
   applySmartBitrate: () =>
     set((state) => {
       if (state.bitrateUserTouched) return {}
       const next = suggestBitrate({ files: state.files, genre: state.metadata.genre })
       if (next === state.bitrate) return {}
-      return { bitrate: next }
+      return { bitrate: next, outputBlob: null, lastBuild: null }
     }),
 
   submitAttempted: false,
@@ -251,6 +296,10 @@ export const useConversionStore = create<ConversionStore>((set) => ({
   setProgress: (progress) => set({ progress }),
   outputBlob: null,
   setOutputBlob: (blob) => set({ outputBlob: blob }),
+  lastBuild: null,
+  setLastBuild: (build) => set({ lastBuild: build }),
+  shortChapters: [],
+  setShortChapters: (short) => set({ shortChapters: short }),
 
   cancelConversion: () => {
     terminateFFmpeg()
@@ -284,6 +333,8 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       submitAttempted: false,
       progress: defaultProgress,
       outputBlob: null,
+      lastBuild: null,
+      shortChapters: [],
       duplicateNotice: null,
       flashingIds: new Set(),
       cue: null,

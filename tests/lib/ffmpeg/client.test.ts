@@ -14,7 +14,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 describe('ffmpegLoadingLabel', () => {
   it('names the one-time download on a first visit', () => {
-    expect(ffmpegLoadingLabel()).toBe('Downloading converter (one-time, ~31 MB)…')
+    expect(ffmpegLoadingLabel()).toBe('Downloading converter (one-time, about 10 MB)…')
   })
 
   it('does not claim a download once the core has loaded in an earlier visit', () => {
@@ -28,7 +28,7 @@ describe('ffmpegLoadingLabel', () => {
         throw new Error('SecurityError')
       },
     })
-    expect(ffmpegLoadingLabel()).toBe('Downloading converter (one-time, ~31 MB)…')
+    expect(ffmpegLoadingLabel()).toBe('Downloading converter (one-time, about 10 MB)…')
   })
 
   it('ties the memory to the core version, so an upgrade counts as a new download', () => {
