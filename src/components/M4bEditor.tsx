@@ -26,6 +26,7 @@ import { resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpeg/client'
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
+import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
 import { coverProblem, IMAGE_ACCEPT } from '@/lib/image/validate'
 import { formatBytes } from '@/lib/audio/format'
 import OutputPreview from '@/components/OutputPreview'
@@ -279,7 +280,7 @@ export default function M4bEditor() {
   const startsIncreasing = sortedStarts.every((v, i) => i === 0 || v > sortedStarts[i - 1])
   const hasZero = sortedStarts[0] === 0
   const withinDuration = durationMs > 0 ? sortedStarts.every((v) => v < durationMs) : true
-  const yearOk = metadata.year === '' || /^\d{4}$/.test(metadata.year)
+  const yearOk = isValidYear(metadata.year)
 
   let invalidReason: string | null = null
   if (rows.length === 0) invalidReason = 'Add at least one chapter.'
@@ -287,7 +288,7 @@ export default function M4bEditor() {
   else if (!hasZero) invalidReason = 'The first chapter must start at 0:00:00.'
   else if (!startsIncreasing) invalidReason = 'Chapter times must be unique and increasing.'
   else if (!withinDuration) invalidReason = `Chapter times must be within the book length (${formatTimecode(durationMs)}).`
-  else if (!yearOk) invalidReason = 'Year must be 4 digits, or left empty.'
+  else if (!yearOk) invalidReason = YEAR_PROBLEM
   const canSave = invalidReason === null
 
   const handleSave = async () => {

@@ -329,6 +329,66 @@ test('converter: a chapter that came out much shorter than its file is pointed o
   await expect(page.getByText(/One chapter came out shorter than its file: “Damaged” is 0:1\d of 0:30/)).toBeVisible()
 })
 
+test('compressor: an M4B with MP3 audio inside is compressed', async ({ page }) => {
+  await page.goto('/compress-m4b')
+  await page.getByLabel('Choose an M4B to compress').setInputFiles(fixture('mp3-inside.m4b'))
+  await page.getByRole('button', { name: 'Compress M4B' }).click()
+  await expect(page.getByText('Your compressed audiobook is ready')).toBeVisible()
+  await page.getByText('Preview: listen and check the chapters').click()
+  await expect(page.getByText('2 chapters')).toBeVisible()
+})
+
+test('add chapters: an M4B starts from the chapters it already has', async ({ page }) => {
+  await page.goto('/add-chapters-to-mp3')
+  await page.getByLabel('Choose an audio file to add chapters to').setInputFiles(fixture('book.m4b'))
+  await expect(page.getByText('The 2 chapters this file already has.', { exact: false })).toBeVisible()
+  await expect(page.getByLabel('Chapter title')).toHaveCount(2)
+  await expect(page.getByLabel('Chapter title').nth(1)).toHaveValue('Two')
+  await expect(page.getByLabel('Chapter start time').nth(1)).toHaveValue('0:00:20')
+})
+
+test('converter: any four-digit year is taken, and a wrong one blocks Convert', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+  const year = page.getByLabel(/^Year/)
+  await expect(year).toHaveAttribute('placeholder', 'e.g. 1937')
+  await year.fill('185')
+  await year.blur()
+  await expect(page.getByText('Year must be 4 digits, or left empty.')).toBeVisible()
+  await expect(page.getByText(/To enable: fix the year/)).toBeVisible()
+  // aria-disabled, but clickable: the click shows what's wrong (see the unreadable-file test).
+  await page.getByRole('button', { name: 'Convert to M4B' }).click({ force: true })
+  await expect(year).toBeFocused()
+  await year.fill('1851')
+  await expect(page.getByText('Year must be 4 digits, or left empty.')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toBeVisible()
+})
+
+test('the homepage says twice that files stay in the browser, and gives an email address', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('Your files never leave your browser: nothing is uploaded.')).toBeVisible()
+  await expect(page.locator('footer').getByText(/Your files never leave your browser/)).toBeVisible()
+  await expect(page.locator('footer').getByRole('link', { name: /@/ })).toHaveAttribute('href', /^mailto:/)
+})
+
+test.describe('on a phone, the file list', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('leaves room for the chapter title', async ({ page }) => {
+    await page.goto('/')
+    await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])
+    await expect(page.getByText(/^2 files ·/)).toBeVisible()
+    const box = await page.getByLabel('Chapter title').first().boundingBox()
+    // It was about 104 px (some ten characters) before.
+    expect(box!.width).toBeGreaterThan(180)
+    // The duration moves under the title instead of taking a column.
+    const row = page.locator('li', { has: page.getByLabel('Chapter title') }).first()
+    await expect(row.locator('p').getByText('0:08')).toBeVisible()
+  })
+})
+
 test('converter: the cover zone takes a WebP', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])

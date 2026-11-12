@@ -51,8 +51,10 @@ import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { guessType, isZipFile, unzipFiles } from '@/lib/archive/zip'
 import { extractMetadata } from '@/lib/audio/metadata'
+import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
 import { coverProblem, IMAGE_ACCEPT } from '@/lib/image/validate'
 import { fileNameToChapterTitle, formatBytes, formatDuration } from '@/lib/audio/format'
+import { safeFileName } from '@/lib/format/fileName'
 import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
 import WhereToListen from '@/components/WhereToListen'
@@ -88,10 +90,6 @@ function hasAcceptedExtension(name: string): boolean {
 
 function fileBaseName(name: string): string {
   return name.replace(/\.[^.]+$/, '')
-}
-
-function sanitizeFilename(value: string): string {
-  return value.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim()
 }
 
 function SortablePartRow({
@@ -457,14 +455,14 @@ export default function M4bMerger() {
     readyRows.map((r) => ({ codec: r.codec, sampleRate: r.sampleRate, channelLayout: r.channelLayout })),
   )
   const reencode = readyRows.length >= 2 && !compat.canCopy
-  const yearOk = metadata.year === '' || /^\d{4}$/.test(metadata.year)
+  const yearOk = isValidYear(metadata.year)
 
   let invalidReason: string | null = null
   if (rows.length < 2) invalidReason = 'Add at least two M4B files to merge.'
   else if (anyProbing) invalidReason = 'Still reading files…'
   else if (anyError) invalidReason = 'Remove the files that could not be read.'
   else if (!metadata.title.trim()) invalidReason = 'Enter a title for the merged audiobook.'
-  else if (!yearOk) invalidReason = 'Year must be 4 digits, or left empty.'
+  else if (!yearOk) invalidReason = YEAR_PROBLEM
   const canMerge = invalidReason === null
 
   const handleMerge = async () => {
@@ -514,8 +512,8 @@ export default function M4bMerger() {
   }
 
   const downloadName = (() => {
-    const author = sanitizeFilename(metadata.author)
-    const title = sanitizeFilename(metadata.title)
+    const author = safeFileName(metadata.author)
+    const title = safeFileName(metadata.title)
     // Tag the output "(merged)" so it can't collide with the source files, which
     // usually sit in the same folder as the download.
     if (author && title) return `${author} - ${title} (merged).m4b`

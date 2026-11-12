@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useDropzone } from 'react-dropzone'
-import { Bookmark, BookOpen, Image as ImageIcon, Upload, X } from 'lucide-react'
+import { Bookmark, BookOpen, Image as ImageIcon, Lock, Upload, X } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { guessType, isZipFile, unzipFiles } from '@/lib/archive/zip'
 import { decodeCueBytes, parseCue } from '@/lib/audio/cue'
@@ -452,6 +452,11 @@ export default function DropZone() {
           {AUDIO_FORMATS_LABEL} · JPG · PNG · CUE · ZIP
         </p>
       </div>
+      {/* Outside the zone, so it isn't read out as part of the button. */}
+      <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-zinc-600 dark:text-zinc-400">
+        <Lock size={12} className="shrink-0" aria-hidden="true" />
+        <span>Your files never leave your browser: nothing is uploaded.</span>
+      </p>
 
       {notices.map((n) => (
         <div

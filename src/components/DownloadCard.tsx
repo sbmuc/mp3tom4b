@@ -8,10 +8,7 @@ import type { ShortChapter } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
 import WhereToListen from '@/components/WhereToListen'
 import EditResultButton from '@/components/EditResultButton'
-
-function sanitizeFilename(value: string): string {
-  return value.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim()
-}
+import { safeFileName } from '@/lib/format/fileName'
 
 function ensureM4bExtension(name: string): string {
   return /\.m4b$/i.test(name) ? name : `${name}.m4b`
@@ -85,13 +82,13 @@ export default function DownloadCard() {
     )
   }
 
-  const safeAuthor = sanitizeFilename(metadata.author) || 'Unknown Author'
-  const safeTitle = sanitizeFilename(metadata.title) || 'Untitled'
+  const safeAuthor = safeFileName(metadata.author) || 'Unknown Author'
+  const safeTitle = safeFileName(metadata.title) || 'Untitled'
   const autoFilename = `${safeAuthor} - ${safeTitle}.m4b`
 
   const overrideTrimmed = override.trim()
   const resolved = overrideTrimmed
-    ? ensureM4bExtension(sanitizeFilename(overrideTrimmed) || autoFilename)
+    ? ensureM4bExtension(safeFileName(overrideTrimmed, 150) || autoFilename)
     : autoFilename
   const isCustom = overrideTrimmed.length > 0 && resolved !== autoFilename
 

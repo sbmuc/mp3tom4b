@@ -1,18 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import type { Genre, MetadataSource } from '@/types'
 
 const GENRES: Genre[] = ['Audiobook', 'Podcast', 'Lecture', 'Other']
-const CURRENT_YEAR = new Date().getFullYear()
-
-function isValidYear(value: string): boolean {
-  if (!value) return true
-  if (!/^\d{4}$/.test(value)) return false
-  const n = Number(value)
-  return n >= 1900 && n <= 2099
-}
 
 const SOURCE_LABEL: Record<MetadataSource, string> = {
   itunes: 'from iTunes',
@@ -130,12 +123,13 @@ export default function MetadataForm() {
             value={metadata.year}
             onChange={(e) => setMetadata({ year: e.target.value })}
             onBlur={() => markTouched('year')}
-            placeholder={String(CURRENT_YEAR)}
+            // An example, not a value: a bare current year looked filled in.
+            placeholder="e.g. 1937"
             aria-invalid={showYearError || undefined}
             aria-describedby={showYearError ? 'md-year-err' : undefined}
             className={`${inputBase} ${showYearError ? inputErr : inputOk} font-mono`}
           />
-          {showYearError && <p id="md-year-err" className={errClass}>Enter a 4-digit year between 1900 and 2099.</p>}
+          {showYearError && <p id="md-year-err" className={errClass}>{YEAR_PROBLEM}</p>}
         </div>
 
         <div>

@@ -43,6 +43,7 @@ export default function FileListItem({ file, index }: Props) {
   // filename (i.e. it came from an embedded tag or was edited), so the user can
   // still tell which file is which.
   const showFilename = file.chapterTitle.trim() !== fileNameToChapterTitle(file.file.name)
+  const durationText = file.duration != null ? formatDuration(file.duration) : '–'
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) {
@@ -57,7 +58,7 @@ export default function FileListItem({ file, index }: Props) {
       ref={setNodeRef}
       style={style}
       data-unreadable={file.unreadable || undefined}
-      className={`flex items-center gap-3 rounded-lg border bg-zinc-50 px-3 py-2 dark:bg-zinc-900 ${
+      className={`flex items-center gap-1.5 rounded-lg border bg-zinc-50 px-2 py-2 sm:gap-3 sm:px-3 dark:bg-zinc-900 ${
         file.unreadable
           ? 'border-rose-300 dark:border-rose-800'
           : 'border-zinc-200 dark:border-zinc-800'
@@ -75,7 +76,7 @@ export default function FileListItem({ file, index }: Props) {
         <GripVertical size={18} aria-hidden="true" />
       </button>
 
-      <span className="w-6 shrink-0 text-right font-mono text-xs text-zinc-500 dark:text-zinc-400">
+      <span className="w-5 shrink-0 text-right font-mono text-xs text-zinc-500 sm:w-6 dark:text-zinc-400">
         {index + 1}.
       </span>
 
@@ -102,14 +103,18 @@ export default function FileListItem({ file, index }: Props) {
             Could not read this file — remove it to convert
           </p>
         ) : (
-          showFilename && (
-            <p
-              className="truncate px-2 pt-0.5 font-mono text-[11px] leading-tight text-zinc-500 dark:text-zinc-400"
-              title={file.file.name}
-            >
-              {file.file.name}
-            </p>
-          )
+          // On a phone the duration sits here instead of in its own column,
+          // which left the title about ten characters.
+          <p
+            className={`truncate px-2 pt-0.5 font-mono text-[11px] leading-tight text-zinc-500 dark:text-zinc-400 ${showFilename ? '' : 'sm:hidden'}`}
+            title={showFilename ? file.file.name : undefined}
+          >
+            <span className="sm:hidden">
+              {durationText}
+              {showFilename ? ' · ' : ''}
+            </span>
+            {showFilename && file.file.name}
+          </p>
         )}
       </div>
 
@@ -129,8 +134,8 @@ export default function FileListItem({ file, index }: Props) {
         {formatBytes(file.file.size)}
       </span>
 
-      <span className="w-14 shrink-0 text-right font-mono text-xs text-zinc-500 dark:text-zinc-400">
-        {file.duration != null ? formatDuration(file.duration) : '–'}
+      <span className="hidden w-14 shrink-0 text-right font-mono text-xs text-zinc-500 sm:block dark:text-zinc-400">
+        {durationText}
       </span>
 
       <button

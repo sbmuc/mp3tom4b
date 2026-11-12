@@ -4,7 +4,7 @@ import type { Bitrate, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel } from './client'
 import { loadEngine } from './engine'
 import { replaceChapters } from './chapters'
-import { allKnown, buildTimedConcatList, parseSegmentStarts, remapThroughSegments } from './concatPlan'
+import { allKnown, buildTimedConcatList, copySegmentExtension, parseSegmentStarts, remapThroughSegments } from './concatPlan'
 import { COVER_CODEC_ARGS } from './cover'
 import { humanizeFfmpegError } from './errors'
 import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
@@ -21,8 +21,10 @@ const SEG_LIST_PATH = 'compress_segments.csv'
 const INPUT_DIR = '/mnt_compress_in'
 const PARTS_DIR = '/mnt_compress_parts'
 
-const SEG_SRC_PATTERN = 'seg_src_%03d.m4a'
-const segSrc = (i: number) => `seg_src_${String(i).padStart(3, '0')}.m4a`
+// .mp4, not .m4a: the .m4a muxer refuses MP3, which some M4Bs hold (see copySegmentExtension).
+const SEG_EXT = copySegmentExtension('m4b')
+const SEG_SRC_PATTERN = `seg_src_%03d.${SEG_EXT}`
+const segSrc = (i: number) => `seg_src_${String(i).padStart(3, '0')}.${SEG_EXT}`
 const encName = (i: number) => `enc_${String(i).padStart(3, '0')}.m4a`
 
 export interface CompressOptions {
@@ -203,7 +205,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
 
       const count = segments.length
       const { parts, decodedSec } = await encodeSegmentsInWorkers(segments, {
-        ext: 'm4a',
+        ext: SEG_EXT,
         args: (input, output) => buildSegmentEncodeArgs({ input, output, bitrate }),
         onProgress: (fraction, done) =>
           emit({

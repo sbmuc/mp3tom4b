@@ -3,7 +3,7 @@
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { loadEngine } from './engine'
-import { allKnown, buildTimedConcatList, parseSegmentStarts, remapThroughSegments } from './concatPlan'
+import { allKnown, buildTimedConcatList, copySegmentExtension, parseSegmentStarts, remapThroughSegments } from './concatPlan'
 import { OWN_COVER_ARGS } from './cover'
 import { humanizeFfmpegError } from './errors'
 import { buildEditMetadata, type EditChapter } from './editM4b'
@@ -221,11 +221,6 @@ function fileExtension(name: string): string {
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : 'bin'
 }
 
-/** Container extension to hold copied segments of the given input (M4B→m4a). */
-function segmentExtension(inputExt: string): string {
-  return inputExt === 'm4b' ? 'm4a' : inputExt
-}
-
 const TIME_RE = /time=(\d+):(\d{2}):(\d{2})\.(\d{1,2})/
 
 function elapsedMsFromLog(message: string): number | null {
@@ -337,7 +332,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
   const ffmpeg = await loadEngine(emit, 'chapterize')
 
   const inputExt = fileExtension(file.name)
-  const segExt = segmentExtension(inputExt)
+  const segExt = copySegmentExtension(inputExt)
   const inputName = `in.${inputExt}`
   const inputPath = `${INPUT_DIR}/${inputName}`
   const tempPaths: string[] = []

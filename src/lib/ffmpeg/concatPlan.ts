@@ -140,6 +140,20 @@ export function buildTimedConcatList(parts: Array<{ name: string; durationSec: n
 }
 
 /**
+ * The extension for the stream-copied pieces of a file whose extension is
+ * `ext` (ffmpeg picks the muxer by it). An M4B or M4A becomes .mp4: the
+ * .m4a muxer (ipod) takes only AAC and ALAC, so an M4B with MP3 inside
+ * failed to split with "ffmpeg exited with code 1". .weba has no muxer of
+ * its own; it is WebM. Every other audio extension we accept has one. Pure.
+ */
+export function copySegmentExtension(ext: string): string {
+  const e = ext.toLowerCase().replace(/^\./, '')
+  if (e === 'm4b' || e === 'm4a') return 'mp4'
+  if (e === 'weba') return 'webm'
+  return e
+}
+
+/**
  * Actual segment start times (ms) from the segment muxer's CSV list
  * (`-segment_list x.csv -segment_list_type csv`: "name,start,end" per line).
  * A stream-copy split can only cut on a packet, so each piece starts up to one

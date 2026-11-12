@@ -1,6 +1,7 @@
 'use client'
 
 import { createStoredZip } from '@/lib/archive/zip'
+import { safeFileName } from '@/lib/format/fileName'
 import type { Bitrate, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel } from './client'
 import { loadEngine } from './engine'
@@ -60,9 +61,8 @@ export interface SplitResult {
   count: number
 }
 
-function sanitize(value: string): string {
-  return value.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim()
-}
+// Kept short: these names go into a ZIP, where one too long won't unzip.
+const sanitize = (value: string) => safeFileName(value)
 
 function fileExtension(name: string): string {
   const dot = name.lastIndexOf('.')

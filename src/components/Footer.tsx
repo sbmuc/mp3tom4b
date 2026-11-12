@@ -58,7 +58,11 @@ export default function Footer() {
           ))}
         </nav>
 
-        <div className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="mt-4 text-center text-sm text-zinc-600 dark:text-zinc-300">
+          Your files never leave your browser: everything runs on your own device.
+        </p>
+
+        <div className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
           © 2026 Burcevski ICT · KvK 74404172 · Built in Amersfoort by{' '}
           <a
             href="https://burcevski.nl"
@@ -67,6 +71,14 @@ export default function Footer() {
             className="transition-colors hover:text-zinc-800 dark:hover:text-zinc-200"
           >
             Burcevski ICT
+          </a>
+          <br />
+          Contact:{' '}
+          <a
+            href="mailto:sebas.bur@gmail.com"
+            className="inline-block py-1 underline-offset-2 transition-colors hover:text-zinc-800 hover:underline dark:hover:text-zinc-200"
+          >
+            sebas.bur@gmail.com
           </a>
         </div>
       </div>
