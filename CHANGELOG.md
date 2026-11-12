@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.20.1] — 2026-11-12
+
+### Fixed
+- **The compressor takes an M4B with MP3 audio inside.** Some tools make those; compressing one stopped at once with "ffmpeg exited with code 1". It now becomes an AAC M4B like any other, with its chapters, tags and cover. Add chapters had the same problem with such files, and with .weba files.
+- **Add chapters keeps an M4B's chapters.** An M4B that already has chapters now opens with them in the list, titles included, so adding or moving one doesn't mean typing all the others again. A cue sheet dropped with it still wins.
+- **Any year is accepted.** The converter showed an error for a year before 1900 (LibriVox classics often carry the year the book came out) but wrote it into the M4B anyway. Every tool now takes any four-digit year, and the converter waits for a year that isn't one to be fixed, as the other tools did. The field's example no longer looks like a filled-in value.
+- **Long chapter titles no longer break the ZIP of MP3s.** A title of 250 characters gave a file name too long to unzip. Names are now cut at about 80 characters, at a word; the full title stays in the MP3's tags. The same goes for every download's name.
+- **Room for chapter titles on a phone.** The converter's file list showed about ten characters of a title at phone width; the length now sits under the title, and the title gets twice the room.
+- The player's message for an audio format the browser can't play (mostly ALAC, Apple's lossless format) sent you to the converter, which doesn't take M4B files. It now points to Safari or the compressor, which turns it into AAC and keeps chapters, tags and cover.
+- The homepage says under the drop zone and in the footer that your files never leave your browser, and the footer has a contact address.
+
+---
+
 ## [1.20.0] — 2026-11-10
 
 ### Added

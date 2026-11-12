@@ -36,6 +36,8 @@ import { getFFmpeg, resetFFmpegAfterFailure, terminateFFmpeg } from '@/lib/ffmpe
 import { useWakeLock } from '@/lib/hooks/useWakeLock'
 import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
+import { readPlaybackInfo } from '@/lib/audio/playback'
+import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
 import { coverProblem, IMAGE_ACCEPT } from '@/lib/image/validate'
 import { formatBytes } from '@/lib/audio/format'
 import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
@@ -97,12 +99,13 @@ const rowsFromStarts = (starts: number[]): Row[] =>
   starts.map((ms, i) => ({ id: crypto.randomUUID(), timeStr: formatTimecode(ms), title: `Chapter ${i + 1}` }))
 
 /**
- * Rows from a cue sheet's tracks, in whole seconds like the rest of this tool
- * (rounded down, so a marker never lands after its chapter starts). The first
- * starts at 0:00:00; tracks past the end of the file, or a second track in the
- * same second, are left out and counted.
+ * Rows from chapter marks (a cue sheet's tracks, or the chapters a file
+ * already has), in whole seconds like the rest of this tool (rounded down, so
+ * a marker never lands after its chapter starts). The first starts at
+ * 0:00:00; marks past the end of the file, or a second one in the same
+ * second, are left out and counted. A blank title becomes "Chapter N".
  */
-function rowsFromCue(chapters: CueChapter[], durationMs: number): { rows: Row[]; leftOut: number } {
+function rowsFromMarks(chapters: CueChapter[], durationMs: number): { rows: Row[]; leftOut: number } {
   const rows: Row[] = []
   let lastSec = -1
   let leftOut = 0
@@ -114,9 +117,21 @@ function rowsFromCue(chapters: CueChapter[], durationMs: number): { rows: Row[];
       return
     }
     lastSec = sec
-    rows.push({ id: crypto.randomUUID(), timeStr: formatTimecode(ms), title: c.title })
+    rows.push({ id: crypto.randomUUID(), timeStr: formatTimecode(ms), title: c.title.trim() || `Chapter ${rows.length + 1}` })
   })
   return { rows, leftOut }
+}
+
+/**
+ * The chapters a file already has (an M4B's, or an MP3's ID3 chapters), read
+ * the way the player reads them, without the engine. Adding chapters to a
+ * book that has some starts from those instead of from one chapter. Null
+ * when there are fewer than two.
+ */
+async function ownChapters(file: File): Promise<CueChapter[] | null> {
+  const { chapters } = await readPlaybackInfo(file)
+  if (chapters.length < 2) return null
+  return chapters.map((c) => ({ startMs: Math.round(c.startSec * 1000), title: c.title }))
 }
 
 export default function FileChapterizer() {
@@ -270,6 +285,23 @@ export default function FileChapterizer() {
       setDurationMs(dur)
       setRows([{ id: crypto.randomUUID(), timeStr: '0:00:00', title: 'Chapter 1' }])
 
+      // A book that has chapters keeps them as the starting point; a cue sheet
+      // dropped with it still wins below.
+      const own = await ownChapters(candidate)
+      const fromOwn = own ? rowsFromMarks(own, dur) : null
+      if (fromOwn && fromOwn.rows.length > 1) {
+        const { rows: ownRows, leftOut } = fromOwn
+        setRows(ownRows)
+        setSilenceNote({
+          text:
+            `The ${ownRows.length} chapters this file already has. Change them below, or replace them with one of the options above.` +
+            (leftOut > 0
+              ? ` ${leftOut} chapter${leftOut === 1 ? ' was' : 's were'} left out: past the end of the file, or in the same second as the one before.`
+              : ''),
+          found: true,
+        })
+      }
+
       const sheet = cueFile ? parseCue(decodeCueBytes(new Uint8Array(await cueFile.arrayBuffer()))) : null
       if (cueFile && !sheet) {
         setSilenceNote({ text: `"${cueFile.name}" doesn't list any tracks, so it was ignored.`, found: false })
@@ -279,7 +311,7 @@ export default function FileChapterizer() {
           found: false,
         })
       } else if (cueFile && sheet) {
-        const { rows: cueRows, leftOut } = rowsFromCue(sheet.chapters, dur)
+        const { rows: cueRows, leftOut } = rowsFromMarks(sheet.chapters, dur)
         setRows(cueRows)
         const n = cueRows.length
         setSilenceNote({
@@ -452,7 +484,7 @@ export default function FileChapterizer() {
   const startsIncreasing = sortedStarts.every((v, i) => i === 0 || v > sortedStarts[i - 1])
   const hasZero = sortedStarts[0] === 0
   const withinDuration = durationMs > 0 ? sortedStarts.every((v) => v < durationMs) : true
-  const yearOk = metadata.year === '' || /^\d{4}$/.test(metadata.year)
+  const yearOk = isValidYear(metadata.year)
 
   let invalidReason: string | null = null
   if (rows.length === 0) invalidReason = 'Add at least one chapter.'
@@ -461,7 +493,7 @@ export default function FileChapterizer() {
   else if (!startsIncreasing) invalidReason = 'Chapter times must be unique and increasing.'
   else if (!withinDuration) invalidReason = `Chapter times must be within the length (${formatTimecode(durationMs)}).`
   else if (!metadata.title.trim()) invalidReason = 'Enter a title for the audiobook.'
-  else if (!yearOk) invalidReason = 'Year must be 4 digits, or left empty.'
+  else if (!yearOk) invalidReason = YEAR_PROBLEM
   const canConvert = invalidReason === null
 
   const handleConvert = async () => {

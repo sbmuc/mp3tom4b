@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, BookAudio, Loader2, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward } from 'lucide-react'
 import { formatDuration } from '@/lib/audio/format'
 import { clearPosition, loadPosition, resumeKey, savePosition, shouldResume } from '@/lib/audio/resume'
@@ -19,9 +20,31 @@ const FORWARD_SEC = 30
 
 const chapterLabel = (c: Chapter, i: number) => c.title || `Chapter ${i + 1}`
 
-function mediaErrorMessage(error: MediaError | null): string {
-  if (error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED)
-    return "This browser can't play this file's audio format. Try another browser, or re-encode it with the converter."
+const linkClass = 'font-medium underline underline-offset-2'
+
+/**
+ * What to say when the browser won't play the file. An audio format it can't
+ * play is mostly ALAC (Apple's lossless) in an M4B or M4A, which Safari plays
+ * and the compressor turns into AAC; the converter takes neither of those.
+ */
+function mediaErrorMessage(error: MediaError | null, fileName: string): ReactNode {
+  if (error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+    if (/\.(m4b|m4a)$/i.test(fileName)) {
+      return (
+        <>
+          This browser can&apos;t play this file&apos;s audio format (often ALAC, Apple&apos;s lossless format). Try Safari,
+          or turn it into AAC with the <Link href="/compress-m4b" className={linkClass}>M4B compressor</Link>: it keeps
+          the chapters, tags and cover.
+        </>
+      )
+    }
+    return (
+      <>
+        This browser can&apos;t play this file&apos;s audio format. Try another browser, or turn it into an M4B with
+        the <Link href="/" className={linkClass}>converter</Link>.
+      </>
+    )
+  }
   if (error?.code === MediaError.MEDIA_ERR_DECODE) return "The audio couldn't be decoded. The file may be damaged."
   return 'Playback stopped because the file could not be read.'
 }
@@ -57,7 +80,7 @@ export default function AudioPlayer({ file, fileName, noChaptersHint, remember =
   const [time, setTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [rate, setRate] = useState(1)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<ReactNode>(null)
 
   useEffect(() => {
     const url = URL.createObjectURL(file.slice(0, file.size, playbackType(file, fileName)))
@@ -333,7 +356,7 @@ export default function AudioPlayer({ file, fileName, noChaptersHint, remember =
           setRate(e.currentTarget.playbackRate)
           syncPosition()
         }}
-        onError={(e) => setError(mediaErrorMessage(e.currentTarget.error))}
+        onError={(e) => setError(mediaErrorMessage(e.currentTarget.error, fileName))}
       />
 
       <div className="flex items-start gap-3">

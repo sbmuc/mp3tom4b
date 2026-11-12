@@ -5,6 +5,7 @@ import {
   buildEncodeArgs,
   buildTimedConcatList,
   canCopyStreams,
+  copySegmentExtension,
   mayStreamCopy,
   parseSegmentStarts,
   pickEncodeTarget,
@@ -135,6 +136,23 @@ describe('parseSegmentStarts', () => {
     expect(parseSegmentStarts(csv, 4)).toBeNull()
     expect(parseSegmentStarts('x.m4a,abc,1\n', 1)).toBeNull()
     expect(parseSegmentStarts('', 1)).toBeNull()
+  })
+})
+
+describe('copySegmentExtension', () => {
+  it('writes the pieces of an M4B or M4A as .mp4, whose muxer takes MP3 too', () => {
+    expect(copySegmentExtension('m4b')).toBe('mp4')
+    expect(copySegmentExtension('.M4A')).toBe('mp4')
+  })
+
+  it('writes .weba as .webm, which has a muxer', () => {
+    expect(copySegmentExtension('weba')).toBe('webm')
+  })
+
+  it('keeps every other extension', () => {
+    for (const ext of ['mp3', 'wav', 'flac', 'ogg', 'opus', 'aac', 'aiff', 'wma', 'mp4', 'oga', 'webm', 'mka', 'mp2']) {
+      expect(copySegmentExtension(ext)).toBe(ext)
+    }
   })
 })
 

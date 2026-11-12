@@ -31,6 +31,7 @@ import {
   estimateOutputBytes,
   formatEstimatedSize,
 } from '@/lib/audio/bitrate'
+import { safeFileName } from '@/lib/format/fileName'
 import { formatBytes, formatDuration } from '@/lib/audio/format'
 import type { Bitrate, ConversionProgress } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
@@ -57,10 +58,6 @@ const idleProgress: ConversionProgress = { status: 'idle', percent: 0, label: ''
 
 function fileBaseName(name: string): string {
   return name.replace(/\.[^.]+$/, '')
-}
-
-function sanitizeFilename(value: string): string {
-  return value.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim()
 }
 
 function hasAcceptedExtension(name: string): boolean {
@@ -212,12 +209,12 @@ export default function M4bCompressor() {
       : null
 
   const downloadName = (() => {
-    const author = tags?.author ? sanitizeFilename(tags.author) : ''
-    const title = tags?.title ? sanitizeFilename(tags.title) : ''
+    const author = tags?.author ? safeFileName(tags.author) : ''
+    const title = tags?.title ? safeFileName(tags.title) : ''
     if (author && title) return `${author} - ${title}.m4b`
     // Falling back to the original name would collide with the source file in
     // the same folder ("book (1).m4b"); mark it as the compressed copy.
-    if (file) return `${sanitizeFilename(fileBaseName(file.name))} (compressed).m4b`
+    if (file) return `${safeFileName(fileBaseName(file.name))} (compressed).m4b`
     return 'audiobook.m4b'
   })()
 

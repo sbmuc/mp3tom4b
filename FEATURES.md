@@ -34,7 +34,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 ## Metadata
 
 - Form fields: title (required), author (required), narrator, year, genre.
-- Year validated as a 4-digit value between 1900 and 2099.
+- Year: any four digits, or empty (`isValidYear` in `src/lib/audio/year.ts`, the same rule in every tool), so a LibriVox classic can carry 1851. A wrong one is marked and holds Convert back until it is fixed. The field's placeholder is an example ("e.g. 1937"), not a value.
 - Genre dropdown: Audiobook (default), Podcast, Lecture, Other.
 - Auto-fill from the first dropped file's embedded tags — title, author, narrator, year, genre, and cover art populate any empty/untouched fields.
 - "Verify metadata → Look up online" — searches iTunes Search first, then falls back to Open Library when iTunes has no match. Only title, author, and narrator are sent over the network; audio files never leave the browser.
@@ -82,7 +82,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 ## Split an M4B (M4B → MP3)
 
 - Available at `/m4b-to-mp3`: drop a finished `.m4b` / `.m4a` and it is probed in-browser for its chapter list.
-- Each chapter is re-encoded to an MP3 (64 / 96 / 128 kbps), named and numbered by chapter, and the set is bundled into a ZIP for download.
+- Each chapter is re-encoded to an MP3 (64 / 96 / 128 kbps), named and numbered by chapter, and the set is bundled into a ZIP for download. Names are cut at about 80 characters, at a word (`safeFileName` in `src/lib/format/fileName.ts`), so the ZIP unzips on every system; the full title stays in the MP3's tags.
 - A file without chapters is exported as a single MP3.
 - Each MP3 is tagged with the chapter title, a track number, and the book's title/author (album/artist).
 - Runs entirely in the browser via WebAssembly — the audiobook is never uploaded.
@@ -109,7 +109,8 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## Add chapters to a single file
 
-- Available at `/add-chapters-to-mp3`: drop one long audio file (MP3, M4A, M4B, WAV, FLAC, OGG, Opus) and turn it into a chaptered M4B.
+- Available at `/add-chapters-to-mp3`: drop one long audio file (any format the converter takes, or an M4B) and turn it into a chaptered M4B.
+- A file that already has chapters (an M4B's, or an MP3's ID3 chapters) opens with them in the list, titles included, read the way the player reads them, without the engine (`readPlaybackInfo`). A cue sheet dropped with it wins.
 - Three ways to set chapter marks: split evenly into a number of chapters (or one every N minutes), auto-detect chapters from the silent pauses (`silencedetect`, opt-in — a full decode pass with progress + wake lock; pause length and shortest chapter are adjustable, and a line afterwards says how many pauses were found, used and skipped), or enter/adjust the times by hand.
 - Editable chapter table (reused from the editor): first chapter pinned to 0:00:00, add/remove, auto-sort by time, live validation.
 - Metadata form (prefilled from the file) and cover (keep the file's own, upload a new image, or remove).
@@ -119,7 +120,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 
 ## Download
 
-- Auto-generated filename in `{Author} - {Title}.m4b` format.
+- Auto-generated filename in `{Author} - {Title}.m4b` format, each part cut at about 80 characters (`safeFileName`, used for every tool's download name).
 - Custom filename input — override the auto-generated name; the `.m4b` extension is added if missing, and a "reset" button restores the auto name.
 - "Start over" button to clear all state and begin a new conversion.
 - Changing a chapter title, a tag or the cover after converting keeps the M4B: the button becomes "Update M4B", which puts the changes on it in a remux with the audio copied (`editM4B`, `LastBuild` in the store), in a moment instead of a new encode. Adding, removing or reordering files, or another bitrate, needs a new conversion; the old M4B is then let go before encoding, and sorting clears the result too.
@@ -130,7 +131,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 ## Compress an existing M4B
 
 - Available on the `/compress-m4b` page via a mode toggle: "Shrink an existing M4B" (default) or "Build from separate files".
-- Drop a single finished `.m4b` / `.m4a`; the file is probed in-browser for its duration, chapter count, cover presence, and current bitrate.
+- Drop a single finished `.m4b` / `.m4a`, whatever audio it holds (AAC, ALAC, or MP3, which some tools put in an M4B); the file is probed in-browser for its duration, chapter count, cover presence, and current bitrate.
 - Re-encodes only the audio stream to a lower AAC bitrate (32 / 48 / 64 / 96 / 128 kbps) while keeping the original chapters, cover art, and metadata untouched. A book already at about 64 kbps or less starts on the highest setting that still shrinks it (`defaultCompressBitrate`).
 - Chaptered books are split at chapter boundaries and re-encoded in parallel across workers (~2–3× faster); chapterless files use a single serial pass. The original chapter markers are moved by each re-encoded piece's real length, so they stay on the audio; titles and tags are kept as they were.
 - Estimated output size and expected space saving ("about 50% smaller") update with the chosen bitrate.
@@ -148,11 +149,13 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - Files without chapters get a pointer to the chapter editor (M4B) or "Add chapters to MP3" (MP3).
 - Picks up where you left off: the position per book is kept in this browser's localStorage under a SHA-256 of the file name and size (`src/lib/audio/resume.ts`), saved every 5 s, on pause and when the page closes, cleared at the end; the 50 most recently played books are kept. Reopening the file jumps there (not within 30 s of either end) with a "Start from the beginning" button. Previews on the tool pages don't remember.
 - The same player powers the download preview on every M4B tool.
+- An audio format the browser can't play (mostly ALAC in an M4B or M4A) gets a message pointing to Safari, or to the compressor, which turns it into AAC and keeps the chapters, tags and cover.
 
 ## UI / UX
 
 - Header "Tools" menu listing all seven tools with a one-line description, on every page (Escape or a click outside closes it; full width on phones).
-- Drop zone with privacy badge directly underneath.
+- Drop zone with a privacy line directly underneath ("Your files never leave your browser: nothing is uploaded."), said again in the footer, which also has a contact address.
+- On phones the converter's file list puts each file's length under its title, so the title keeps room (about twice what it had).
 - First-time visitor hint on the empty drop zone — short explainer of what M4B is, with a link to the FAQ.
 - Dismissible drop notices ("Used X as cover", "Cover already set", "N files skipped") that auto-dismiss after 6 seconds.
 - Dark mode that activates automatically based on operating-system preference.

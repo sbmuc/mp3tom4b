@@ -6,6 +6,7 @@ import { trackEvent, trackFailure } from '@/lib/analytics'
 import { resetFFmpegAfterFailure } from '@/lib/ffmpeg/client'
 import { convertToM4B } from '@/lib/ffmpeg/convert'
 import { editM4B } from '@/lib/ffmpeg/editM4b'
+import { isValidYear } from '@/lib/audio/year'
 import { buildKey, useConversionStore, type LastBuild } from '@/lib/store/conversionStore'
 
 const ACTIVE_STATUSES = new Set(['loading-ffmpeg', 'probing', 'encoding', 'concatenating', 'muxing'])
@@ -39,7 +40,9 @@ export default function ConvertButton() {
   // Same files, order and bitrate as the last M4B: only titles, tags or the
   // cover changed, and they go onto that M4B without encoding again.
   const canUpdate = lastBuild != null && lastBuild.key === buildKey(files, bitrate)
-  const invalid = !filesOk || !titleOk || !authorOk || !readableOk
+  // The form shows the year's error; this keeps a wrong one out of the file.
+  const yearOk = isValidYear(metadata.year)
+  const invalid = !filesOk || !titleOk || !authorOk || !readableOk || !yearOk
 
   const missing: string[] = []
   if (!filesOk) missing.push('add at least one audio file')
@@ -48,6 +51,7 @@ export default function ConvertButton() {
   }
   if (!titleOk) missing.push('enter a title')
   if (!authorOk) missing.push('enter an author')
+  if (!yearOk) missing.push('fix the year (4 digits, or empty)')
 
   /**
    * Put the current titles, tags and cover on the last M4B: a remux with the
@@ -102,6 +106,8 @@ export default function ConvertButton() {
         document.getElementById('md-title')?.focus()
       } else if (!authorOk) {
         document.getElementById('md-author')?.focus()
+      } else if (!yearOk) {
+        document.getElementById('md-year')?.focus()
       }
       return
     }

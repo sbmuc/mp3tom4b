@@ -67,6 +67,14 @@ export async function makeFixtures(): Promise<void> {
     )
   }
 
+  // The same book with MP3 audio inside, as some tools make them: the
+  // compressor's split refused it ("ffmpeg exited with code 1").
+  await ff.writeFile('book.m4b', readFileSync(fixture('book.m4b')))
+  await make(
+    ['-i', 'book.m4b', '-map', '0:a', '-c:a', 'libmp3lame', '-b:a', '128k', '-map_metadata', '0', '-map_chapters', '0', '-f', 'mp4'],
+    'mp3-inside.m4b',
+  )
+
   // One 16-minute file, longer than the converter's "one long file" threshold.
   // 8 kHz mono at 8 kbps keeps it under 1 MB and quick to make.
   await make(
