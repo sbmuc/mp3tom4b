@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import CompressModeSwitch from '@/components/CompressModeSwitch'
-import Link from 'next/link'
+import { FormatLinks, ToolLinks } from '@/components/RelatedLinks'
 import { socialMetadata } from '@/lib/seo/social'
 
 export const metadata: Metadata = {
@@ -69,23 +69,6 @@ const faqLd = {
     acceptedAnswer: { '@type': 'Answer', text: item.a },
   })),
 }
-
-const OTHER_FORMATS = [
-  { label: 'MP3 to M4B', href: '/' },
-  { label: 'FLAC to M4B', href: '/flac-to-m4b' },
-  { label: 'WAV to M4B', href: '/wav-to-m4b' },
-  { label: 'M4A to M4B', href: '/m4a-to-m4b' },
-  { label: 'OGG to M4B', href: '/ogg-to-m4b' },
-  { label: 'Opus to M4B', href: '/opus-to-m4b' },
-]
-
-const TOOLBOX_TOOLS = [
-  { label: 'M4B to MP3', href: '/m4b-to-mp3' },
-  { label: 'Edit M4B chapters', href: '/edit-m4b-chapters' },
-  { label: 'Merge M4Bs', href: '/merge-m4b' },
-  { label: 'Add chapters to MP3', href: '/add-chapters-to-mp3' },
-  { label: 'M4B player', href: '/m4b-player' },
-]
 
 export default function CompressM4bPage() {
   return (
@@ -161,41 +144,9 @@ export default function CompressM4bPage() {
           </dl>
         </section>
 
-        <section aria-labelledby="other-formats-heading" className="mt-16 border-t border-zinc-200 pt-10 dark:border-zinc-800">
-          <h2 id="other-formats-heading" className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Convert audio to M4B
-          </h2>
-          <ul className="mt-4 flex flex-wrap gap-3">
-            {OTHER_FORMATS.map(({ label, href }) => (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className="rounded-md border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 hover:border-accent-400 hover:text-accent-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-accent-500 dark:hover:text-accent-400"
-                >
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <FormatLinks id="other-formats-heading" heading="Convert audio to M4B" exclude={[]} />
 
-        <section aria-labelledby="toolbox-heading" className="mt-16 border-t border-zinc-200 pt-10 dark:border-zinc-800">
-          <h2 id="toolbox-heading" className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-            More M4B tools
-          </h2>
-          <ul className="mt-4 flex flex-wrap gap-3">
-            {TOOLBOX_TOOLS.map(({ label, href }) => (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className="rounded-md border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 hover:border-accent-400 hover:text-accent-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-accent-500 dark:hover:text-accent-400"
-                >
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <ToolLinks id="toolbox-heading" heading="More M4B tools" exclude={['/', '/compress-m4b']} />
       </div>
     </>
   )
