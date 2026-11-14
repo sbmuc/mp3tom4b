@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.20.2] — 2026-11-14
+
+### Changed
+- **Tidier links to the other pages.** The list at the bottom of every page mixed formats and tools in one ragged block, its rows nearly touching. Formats are now one row of equal buttons, and the tools are cards that say in a line what each one does.
+
+---
+
 ## [1.20.1] — 2026-11-12
 
 ### Fixed

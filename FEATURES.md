@@ -180,7 +180,7 @@ What mp3tom4b does today, in present tense. No history, no roadmap — see [CHAN
 - `/faq` — common questions about M4B, audiobooks, and the conversion process.
 - `/privacy` — privacy policy.
 - Five SEO sister landing pages with format-specific hero copy and FAQ: `/flac-to-m4b`, `/wav-to-m4b`, `/m4a-to-m4b`, `/ogg-to-m4b`, `/opus-to-m4b`.
-- Every landing page cross-links the other formats and the M4B tools ("More M4B tools").
+- Every landing page cross-links the other formats (a row of equal buttons) and the M4B tools ("More M4B tools", cards with an icon and a one-line description), from one shared component (`RelatedLinks.tsx`).
 - `/compress-m4b` — landing page for shrinking or building a compact M4B, with the compressor and build tool behind a mode toggle.
 - `/m4b-to-mp3` — landing page for splitting an M4B into per-chapter MP3s.
 - `/edit-m4b-chapters` — landing page for editing chapters, metadata, and cover art in an existing M4B.
