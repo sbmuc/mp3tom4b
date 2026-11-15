@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.21.0] — 2026-11-15
+
+### Added
+- **Listen where a chapter starts before the M4B is made.** In Add chapters, every chapter in the list has a play button that plays your file from two seconds before that chapter, so you hear whether a chapter found in the silences starts at a real break or in the middle of a sentence, and can fix the time or detect again with another pause length. Each chapter's length is shown next to it too. Asked for in [issue #17](https://github.com/sbmuc/mp3tom4b/issues/17).
+
+### Fixed
+- Add chapters now cuts a long title or author in the download's name at about 80 characters, as the other tools do since 1.20.1.
+
+---
+
 ## [1.20.2] — 2026-11-14
 
 ### Changed

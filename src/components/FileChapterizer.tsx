@@ -11,6 +11,8 @@ import {
   FileAudio,
   ImageIcon,
   Loader2,
+  Pause,
+  Play,
   Plus,
   RotateCcw,
   ScanLine,
@@ -26,6 +28,7 @@ import { AUDIO_ACCEPT, AUDIO_EXTENSIONS, AUDIO_FORMATS_LABEL, AUDIO_FORMATS_TEXT
 import { lowSourceKbps, suggestBitrate } from '@/lib/audio/bitrate'
 import {
   chapterizeFile,
+  chapterLengthsMs,
   describeSilenceResult,
   detectSilenceChapters,
   proposeEqualChapters,
@@ -39,7 +42,8 @@ import { extractMetadata } from '@/lib/audio/metadata'
 import { readPlaybackInfo } from '@/lib/audio/playback'
 import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
 import { coverProblem, IMAGE_ACCEPT } from '@/lib/image/validate'
-import { formatBytes } from '@/lib/audio/format'
+import { formatBytes, formatDuration } from '@/lib/audio/format'
+import { safeFileName } from '@/lib/format/fileName'
 import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
 import OutputPreview from '@/components/OutputPreview'
 import WhereToListen from '@/components/WhereToListen'
@@ -69,8 +73,17 @@ function fileBaseName(name: string): string {
   return name.replace(/\.[^.]+$/, '')
 }
 
-function sanitizeFilename(value: string): string {
-  return value.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim()
+// Listening to a chapter starts this long before it: the pause, then the first words.
+const PREVIEW_LEAD_SEC = 2
+
+/**
+ * The type to play the file as. Browsers often give an .m4b no type at all;
+ * the rest keep the type the browser gave them.
+ */
+function previewType(file: File): string {
+  if (/\.(m4b|m4a|mp4)$/i.test(file.name)) return 'audio/mp4'
+  if (/\.mp3$/i.test(file.name)) return 'audio/mpeg'
+  return file.type
 }
 
 function formatTimecode(ms: number): string {
@@ -173,6 +186,13 @@ export default function FileChapterizer() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [downloaded, setDownloaded] = useState(false)
 
+  // Listening to the file (see togglePreview). previewOk turns false when the
+  // browser can't play the file's format.
+  const previewRef = useRef<HTMLAudioElement>(null)
+  const [previewOk, setPreviewOk] = useState(true)
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [playedSec, setPlayedSec] = useState(0)
+
   const cancelledRef = useRef(false)
   const isBusy = BUSY_STATUSES.has(progress.status)
   const isEncoding = progress.status === 'encoding' || progress.status === 'loading-ffmpeg'
@@ -221,6 +241,45 @@ export default function FileChapterizer() {
     setDownloadUrl(url)
     return () => URL.revokeObjectURL(url)
   }, [resultBlob])
+
+  // Listening where a chapter starts, in the file itself, before anything is
+  // made. One element for the whole tool, always there, so it can let go of
+  // the file before its URL is revoked (Safari logs an error otherwise).
+  useEffect(() => {
+    const audio = previewRef.current
+    if (!file || !audio) return
+    const url = URL.createObjectURL(file.slice(0, file.size, previewType(file)))
+    audio.src = url
+    return () => {
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
+      URL.revokeObjectURL(url)
+      setPreviewOk(true)
+    }
+  }, [file])
+
+  // A list made again (detect, split evenly) drops the chapter being listened
+  // to, and making the M4B stops the listening.
+  useEffect(() => {
+    if (playingId && !rows.some((r) => r.id === playingId)) previewRef.current?.pause()
+  }, [rows, playingId])
+  useEffect(() => {
+    if (isEncoding) previewRef.current?.pause()
+  }, [isEncoding])
+
+  const togglePreview = (id: string, startMs: number) => {
+    const audio = previewRef.current
+    if (!audio) return
+    if (playingId === id) {
+      audio.pause()
+      return
+    }
+    audio.currentTime = Math.max(0, startMs / 1000 - PREVIEW_LEAD_SEC)
+    setPlayedSec(audio.currentTime)
+    setPlayingId(id)
+    audio.play().catch(() => setPlayingId(null))
+  }
 
   const coverPreview = coverMode === 'remove' ? null : coverMode === 'replace' ? replaceUrl : originalUrl
   const hadOriginal = originalCoverFile !== null
@@ -456,6 +515,9 @@ export default function FileChapterizer() {
   // ---- validation ----
   // Per-row problems, so the offending chapter is marked in place rather than
   // only summarised next to the Convert button (hard to find in a long list).
+  const startsMs = rows.map((r) => parseTimecode(r.timeStr))
+  const lengthsMs = chapterLengthsMs(startsMs, durationMs)
+
   const rowIssues = (() => {
     const issues = new Map<string, string>()
     const seen = new Set<number>()
@@ -536,11 +598,11 @@ export default function FileChapterizer() {
   }
 
   const downloadName = (() => {
-    const author = sanitizeFilename(metadata.author)
-    const title = sanitizeFilename(metadata.title)
+    const author = safeFileName(metadata.author)
+    const title = safeFileName(metadata.title)
     if (author && title) return `${author} - ${title}.m4b`
     if (title) return `${title}.m4b`
-    if (file) return `${sanitizeFilename(fileBaseName(file.name))}.m4b`
+    if (file) return `${safeFileName(fileBaseName(file.name))}.m4b`
     return 'audiobook.m4b'
   })()
 
@@ -552,6 +614,19 @@ export default function FileChapterizer() {
 
   return (
     <div className="mt-4">
+      {/* No controls, so not shown: the chapter rows' play buttons drive it. */}
+      <audio
+        ref={previewRef}
+        preload="metadata"
+        onPause={() => setPlayingId(null)}
+        onEnded={() => setPlayingId(null)}
+        onTimeUpdate={(e) => setPlayedSec(e.currentTarget.currentTime)}
+        onError={(e) => {
+          if (!e.currentTarget.error) return
+          setPreviewOk(false)
+          setPlayingId(null)
+        }}
+      />
       <div
         {...getRootProps()}
         role="button"
@@ -679,7 +754,8 @@ export default function FileChapterizer() {
               {silenceNote?.text}
             </p>
             <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-              Silence detection scans the whole file, so it takes a while on long books. You can always tweak the result below.
+              Silence detection scans the whole file, so it takes a while on long books. Nothing is made yet: check the
+              chapters below, listen where each one starts, and detect again or change them as you like.
             </p>
           </section>
 
@@ -695,14 +771,35 @@ export default function FileChapterizer() {
               </button>
             </div>
 
+            {!previewOk && (
+              <p className="mb-3 text-xs text-amber-700 dark:text-amber-400">
+                This browser can&apos;t play this file&apos;s format, so you can&apos;t listen to the chapters here. The M4B
+                is made all the same.
+              </p>
+            )}
+
             <ul className="flex flex-col gap-2">
-              {rows.map((r) => {
+              {rows.map((r, i) => {
                 const issue = rowIssues.get(r.id)
+                const startMs = startsMs[i]
+                const lengthMs = lengthsMs[i]
+                const playing = playingId === r.id
                 return (
                   <li key={r.id} className={`rounded-lg border bg-zinc-50 px-3 py-2 dark:bg-zinc-900 ${
                     issue ? 'border-rose-300 dark:border-rose-800' : 'border-zinc-200 dark:border-zinc-800'
                   }`}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                    {previewOk && (
+                      <button
+                        type="button"
+                        disabled={startMs == null}
+                        onClick={() => startMs != null && togglePreview(r.id, startMs)}
+                        aria-label={playing ? 'Pause' : `Listen from just before ${r.timeStr}`}
+                        className="flex h-11 w-9 shrink-0 items-center justify-center rounded text-accent-600 hover:text-accent-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 disabled:text-zinc-300 sm:w-11 dark:text-accent-400 dark:hover:text-accent-300 dark:disabled:text-zinc-700"
+                      >
+                        {playing ? <Pause size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
+                      </button>
+                    )}
                     <input
                       type="text" value={r.timeStr}
                       onChange={(e) => updateRow(r.id, { timeStr: e.target.value })}
@@ -720,18 +817,38 @@ export default function FileChapterizer() {
                       aria-label="Chapter title" placeholder="Chapter title"
                       className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm text-zinc-900 hover:border-zinc-300 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-500/30 dark:text-zinc-100 dark:hover:border-zinc-700 dark:focus:bg-zinc-950"
                     />
+                    {/* How long the chapter runs; where the file is while it plays. Phones: under the row. */}
+                    <span className="hidden w-16 shrink-0 text-right font-mono text-xs sm:block">
+                      {playing ? (
+                        <span className="text-accent-700 dark:text-accent-400">
+                          <span className="sr-only">Playing at </span>
+                          {formatTimecode(playedSec * 1000)}
+                        </span>
+                      ) : lengthMs != null ? (
+                        <span className="text-zinc-500 dark:text-zinc-400">
+                          <span className="sr-only">Length </span>
+                          {formatDuration(lengthMs / 1000)}
+                        </span>
+                      ) : null}
+                    </span>
                     <button type="button" onClick={() => removeRow(r.id)} aria-label="Remove chapter"
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-500 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-zinc-500 dark:hover:text-rose-400">
                       <Trash2 size={15} aria-hidden="true" />
                     </button>
                     </div>
                     {issue && <p className="mt-1 pl-1 text-xs text-rose-600 dark:text-rose-400">{issue}</p>}
+                    {playing && (
+                      <p className="mt-1 pl-1 font-mono text-xs text-accent-700 sm:hidden dark:text-accent-400">
+                        Playing at {formatTimecode(playedSec * 1000)}
+                      </p>
+                    )}
                   </li>
                 )
               })}
             </ul>
             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
               Times are measured from the start of the file (H:MM:SS). The list reorders itself by time as you edit.
+              {previewOk && ' The play button plays the file from two seconds before a chapter starts, so you hear whether it starts in the right place.'}
             </p>
           </section>
 

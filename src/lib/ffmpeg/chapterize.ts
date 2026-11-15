@@ -141,6 +141,26 @@ export function proposeEqualChapters(
 }
 
 /**
+ * How long each chapter in the list runs: from its start to the next later
+ * start, or to the end of the file. The list needn't be in order (it is
+ * sorted only when a time loses focus). Null for a time that isn't one, one
+ * at or past the end, one that appears twice (the list marks those), or a
+ * last chapter when the file's length is unknown. Pure + unit-testable.
+ */
+export function chapterLengthsMs(starts: Array<number | null>, durationMs: number): Array<number | null> {
+  const usable = (s: number | null): s is number => s != null && s >= 0 && (durationMs <= 0 || s < durationMs)
+  const counts = new Map<number, number>()
+  for (const s of starts) if (usable(s)) counts.set(s, (counts.get(s) ?? 0) + 1)
+  const sorted = [...counts.keys()].sort((a, b) => a - b)
+  return starts.map((s) => {
+    if (!usable(s) || counts.get(s)! > 1) return null
+    const next = sorted[sorted.indexOf(s) + 1]
+    if (next != null) return next - s
+    return durationMs > 0 ? durationMs - s : null
+  })
+}
+
+/**
  * Physical segment boundaries (ms) for the re-encode: the user's chapter starts,
  * plus extra splits so no segment is longer than `maxSegMs`. Always begins at 0.
  * Keeping segments small bounds memory even when the user set very few chapters.

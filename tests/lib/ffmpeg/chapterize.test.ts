@@ -3,11 +3,30 @@ import {
   buildChapterizeArgs,
   buildSegmentBoundaries,
   buildSegmentTimes,
+  chapterLengthsMs,
   describeSilenceResult,
   parseSilences,
   proposeChaptersFromSilence,
   proposeEqualChapters,
 } from '@/lib/ffmpeg/chapterize'
+
+describe('chapterLengthsMs', () => {
+  it('runs each chapter to the next start, and the last to the end of the file', () => {
+    expect(chapterLengthsMs([0, 16_000, 33_000], 50_000)).toEqual([16_000, 17_000, 17_000])
+  })
+
+  it('works on a list that is not in order yet', () => {
+    expect(chapterLengthsMs([0, 33_000, 16_000], 50_000)).toEqual([16_000, 17_000, 17_000])
+  })
+
+  it('gives no length for a bad time, a time past the end, or a time used twice', () => {
+    expect(chapterLengthsMs([0, null, 60_000, 20_000, 20_000], 50_000)).toEqual([20_000, null, null, null, null])
+  })
+
+  it('leaves the last chapter open when the length of the file is unknown', () => {
+    expect(chapterLengthsMs([0, 10_000], 0)).toEqual([10_000, null])
+  })
+})
 
 describe('parseSilences', () => {
   it('pairs silence_start with the following silence_end', () => {
