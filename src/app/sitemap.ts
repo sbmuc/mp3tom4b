@@ -21,7 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/m4b-to-mp3`, lastModified: '2026-10-13', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/edit-m4b-chapters`, lastModified: '2026-11-10', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/merge-m4b`, lastModified: '2026-10-26', changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${BASE}/add-chapters-to-mp3`, lastModified: '2026-11-10', changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/add-chapters-to-mp3`, lastModified: '2026-11-15', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/m4b-player`, lastModified: '2026-11-03', changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/librivox-to-m4b`, lastModified: '2026-11-03', changeFrequency: 'monthly', priority: 0.7 },
     { url: `${BASE}/m4b-on-iphone`, lastModified: '2026-11-03', changeFrequency: 'monthly', priority: 0.7 },

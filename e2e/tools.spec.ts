@@ -195,6 +195,30 @@ test('add chapters: silence detection finds the pauses and the M4B is made', asy
   await expect(page.getByText('Your chaptered audiobook is ready')).toBeVisible()
 })
 
+// Issue #17: hear where a found chapter starts before the M4B is made.
+test('add chapters: listen where a found chapter starts, before making the M4B', async ({ page }) => {
+  await page.goto('/add-chapters-to-mp3')
+  await page.getByLabel('Choose an audio file to add chapters to').setInputFiles(fixture('pauses.mp3'))
+  await page.locator('#min-chapter').fill('0.2')
+  await page.getByRole('button', { name: 'Detect from silence' }).click()
+  await expect(page.getByText(/made 3 chapters/)).toBeVisible()
+
+  const chapters = page.getByRole('region', { name: 'Chapters', exact: true })
+  await expect(chapters.getByLabel('Chapter start time').nth(1)).toHaveValue('0:00:16')
+  await expect(chapters.getByText('Length 0:16', { exact: true })).toBeVisible() // the first chapter's
+
+  const audio = page.locator('audio').first()
+  await chapters.getByRole('button', { name: 'Listen from just before 0:00:16' }).click()
+  await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.currentTime)).toBeGreaterThan(14)
+  expect(await audio.evaluate((a: HTMLAudioElement) => a.currentTime)).toBeLessThan(16)
+  expect(await audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(false)
+  await expect(chapters.getByText(/Playing at 0:00:1\d/).first()).toBeVisible()
+
+  await chapters.getByRole('button', { name: 'Pause' }).click()
+  await expect.poll(() => audio.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true)
+  await expect(chapters.getByRole('button', { name: 'Listen from just before 0:00:16' })).toBeVisible()
+})
+
 test('add chapters: a cue sheet dropped with the file gives the chapters and titles', async ({ page }) => {
   await page.goto('/add-chapters-to-mp3')
   await page
