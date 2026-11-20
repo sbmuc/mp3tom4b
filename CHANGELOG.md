@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.21.1] — 2026-11-20
+
+### Fixed
+- **Merging or compressing a book too big for the browser says so.** When the browser could no longer hold the encoded parts while putting the book together, the merger and compressor asked whether the file had been moved. They now say the book is too big for the browser and what to do, as the converter does.
+
+### Changed
+- Failure counts from the merger and compressor now carry the step they stopped at and the size and length of the book, as the converter's already did, so long merges and compressions that fail can be traced. Never a file or chapter name; the privacy policy already lists these figures.
+
+---
+
 ## [1.21.0] — 2026-11-15
 
 ### Added

@@ -13,6 +13,7 @@ vi.mock('@ffmpeg/util', () => ({
 }))
 
 import { compressM4B } from '@/lib/ffmpeg/compress'
+import { failureDetails } from '@/lib/ffmpeg/errors'
 import { convertToM4B } from '@/lib/ffmpeg/convert'
 import {
   META,
@@ -106,5 +107,16 @@ describe('compressM4B — parallel path', () => {
     expect(a.stream).toMatch(/Audio: aac.*64 kb\/s/)
     expect(a.chapters.map((c) => c.title)).toEqual(specs.map((_, i) => `Chapter ${i + 1}`))
     expectAppleDecodes(out, src.pcm.length / src.rate)
+  })
+
+  // The anonymous failure count gets the step a compression stopped at; the message stays as it was.
+  it('notes the step a failed compression stopped at', async () => {
+    const junk = new File([new Uint8Array(8192).fill(7)], 'junk.m4b')
+    const err = await compressM4B({ file: junk, bitrate: 64, hasCover: false }).then(
+      () => null,
+      (e: unknown) => e,
+    )
+    expect(err).not.toBeNull()
+    expect(failureDetails(err)).toMatchObject({ step: 'encoding' })
   })
 })

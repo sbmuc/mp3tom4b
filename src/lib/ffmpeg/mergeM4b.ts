@@ -4,7 +4,7 @@ import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel } from './client'
 import { loadEngine } from './engine'
 import { COVER_CODEC_ARGS, OWN_COVER_ARGS } from './cover'
-import { humanizeFfmpegError } from './errors'
+import { humanizeFfmpegError, noteFailureStep, type FailureStep } from './errors'
 import { buildFFMetadata, buildGlobalMetadata } from './chapters'
 import { mountBlobs, takeBlob, unmount } from './files'
 import type { ChapterMark } from './types'
@@ -230,6 +230,8 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
 
   const tempPaths: string[] = []
   const partBlobs: Blob[] = []
+  // Where it was if it fails, for the failure count (see noteFailureStep).
+  let step: FailureStep = 'cover'
 
   try {
     // Cover: a user replacement is resized up front; a kept cover is extracted
@@ -248,6 +250,7 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
     for (let i = 0; i < files.length; i++) {
       const inputName = `in_${i}.${fileExtension(files[i].name)}`
       const inputPath = `${INPUT_DIR}/${inputName}`
+      step = 'reading'
       await mountBlobs(ffmpeg, INPUT_DIR, [{ name: inputName, data: files[i] }])
 
       if (cover.mode === 'keep' && coverSourceIndex === i && coverPath === null) {
@@ -281,6 +284,7 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
       })
       tempPaths.push(out)
       ffmpeg.on('progress', onProg)
+      step = reencode ? 'encoding' : 'copying'
       try {
         await runFFmpeg(
           ffmpeg,
@@ -291,8 +295,10 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
       } finally {
         ffmpeg.off('progress', onProg)
       }
+      step = 'reading_output'
       partBlobs.push(await takeBlob(ffmpeg, out))
     }
+    step = 'joining'
     await unmount(ffmpeg, INPUT_DIR)
     await mountBlobs(ffmpeg, PARTS_DIR, partBlobs.map((data, i) => ({ name: partName(i), data })))
 
@@ -329,10 +335,12 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
     }
     await unmount(ffmpeg, PARTS_DIR)
 
+    step = 'reading_output'
     const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
+    noteFailureStep(err, step)
     console.error('mp3tom4b merge failed:', err)
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err

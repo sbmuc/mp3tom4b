@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { ENGINE_STACK, OUT_OF_MEMORY, TOO_BIG_FOR_BROWSER, failureDetails, failureReason, humanizeFfmpegError } from '@/lib/ffmpeg/errors'
+import {
+  ENGINE_STACK,
+  OUT_OF_MEMORY,
+  TOO_BIG_FOR_BROWSER,
+  failureDetails,
+  failureReason,
+  humanizeFfmpegError,
+  noteFailureStep,
+} from '@/lib/ffmpeg/errors'
 
 describe('humanizeFfmpegError', () => {
   it('explains running out of memory, however the browser reports it', () => {
@@ -55,6 +63,25 @@ describe('failureDetails', () => {
     expect(failureDetails(234)).toEqual({ exitCode: 234 })
     expect(failureDetails(new Error('Something about "My Book - Chapter 1.mp3"'))).toEqual({})
   })
+
+  it("sends the step the other tools noted, without it being in the message", () => {
+    const err = new Error('ffmpeg exited with code 1')
+    noteFailureStep(err, 'joining')
+    expect(failureDetails(err)).toEqual({ exitCode: 1, step: 'joining' })
+    expect(err.message).toBe('ffmpeg exited with code 1')
+    expect(humanizeFfmpegError(err)).toBe('ffmpeg exited with code 1')
+  })
+
+  it("keeps the converter's own step when one is noted too", () => {
+    const err = new Error('encoding chapter 2/5: ffmpeg exited with code 1')
+    noteFailureStep(err, 'joining')
+    expect(failureDetails(err)).toEqual({ exitCode: 1, step: 'encoding' })
+  })
+
+  it('leaves a bare number without a step', () => {
+    noteFailureStep(28, 'encoding')
+    expect(failureDetails(28)).toEqual({ exitCode: 28 })
+  })
 })
 
 describe('a Blob the browser can no longer read', () => {
@@ -71,6 +98,18 @@ describe('a Blob the browser can no longer read', () => {
     const err = new Error(`reading chapter 3/10: ${chrome}`)
     expect(humanizeFfmpegError(err)).toMatch(/^Reading chapter 3\/10: the file couldn't be read any more\. Was it moved/)
     expect(failureReason(err)).toBe('source_moved')
+  })
+
+  it('the merger or compressor joining its parts: the book is too big for the browser', () => {
+    // These tools note their step instead of naming it in the message.
+    const joining = new Error(chrome)
+    noteFailureStep(joining, 'joining')
+    expect(humanizeFfmpegError(joining)).toBe(TOO_BIG_FOR_BROWSER)
+    expect(failureReason(joining)).toBe('browser_storage')
+
+    const reading = new Error(chrome)
+    noteFailureStep(reading, 'reading')
+    expect(failureReason(reading)).toBe('source_moved')
   })
 })
 
