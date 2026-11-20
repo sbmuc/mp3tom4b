@@ -6,7 +6,7 @@ import { loadEngine } from './engine'
 import { replaceChapters } from './chapters'
 import { allKnown, buildTimedConcatList, copySegmentExtension, parseSegmentStarts, remapThroughSegments } from './concatPlan'
 import { COVER_CODEC_ARGS } from './cover'
-import { humanizeFfmpegError } from './errors'
+import { humanizeFfmpegError, noteFailureStep, type FailureStep } from './errors'
 import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
 import { encodeConcurrency, encodeSegmentsInWorkers } from './segments'
 import { parseChapters, type Chapter } from './splitChapters'
@@ -147,6 +147,8 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
   const inputName = `in.${fileExtension(file.name)}`
   const inputPath = `${INPUT_DIR}/${inputName}`
   const tempPaths: string[] = []
+  // Where it was if it fails, for the failure count (see noteFailureStep).
+  let step: FailureStep = 'reading'
 
   try {
     emit({ status: 'encoding', percent: 4, label: 'Reading file…' })
@@ -181,6 +183,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
       }
 
       emit({ status: 'encoding', percent: 8, label: 'Splitting into chapters…' })
+      step = 'splitting'
       await runFFmpeg(ffmpeg, [
         '-hide_banner', '-i', inputPath, '-vn', '-c:a', 'copy',
         '-f', 'segment', '-segment_times', buildSegmentTimes(chapters),
@@ -204,6 +207,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
       await unmount(ffmpeg, INPUT_DIR)
 
       const count = segments.length
+      step = 'encoding'
       const { parts, decodedSec } = await encodeSegmentsInWorkers(segments, {
         ext: SEG_EXT,
         args: (input, output) => buildSegmentEncodeArgs({ input, output, bitrate }),
@@ -214,6 +218,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
             label: `Compressing chapters… (${done} of ${count} done)`,
           }),
       })
+      step = 'joining'
       await mountBlobs(ffmpeg, PARTS_DIR, parts.map((data, i) => ({ name: encName(i), data })))
 
       // Join with each piece's real decoded length, and move every chapter
@@ -237,6 +242,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
       await runFFmpeg(ffmpeg, buildParallelMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH }))
       await unmount(ffmpeg, PARTS_DIR)
 
+      step = 'reading_output'
       const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
       emit({ status: 'done', percent: 100, label: 'Done.' })
       return blob
@@ -260,6 +266,7 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
     tempPaths.push(OUTPUT_PATH)
     ffmpeg.on('progress', onProg)
     ffmpeg.on('log', onLog)
+    step = 'encoding'
     try {
       await runFFmpeg(ffmpeg, buildCompressArgs({ input: inputPath, output: OUTPUT_PATH, bitrate, hasCover }))
     } finally {
@@ -268,10 +275,12 @@ export async function compressM4B(opts: CompressOptions): Promise<Blob> {
     }
     await unmount(ffmpeg, INPUT_DIR)
 
+    step = 'reading_output'
     const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
+    noteFailureStep(err, step)
     console.error('mp3tom4b compression failed:', err)
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err

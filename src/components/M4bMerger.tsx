@@ -470,6 +470,14 @@ export default function M4bMerger() {
     cancelledRef.current = false
     setResultBlob(null)
     const startedAt = Date.now()
+    // Sent with the result either way, so a failure shows how big the merge was.
+    const shape = {
+      fileCount: readyRows.length,
+      chapterMode,
+      reencode,
+      audioDurationSec: Math.round(totalDurationMs / 1000),
+      inputMb: Math.round((readyRows.reduce((sum, r) => sum + r.file.size, 0) / (1024 * 1024)) * 10) / 10,
+    }
     try {
       const blob = await mergeM4B({
         files: readyRows.map((r) => r.file),
@@ -490,16 +498,11 @@ export default function M4bMerger() {
         },
       })
       setResultBlob(blob)
-      trackEvent('m4b_merged', {
-        fileCount: readyRows.length,
-        chapterMode,
-        reencode,
-        elapsedSec: Math.round((Date.now() - startedAt) / 1000),
-      })
+      trackEvent('m4b_merged', { ...shape, elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
     } catch (err) {
       // Error surfaced via the onProgress 'error' event.
       if (!cancelledRef.current) {
-        trackFailure('merge', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        trackFailure('merge', err, { ...shape, elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
         resetFFmpegAfterFailure()
       }
     }

@@ -152,6 +152,13 @@ export default function M4bCompressor() {
     cancelledRef.current = false
     setOutputBlob(null)
     const startedAt = Date.now()
+    // Sent with the result either way, so a failure shows how big the book was.
+    const shape = {
+      bitrateKbps: bitrate,
+      chapterCount: probe.chapterCount,
+      audioDurationSec: Math.round((probe.durationMs ?? 0) / 1000),
+      inputMb: Math.round((file.size / (1024 * 1024)) * 10) / 10,
+    }
     try {
       const blob = await compressM4B({
         file,
@@ -164,17 +171,14 @@ export default function M4bCompressor() {
       })
       setOutputBlob(blob)
       trackEvent('m4b_compressed', {
-        bitrateKbps: bitrate,
-        chapterCount: probe.chapterCount,
-        audioDurationSec: Math.round((probe.durationMs ?? 0) / 1000),
-        inputMb: Math.round((file.size / (1024 * 1024)) * 10) / 10,
+        ...shape,
         outputMb: Math.round((blob.size / (1024 * 1024)) * 10) / 10,
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
       })
     } catch (err) {
       // Error is surfaced via the onProgress 'error' event.
       if (!cancelledRef.current) {
-        trackFailure('compress', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        trackFailure('compress', err, { ...shape, elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
         resetFFmpegAfterFailure()
       }
     }

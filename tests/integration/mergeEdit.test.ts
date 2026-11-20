@@ -13,6 +13,7 @@ vi.mock('@ffmpeg/util', () => ({
 
 import { convertToM4B } from '@/lib/ffmpeg/convert'
 import { editM4B } from '@/lib/ffmpeg/editM4b'
+import { failureDetails } from '@/lib/ffmpeg/errors'
 import { mergeM4B } from '@/lib/ffmpeg/mergeM4b'
 import { META, analyze, asAudioFile, expectChaptersMatchAudio, mp3, toneFile, type ToneSpec } from './helpers'
 
@@ -45,6 +46,23 @@ describe('mergeM4B', () => {
     expect(out.chapters.map((c) => c.title)).toEqual(['A1', 'A2', 'B1', 'B2'])
     expect(out.tags.title).toBe('Merged')
     expectChaptersMatchAudio(out, [...partA, ...partB], { maxLeadMs: 130 })
+  })
+
+  // The anonymous failure count gets the step a merge stopped at; the message stays as it was.
+  it('notes the step a failed merge stopped at', async () => {
+    const good = await book([mp3(440)], 'Good')
+    const junk = new File([new Uint8Array(8192).fill(7)], 'junk.m4b')
+    const err = await mergeM4B({
+      files: [good, junk],
+      parts: [{ title: 'Good', durationMs: 3000, chapters: [] }, { title: 'Junk', durationMs: 3000, chapters: [] }],
+      metadata: { ...META, title: 'Merged' }, chapterMode: 'keep', cover: { mode: 'remove' },
+      reencode: false, bitrate: 64, target: { sampleRate: 44100, channels: 2 }, totalDurationMs: 6000,
+    }).then(
+      () => null,
+      (e: unknown) => e,
+    )
+    expect(err).not.toBeNull()
+    expect(failureDetails(err)).toMatchObject({ step: 'copying' })
   })
 })
 

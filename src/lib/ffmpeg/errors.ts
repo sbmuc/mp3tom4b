@@ -33,6 +33,33 @@ const NOT_READABLE_PATTERN = /NotReadableError|could not be read, typically due 
 // Steps that read the encoded parts kept in the page, not the user's files.
 const PART_STEP_PATTERN = /^(joining chapters|reading encoded output of)\b/i
 
+/**
+ * Where a tool was when it failed, for the anonymous failure counts. Kept next
+ * to the error, not in its message, so what the user reads doesn't change.
+ * The converter names its steps in the message instead ("encoding chapter
+ * 3/10: …"; see failureDetails).
+ */
+export type FailureStep = 'cover' | 'reading' | 'splitting' | 'encoding' | 'copying' | 'reading_output' | 'joining'
+
+const failureSteps = new WeakMap<object, FailureStep>()
+
+/**
+ * Remember the step a tool was in when `err` was thrown. An error that isn't
+ * an object (ffmpeg.wasm can throw a bare number) can't carry one.
+ */
+export function noteFailureStep(err: unknown, step: FailureStep): void {
+  if (typeof err === 'object' && err !== null) failureSteps.set(err, step)
+}
+
+function notedStep(err: unknown): FailureStep | undefined {
+  return typeof err === 'object' && err !== null ? failureSteps.get(err) : undefined
+}
+
+/** Whether the failing step read the encoded parts kept in the page, not the user's files. */
+function inPartStep(err: unknown, raw: string): boolean {
+  return PART_STEP_PATTERN.test(raw) || notedStep(err) === 'joining'
+}
+
 export const DAMAGED_OR_PROTECTED =
   "most of this file couldn't be decoded. It may be damaged, or protected with DRM (like books bought from Audible), which no converter can open. Try another copy of the file."
 
@@ -89,7 +116,7 @@ export function humanizeFfmpegError(err: unknown): string {
   }
 
   if (NOT_READABLE_PATTERN.test(raw)) {
-    if (PART_STEP_PATTERN.test(raw)) return TOO_BIG_FOR_BROWSER
+    if (inPartStep(err, raw)) return TOO_BIG_FOR_BROWSER
     return capitalize(`${chapterPrefix(raw)}the file couldn't be read any more. Was it moved, renamed or deleted while converting? Keep the files where they are until it's done.`)
   }
 
@@ -135,7 +162,7 @@ export function failureReason(err: unknown): FailureReason {
   if (isEngineLoadError(err)) return 'engine_download'
   const raw = extractMessage(err)
   if (err === 28 || OUT_OF_MEMORY_PATTERN.test(raw)) return 'out_of_memory'
-  if (NOT_READABLE_PATTERN.test(raw)) return PART_STEP_PATTERN.test(raw) ? 'browser_storage' : 'source_moved'
+  if (NOT_READABLE_PATTERN.test(raw)) return inPartStep(err, raw) ? 'browser_storage' : 'source_moved'
   if (DAMAGED_PATTERN.test(raw)) return 'damaged_input'
   if (STACK_PATTERN.test(raw)) return 'stack_overflow'
   if (TRAP_PATTERN.test(raw)) return 'interrupted'
@@ -183,9 +210,10 @@ function errorClass(err: unknown, raw: string): string | undefined {
 
 /**
  * Name-free details of a failure, sent with its reason: ffmpeg's exit code,
- * the converter's step ("encoding chapter 3/10: …" → "encoding") and the
- * error's class from a fixed list. Never the message itself, which can
- * contain chapter or file names.
+ * the step (the converter's from its message, "encoding chapter 3/10: …" →
+ * "encoding"; the other tools' from noteFailureStep) and the error's class
+ * from a fixed list. Never the message itself, which can contain chapter or
+ * file names.
  */
 export function failureDetails(err: unknown): Record<string, string | number> {
   const raw = extractMessage(err)
@@ -197,6 +225,10 @@ export function failureDetails(err: unknown): Record<string, string | number> {
   else if (typeof err === 'number') details.exitCode = err
   const step = /^(reading encoded output of|reading|encoding|joining chapters)\b/i.exec(raw)?.[1]
   if (step) details.step = step === 'reading encoded output of' ? 'reading_output' : step.replace(' ', '_')
+  else {
+    const noted = notedStep(err)
+    if (noted) details.step = noted
+  }
   return details
 }
 
