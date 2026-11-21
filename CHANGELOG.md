@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.21.2] — 2026-11-21
+
+### Fixed
+- **A failed "Update M4B" no longer keeps failing.** When putting new titles, tags or a cover on a finished M4B failed, the button stayed "Update M4B", and trying again failed the same way (seen twice in a row in Safari). It now goes back to "Convert to M4B", so the next try makes the M4B from scratch.
+- A file that disappeared while a tool was reading it (moved, renamed or deleted, or on a drive that was disconnected) now gets the message asking whether it was moved, instead of a technical error.
+
+---
+
 ## [1.21.1] — 2026-11-20
 
 ### Fixed

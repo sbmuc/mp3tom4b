@@ -28,8 +28,11 @@ const DAMAGED_PATTERN = /couldn't decode most of the input/i
 
 // The browser couldn't read back a Blob (Chrome: "NotReadableError … could
 // not be read"). Seen joining about 3.8 GB of encoded chapters, which the browser
-// could no longer hold; reading a source file it means the file moved.
-const NOT_READABLE_PATTERN = /NotReadableError|could not be read, typically due to permission problems/i
+// could no longer hold; reading a source file it means the file moved. A file
+// that is gone altogether is a NotFoundError ("A requested file or directory
+// could not be found…"): seen splitting a book, 6 minutes in.
+const NOT_READABLE_PATTERN =
+  /NotReadableError|could not be read, typically due to permission problems|NotFoundError|requested file or directory could not be found/i
 // Steps that read the encoded parts kept in the page, not the user's files.
 const PART_STEP_PATTERN = /^(joining chapters|reading encoded output of)\b/i
 

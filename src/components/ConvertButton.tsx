@@ -82,6 +82,9 @@ export default function ConvertButton() {
       if (!cancelledRef.current) {
         trackFailure('convert', err, { quickUpdate: true, elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
         resetFFmpegAfterFailure()
+        // The next try converts from scratch. Kept, the button stayed "Update
+        // M4B" and failed the same way again (seen twice in a row in Safari).
+        setLastBuild(null)
       }
     }
   }
