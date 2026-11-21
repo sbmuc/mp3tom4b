@@ -111,6 +111,19 @@ describe('a Blob the browser can no longer read', () => {
     noteFailureStep(reading, 'reading')
     expect(failureReason(reading)).toBe('source_moved')
   })
+
+  it('a file that is gone altogether (NotFoundError) is read the same way', () => {
+    // Seen splitting a book in Chrome, 6 minutes in; it used to count as "other".
+    const gone = 'NotFoundError: A requested file or directory could not be found at the time an operation was processed.'
+    const reading = new Error(gone)
+    expect(failureReason(reading)).toBe('source_moved')
+    expect(humanizeFfmpegError(reading)).toMatch(/^The file couldn't be read any more\. Was it moved/)
+    expect(failureDetails(reading)).toEqual({ errorClass: 'NotFoundError' })
+
+    const joining = new Error(`joining chapters: ${gone}`)
+    expect(failureReason(joining)).toBe('browser_storage')
+    expect(humanizeFfmpegError(joining)).toBe(TOO_BIG_FOR_BROWSER)
+  })
 })
 
 describe('every browser engine, in its own words', () => {
