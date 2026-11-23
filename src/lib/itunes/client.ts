@@ -8,6 +8,7 @@
  */
 
 import { looksLikeTheBook, rankResults, surname } from '../metadata-search/match'
+import { htmlToText } from '../metadata-search/text'
 
 const BASE_URL = 'https://itunes.apple.com/search'
 const RESULT_LIMIT = 10
@@ -23,6 +24,8 @@ export interface ItunesResult {
   year?: string
   /** 1200×1200 cover URL, derived from the API's 100×100 URL. */
   artworkUrl?: string
+  /** The store's description of the book, as plain text. */
+  description?: string
 }
 
 export type ItunesErrorKind = 'network' | 'rate-limit' | 'no-results' | 'unknown'
@@ -62,6 +65,8 @@ interface ApiDoc {
   artworkUrl100?: string
   artworkUrl60?: string
   releaseDate?: string
+  /** HTML ("<b>…</b><br /><br />…"). */
+  description?: string
 }
 
 interface ApiResponse {
@@ -92,6 +97,7 @@ function docToResult(doc: ApiDoc): ItunesResult | null {
     authors: doc.artistName ? [doc.artistName.trim()] : [],
     year: yearFromReleaseDate(doc.releaseDate),
     artworkUrl: upgradeArtwork(doc.artworkUrl100 || doc.artworkUrl60),
+    description: doc.description ? htmlToText(doc.description) || undefined : undefined,
   }
 }
 

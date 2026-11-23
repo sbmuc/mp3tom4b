@@ -44,6 +44,22 @@ describe('searchItunesCascade — request shape', () => {
   })
 })
 
+describe('searchItunesCascade — description', () => {
+  it("passes on the store's description as plain text", async () => {
+    const fetchImpl = makeStagedFetch([
+      jsonResponse({ resultCount: 1, results: [{ ...baseDoc, description: '<b>Bold</b><br /><br />Then &amp; now.' }] }),
+    ])
+    const out = await searchItunesCascade({ title: 'Title', fetchImpl })
+    expect(out.results[0].description).toBe('Bold\n\nThen & now.')
+  })
+
+  it('leaves it out when there is none', async () => {
+    const fetchImpl = makeStagedFetch([jsonResponse({ resultCount: 1, results: [{ ...baseDoc, description: ' <br /> ' }] })])
+    const out = await searchItunesCascade({ title: 'Title', fetchImpl })
+    expect(out.results[0].description).toBeUndefined()
+  })
+})
+
 describe('searchItunesCascade — happy path mapping', () => {
   it('maps API docs to ItunesResult, upgrading the artwork URL to 1200x1200', async () => {
     const fetchImpl = makeStagedFetch([

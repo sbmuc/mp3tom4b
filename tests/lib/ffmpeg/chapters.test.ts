@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildChapters, buildFFMetadata, buildGlobalMetadata, replaceChapters } from '@/lib/ffmpeg/chapters'
+import { EMPTY_METADATA } from '@/types'
 
 describe('buildChapters', () => {
   it('produces a contiguous timeline starting at 0', () => {
@@ -83,7 +84,7 @@ describe('buildFFMetadata — fractional times', () => {
 })
 
 describe('buildGlobalMetadata', () => {
-  const base = { title: 'The Book', author: 'An Author', narrator: '', year: '', genre: 'Audiobook' as const }
+  const base = { ...EMPTY_METADATA, title: 'The Book', author: 'An Author' }
 
   it('writes title/artist/album/album_artist/genre and skips empty optionals', () => {
     expect(buildGlobalMetadata(base)).toEqual([
@@ -104,6 +105,29 @@ describe('buildGlobalMetadata', () => {
   it('escapes backslash, ;, =, # and newlines so they survive ffmpeg', () => {
     const lines = buildGlobalMetadata({ ...base, title: 'AC\\DC Live; Part=1 #2\nx' })
     expect(lines[0]).toBe('title=AC\\\\DC Live\\; Part\\=1 \\#2\\\nx')
+  })
+
+  it('writes the description as both descriptions, and the series where Audiobookshelf reads it', () => {
+    const lines = buildGlobalMetadata({
+      ...base,
+      description: '  A hobbit goes there.\n\nAnd back again.  ',
+      series: ' Middle-earth ',
+      seriesPart: ' 1 ',
+    })
+    expect(lines).toContain('description=A hobbit goes there.\\\n\\\nAnd back again.')
+    expect(lines).toContain('synopsis=A hobbit goes there.\\\n\\\nAnd back again.')
+    expect(lines).toContain('show=Middle-earth')
+    expect(lines).toContain('episode_id=1')
+  })
+
+  it("writes Windows line ends in a description as ffmetadata's own", () => {
+    const lines = buildGlobalMetadata({ ...base, description: 'One.\r\nTwo.' })
+    expect(lines).toContain('description=One.\\\nTwo.')
+  })
+
+  it('leaves out an empty description and series, and blank ones', () => {
+    const lines = buildGlobalMetadata({ ...base, description: '  ', series: '', seriesPart: ' ' })
+    expect(lines.some((l) => /^(description|synopsis|show|episode_id)=/.test(l))).toBe(false)
   })
 })
 

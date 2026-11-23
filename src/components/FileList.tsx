@@ -18,7 +18,24 @@ import { ArrowDownAZ, ArrowDownZA } from 'lucide-react'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import { formatBytes } from '@/lib/audio/format'
 import { SORT_INSTRUCTIONS, sortAnnouncements } from '@/lib/a11y/sortAnnouncements'
+import type { AudioFile } from '@/types'
+import ChapterTools, { type ToolChapter } from './ChapterTools'
 import FileListItem from './FileListItem'
+
+/**
+ * Each file is a chapter; where it starts is known once every file's length
+ * is. In whole seconds: the M4B's own chapter marks come from the encoded
+ * audio and land a little off the files' lengths anyway.
+ */
+function fileChapters(files: AudioFile[]): ToolChapter[] {
+  const known = files.every((f) => f.duration != null)
+  let at = 0
+  return files.map((f) => {
+    const startMs = known ? Math.floor(at) * 1000 : null
+    at += f.duration ?? 0
+    return { title: f.chapterTitle, startMs }
+  })
+}
 
 const SORT_LABEL = {
   asc: 'Sorted A→Z',
@@ -31,6 +48,8 @@ export default function FileList() {
   const reorderFiles = useConversionStore((s) => s.reorderFiles)
   const sortDirection = useConversionStore((s) => s.sortDirection)
   const setSortDirection = useConversionStore((s) => s.setSortDirection)
+  const setChapterTitles = useConversionStore((s) => s.setChapterTitles)
+  const busy = useConversionStore((s) => s.progress.status !== 'idle' && s.progress.status !== 'done' && s.progress.status !== 'error')
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -108,6 +127,17 @@ export default function FileList() {
           </div>
         )}
       </div>
+
+      {files.length >= 2 && (
+        <ChapterTools<Record<string, string>>
+          idPrefix="convert-chapters"
+          chapters={fileChapters(files)}
+          onTitles={(titles) => setChapterTitles(Object.fromEntries(files.map((f, i) => [f.id, titles[i] ?? f.chapterTitle])))}
+          snapshot={() => Object.fromEntries(files.map((f) => [f.id, f.chapterTitle]))}
+          restore={setChapterTitles}
+          disabled={busy}
+        />
+      )}
 
       <DndContext
         sensors={sensors}

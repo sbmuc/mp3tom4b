@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { buildEditMetadata, buildEditMuxArgs, type EditChapter } from '@/lib/ffmpeg/editM4b'
-import type { ConversionMetadata } from '@/types'
+import { EMPTY_METADATA, type ConversionMetadata } from '@/types'
 
 const meta: ConversionMetadata = {
+  ...EMPTY_METADATA,
   title: 'My Book',
   author: 'Some Author',
   narrator: 'A Narrator',

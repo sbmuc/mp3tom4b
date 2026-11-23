@@ -44,7 +44,10 @@ import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
 import { coverProblem, IMAGE_ACCEPT, isDecodableImage } from '@/lib/image/validate'
 import { formatBytes, formatDuration } from '@/lib/audio/format'
 import { safeFileName } from '@/lib/format/fileName'
-import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
+import { EMPTY_METADATA, type Bitrate, type ConversionMetadata, type ConversionProgress, type Genre } from '@/types'
+import { timedRows } from '@/lib/audio/chapterList'
+import ChapterTools from '@/components/ChapterTools'
+import SeriesDescriptionFields from '@/components/SeriesDescriptionFields'
 import OutputPreview from '@/components/OutputPreview'
 import WhereToListen from '@/components/WhereToListen'
 import ToolError from '@/components/ToolError'
@@ -112,27 +115,12 @@ const rowsFromStarts = (starts: number[]): Row[] =>
   starts.map((ms, i) => ({ id: crypto.randomUUID(), timeStr: formatTimecode(ms), title: `Chapter ${i + 1}` }))
 
 /**
- * Rows from chapter marks (a cue sheet's tracks, or the chapters a file
- * already has), in whole seconds like the rest of this tool (rounded down, so
- * a marker never lands after its chapter starts). The first starts at
- * 0:00:00; marks past the end of the file, or a second one in the same
- * second, are left out and counted. A blank title becomes "Chapter N".
+ * Rows from chapter marks (a cue sheet's tracks, the chapters a file already
+ * has, or a pasted list): see timedRows for the rules.
  */
 function rowsFromMarks(chapters: CueChapter[], durationMs: number): { rows: Row[]; leftOut: number } {
-  const rows: Row[] = []
-  let lastSec = -1
-  let leftOut = 0
-  chapters.forEach((c, i) => {
-    const ms = i === 0 ? 0 : c.startMs
-    const sec = Math.floor(ms / 1000)
-    if ((durationMs > 0 && ms >= durationMs) || sec <= lastSec) {
-      leftOut++
-      return
-    }
-    lastSec = sec
-    rows.push({ id: crypto.randomUUID(), timeStr: formatTimecode(ms), title: c.title.trim() || `Chapter ${rows.length + 1}` })
-  })
-  return { rows, leftOut }
+  const { rows, leftOut } = timedRows(chapters, durationMs)
+  return { rows: rows.map((r) => ({ id: crypto.randomUUID(), ...r })), leftOut }
 }
 
 /**
@@ -153,13 +141,7 @@ export default function FileChapterizer() {
   const [inputError, setInputError] = useState<string | null>(null)
 
   const [rows, setRows] = useState<Row[]>([])
-  const [metadata, setMetadata] = useState<ConversionMetadata>({
-    title: '',
-    author: '',
-    narrator: '',
-    year: '',
-    genre: 'Audiobook',
-  })
+  const [metadata, setMetadata] = useState<ConversionMetadata>({ ...EMPTY_METADATA })
   const [durationMs, setDurationMs] = useState(0)
   const [bitrate, setBitrate] = useState<Bitrate>(64)
   // The file's own bitrate when it is lossy at 48 kbps or less.
@@ -289,7 +271,7 @@ export default function FileChapterizer() {
   const handleReset = () => {
     setFile(null)
     setRows([])
-    setMetadata({ title: '', author: '', narrator: '', year: '', genre: 'Audiobook' })
+    setMetadata({ ...EMPTY_METADATA })
     setDurationMs(0)
     setBitrate(64)
     setLowSource(null)
@@ -394,6 +376,9 @@ export default function FileChapterizer() {
         narrator: meta.narrator ?? '',
         year: meta.year ?? '',
         genre: meta.genre ?? 'Audiobook',
+        description: meta.description ?? '',
+        series: meta.series ?? '',
+        seriesPart: meta.seriesPart ?? '',
       })
       // Checked like a picked cover: one the browser can't decode would only
       // fail the run when it gets to the cover.
@@ -588,6 +573,8 @@ export default function FileChapterizer() {
       trackEvent('file_chapterized', {
         chapterCount: chapters.length,
         bitrate,
+        hasDescription: metadata.description.trim() !== '',
+        hasSeries: metadata.series.trim() !== '',
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
       })
     } catch (err) {
@@ -786,6 +773,23 @@ export default function FileChapterizer() {
               </button>
             </div>
 
+            <ChapterTools<Row[]>
+              idPrefix="ch-chapters"
+              chapters={rows.map((r, i) => ({ title: r.title, startMs: startsMs[i] }))}
+              onTitles={(titles) => setRows((rs) => rs.map((r, i) => ({ ...r, title: titles[i] ?? r.title })))}
+              onTimedList={(list) => {
+                const { rows: next, leftOut } = rowsFromMarks(list, durationMs)
+                setRows(next)
+                // The note about the chapters before (found, split, from the file) no longer fits.
+                setSilenceNote(null)
+                setEqualNote(null)
+                return leftOut
+              }}
+              snapshot={() => rows}
+              restore={setRows}
+              disabled={isBusy}
+            />
+
             {!previewOk && (
               <p className="mb-3 text-xs text-amber-700 dark:text-amber-400">
                 This browser can&apos;t play this file&apos;s format, so you can&apos;t listen to the chapters here. The M4B
@@ -898,6 +902,15 @@ export default function FileChapterizer() {
                   onChange={(e) => setMetadata((m) => ({ ...m, genre: e.target.value as Genre }))} className={inputBase}>
                   {GENRES.map((g) => <option key={g} value={g}>{g}</option>)}
                 </select>
+              </div>
+              <div className="sm:col-span-2">
+                <SeriesDescriptionFields
+                  idPrefix="ch"
+                  value={metadata}
+                  onChange={(patch) => setMetadata((m) => ({ ...m, ...patch }))}
+                  inputClass={inputBase}
+                  labelClass={labelClass}
+                />
               </div>
             </div>
           </section>

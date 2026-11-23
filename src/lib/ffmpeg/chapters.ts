@@ -66,5 +66,19 @@ export function buildGlobalMetadata(metadata: ConversionMetadata): string[] {
   if (metadata.narrator) lines.push(`composer=${escapeMetadataValue(metadata.narrator)}`)
   if (metadata.year) lines.push(`date=${escapeMetadataValue(metadata.year)}`)
   lines.push(`genre=${escapeMetadataValue(metadata.genre)}`)
+  // The MP4 muxer writes these as desc and ldes (iTunes' short and long
+  // description; Audiobookshelf reads desc), tvsh and tven. tvsh and tven are
+  // where Audiobookshelf looks for the series and its number in an M4B
+  // ("show" and "episode_id" to ffprobe, server/utils/prober.js); apps that
+  // don't use them ignore them. Both descriptions get the whole text.
+  const description = metadata.description.replace(/\r\n?/g, '\n').trim()
+  if (description) {
+    lines.push(`description=${escapeMetadataValue(description)}`)
+    lines.push(`synopsis=${escapeMetadataValue(description)}`)
+  }
+  const series = metadata.series.trim()
+  if (series) lines.push(`show=${escapeMetadataValue(series)}`)
+  const seriesPart = metadata.seriesPart.trim()
+  if (seriesPart) lines.push(`episode_id=${escapeMetadataValue(seriesPart)}`)
   return lines
 }

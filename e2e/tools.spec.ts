@@ -4,6 +4,7 @@
  * where it matters the chapters in the preview player). They catch what the
  * Node tests can't: bundling of the ffmpeg worker, headers, browser APIs.
  */
+import { readFileSync } from 'node:fs'
 import { expect, test as base } from '@playwright/test'
 import { fixture } from './fixtures'
 
@@ -483,4 +484,118 @@ test('converter: the cover zone takes a WebP', async ({ page }) => {
   await page.getByLabel('Choose a cover image').setInputFiles(fixture('cover.webp'))
   await expect(page.getByAltText('Cover preview')).toBeVisible()
   await expect(page.getByText('from drop')).toHaveCount(0)
+})
+
+test('editor: a pasted chapter list, find & replace, and the series and description are saved', async ({ page }) => {
+  await page.goto('/edit-m4b-chapters')
+  await page.getByLabel('Choose an M4B to edit').setInputFiles(fixture('book.m4b'))
+  const chapters = page.getByRole('region', { name: 'Chapters', exact: true })
+  await expect(chapters.getByLabel('Chapter title')).toHaveCount(2)
+
+  await chapters.getByRole('button', { name: 'Paste a chapter list' }).click()
+  await chapters.getByLabel('Paste a chapter list').fill('Chapters:\n0:00 Book - Opening\n0:15 Book - Middle\n0:30 Book - Ending\n')
+  await expect(chapters.getByText('3 chapters with a start time (1 line without a time skipped).')).toBeVisible()
+  await chapters.getByRole('button', { name: 'Replace the chapters' }).click()
+  await expect(chapters.getByLabel('Chapter start time')).toHaveCount(3)
+  await expect(chapters.getByLabel('Chapter start time').nth(1)).toHaveValue('0:00:15')
+  await expect(chapters.getByLabel('Chapter title').nth(2)).toHaveValue('Book - Ending')
+
+  // A clean-up in one go, undone; then the same by find & replace.
+  await chapters.getByRole('button', { name: 'Find & replace in titles' }).click()
+  await chapters.getByRole('button', { name: 'Remove “Book -”' }).click()
+  await expect(chapters.getByLabel('Chapter title').first()).toHaveValue('Opening')
+  await chapters.getByRole('button', { name: 'Undo' }).click()
+  await expect(chapters.getByLabel('Chapter title').first()).toHaveValue('Book - Opening')
+  await chapters.getByLabel('Find', { exact: true }).fill('book - ')
+  await chapters.getByRole('button', { name: 'Replace in 3 titles' }).click()
+  await expect(chapters.getByLabel('Chapter title').nth(1)).toHaveValue('Middle')
+
+  await page.getByRole('button', { name: /Series and description/ }).click()
+  await expect(page.locator('#edit-series')).toBeFocused()
+  await page.locator('#edit-series').fill('E2E Series')
+  await page.locator('#edit-series-part').fill('2')
+  await page.locator('#edit-description').fill('Line one.\n\nLine two.')
+  await page.getByRole('button', { name: 'Save M4B' }).click()
+  await expect(page.getByText('Your edited audiobook is ready')).toBeVisible()
+
+  // Opened again, the saved file has it all.
+  const download = page.waitForEvent('download')
+  await page.getByRole('link', { name: 'Download M4B' }).click()
+  const saved = readFileSync(await (await download).path())
+  await page.getByRole('button', { name: 'Edit another' }).click()
+  await page.getByLabel('Choose an M4B to edit').setInputFiles({ name: 'saved.m4b', mimeType: 'audio/mp4', buffer: saved })
+  await expect(chapters.getByLabel('Chapter title')).toHaveCount(3)
+  await expect(chapters.getByLabel('Chapter title').nth(2)).toHaveValue('Ending')
+  await expect(chapters.getByLabel('Chapter start time').nth(2)).toHaveValue('0:00:30')
+  await expect(page.locator('#edit-series')).toHaveValue('E2E Series')
+  await expect(page.locator('#edit-series-part')).toHaveValue('2')
+  await expect(page.locator('#edit-description')).toHaveValue('Line one.\n\nLine two.')
+})
+
+test('add chapters: a pasted list gives the chapters, and titles alone rename them', async ({ page }) => {
+  await page.goto('/add-chapters-to-mp3')
+  await page.getByLabel('Choose an audio file to add chapters to').setInputFiles(fixture('pauses.mp3'))
+  const chapters = page.getByRole('region', { name: 'Chapters', exact: true })
+  await chapters.getByRole('button', { name: 'Paste a chapter list' }).click()
+  await chapters.getByLabel('Paste a chapter list').fill('[00:00] Start\n[00:16] Middle\n[00:33] End\n[09:00] Too late')
+  await chapters.getByRole('button', { name: 'Replace the chapters' }).click()
+  await expect(chapters.getByLabel('Chapter start time')).toHaveCount(3)
+  await expect(chapters.getByLabel('Chapter start time').nth(2)).toHaveValue('0:00:33')
+  await expect(chapters.getByText(/1 chapter was left out: past the end/)).toBeVisible()
+
+  await chapters.getByRole('button', { name: 'Paste a chapter list' }).click()
+  await chapters.getByLabel('Paste a chapter list').fill('One\nTwo')
+  await expect(chapters.getByText('2 titles for 3 chapters: the last chapter keeps its title.')).toBeVisible()
+  await chapters.getByRole('button', { name: 'Use the titles' }).click()
+  await expect(chapters.getByLabel('Chapter title').first()).toHaveValue('One')
+  await expect(chapters.getByLabel('Chapter title').last()).toHaveValue('End')
+
+  await page.getByRole('button', { name: 'Create chaptered M4B' }).click()
+  await expect(page.getByText('Your chaptered audiobook is ready')).toBeVisible()
+  await page.getByText('Preview: listen and check the chapters').click()
+  await expect(page.getByText('3 chapters')).toBeVisible()
+  await expect(page.getByText('Two').last()).toBeVisible()
+})
+
+test('converter: pasted titles, a copied list, and the description from iTunes go into the M4B', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  // iTunes' answer, as it gives one: the description is HTML.
+  await page.route(/itunes\.apple\.com\/search/, (route) =>
+    route.fulfill({
+      json: {
+        resultCount: 1,
+        results: [{ collectionId: 7, collectionName: 'E2E Book', artistName: 'E2E Author', releaseDate: '2001-01-01T00:00:00Z', description: '<b>Bold</b> start.<br /><br />Second &amp; last.' }],
+      },
+    }),
+  )
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])
+  await expect(page.getByText(/^2 files ·/)).toBeVisible()
+
+  const list = page.getByRole('region', { name: 'Audio file list' })
+  await list.getByRole('button', { name: 'Paste a chapter list' }).click()
+  await list.getByLabel('Paste a chapter list').fill('The Beginning\nThe End')
+  await list.getByRole('button', { name: 'Use the titles' }).click()
+  await expect(list.getByLabel('Chapter title', { exact: true }).last()).toHaveValue('The End')
+  await list.getByRole('button', { name: 'Copy the list' }).click()
+  await expect(list.getByText('Copied 2 chapters, with their start times.')).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('0:00:00 The Beginning\n0:00:08 The End')
+
+  await page.getByRole('button', { name: 'Look up online' }).click()
+  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await page.getByRole('button', { name: 'Use this' }).click()
+  await expect(page.locator('#md-description')).toHaveValue('Bold start.\n\nSecond & last.')
+  await expect(page.locator('label[for="md-description"]').getByText('from iTunes')).toBeVisible()
+  await page.locator('#md-series').fill('E2E Series')
+  await page.locator('#md-series-part').fill('3')
+
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toBeVisible()
+  // The editor reads them back from the M4B's tags.
+  await page.getByRole('button', { name: 'Edit chapters & tags' }).click()
+  await expect(page).toHaveURL(/\/edit-m4b-chapters$/)
+  await expect(page.getByLabel('Chapter title', { exact: true }).first()).toHaveValue('The Beginning')
+  await expect(page.locator('#edit-series')).toHaveValue('E2E Series')
+  await expect(page.locator('#edit-series-part')).toHaveValue('3')
+  await expect(page.locator('#edit-description')).toHaveValue('Bold start.\n\nSecond & last.')
 })

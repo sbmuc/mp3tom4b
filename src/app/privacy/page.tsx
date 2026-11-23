@@ -57,7 +57,9 @@ export default function PrivacyPage() {
         bitrate, the length of the audiobook, the output size, how long it took and, when it
         failed, the type of the input file (such as MP3), the kind of error (for example &ldquo;out of memory&rdquo;), the encoder&apos;s
         error code, the step it stopped at (such as &ldquo;encoding&rdquo;) and the browser&apos;s
-        name for the error (such as &ldquo;RangeError&rdquo;), from a fixed list. Neither sets cookies
+        name for the error (such as &ldquo;RangeError&rdquo;), from a fixed list. We also count
+        whether a series or description was filled in (yes or no, never what it says) and which of
+        the chapter list tools was used, such as pasting a list, with the number of chapters. Neither sets cookies
         or identifies visitors, and neither ever receives your audio, file names, metadata, or
         cover images. Umami&apos;s requests go to Umami Cloud through this site&apos;s own domain,
         and browsers that send Do Not Track aren&apos;t counted by it. No third-party advertising

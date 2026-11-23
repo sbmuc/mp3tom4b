@@ -30,10 +30,13 @@ import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
 import { coverProblem, IMAGE_ACCEPT } from '@/lib/image/validate'
 import { formatBytes } from '@/lib/audio/format'
 import OutputPreview from '@/components/OutputPreview'
-import type { ConversionMetadata, ConversionProgress, Genre } from '@/types'
+import { EMPTY_METADATA, type ConversionMetadata, type ConversionProgress, type Genre } from '@/types'
 import ToolError from '@/components/ToolError'
 import DropPrompt from '@/components/DropPrompt'
+import ChapterTools from '@/components/ChapterTools'
+import SeriesDescriptionFields from '@/components/SeriesDescriptionFields'
 import { takeEditorHandoff } from '@/lib/handoff'
+import { timedRows } from '@/lib/audio/chapterList'
 
 const ACCEPTED_EXTENSIONS = ['.m4b', '.m4a']
 const ACTIVE_STATUSES = new Set(['loading-ffmpeg', 'muxing'])
@@ -87,13 +90,7 @@ export default function M4bEditor() {
   const [inputError, setInputError] = useState<string | null>(null)
 
   const [rows, setRows] = useState<Row[]>([])
-  const [metadata, setMetadata] = useState<ConversionMetadata>({
-    title: '',
-    author: '',
-    narrator: '',
-    year: '',
-    genre: 'Audiobook',
-  })
+  const [metadata, setMetadata] = useState<ConversionMetadata>({ ...EMPTY_METADATA })
   const [durationMs, setDurationMs] = useState(0)
 
   // Cover: object URLs are derived from the File objects via effects, so their
@@ -163,7 +160,7 @@ export default function M4bEditor() {
   const handleReset = () => {
     setFile(null)
     setRows([])
-    setMetadata({ title: '', author: '', narrator: '', year: '', genre: 'Audiobook' })
+    setMetadata({ ...EMPTY_METADATA })
     setDurationMs(0)
     setCoverMode('keep')
     setOriginalCoverFile(null)
@@ -206,6 +203,10 @@ export default function M4bEditor() {
         narrator: meta.narrator ?? '',
         year: meta.year ?? '',
         genre: meta.genre ?? 'Audiobook',
+        // Read back so saving keeps them: the edit writes only the tags it is given.
+        description: meta.description ?? '',
+        series: meta.series ?? '',
+        seriesPart: meta.seriesPart ?? '',
       })
 
       setOriginalCoverFile(meta.coverFile ?? null)
@@ -312,6 +313,8 @@ export default function M4bEditor() {
       trackEvent('m4b_edited', {
         chapterCount: chapters.length,
         coverMode,
+        hasDescription: metadata.description.trim() !== '',
+        hasSeries: metadata.series.trim() !== '',
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
       })
     } catch (err) {
@@ -456,6 +459,15 @@ export default function M4bEditor() {
                   {GENRES.map((g) => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
+              <div className="sm:col-span-2">
+                <SeriesDescriptionFields
+                  idPrefix="edit"
+                  value={metadata}
+                  onChange={(patch) => setMetadata((m) => ({ ...m, ...patch }))}
+                  inputClass={inputBase}
+                  labelClass={labelClass}
+                />
+              </div>
             </div>
           </section>
 
@@ -527,6 +539,20 @@ export default function M4bEditor() {
                 <Plus size={13} aria-hidden="true" /> Add chapter
               </button>
             </div>
+
+            <ChapterTools<Row[]>
+              idPrefix="edit-chapters"
+              chapters={rows.map((r) => ({ title: r.title, startMs: parseTimecode(r.timeStr) }))}
+              onTitles={(titles) => setRows((rs) => rs.map((r, i) => ({ ...r, title: titles[i] ?? r.title })))}
+              onTimedList={(list) => {
+                const { rows: next, leftOut } = timedRows(list, durationMs)
+                setRows(next.map((r) => ({ id: crypto.randomUUID(), ...r })))
+                return leftOut
+              }}
+              snapshot={() => rows}
+              restore={setRows}
+              disabled={isRunning}
+            />
 
             <ul className="flex flex-col gap-2">
               {rows.map((r) => {

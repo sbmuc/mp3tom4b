@@ -41,6 +41,10 @@ const FAQS = [
     a: 'Yes. Drop the audio file together with its cue sheet (the .cue file rippers like EAC, foobar2000 and XLD write next to one big file) and every track becomes a chapter, with its exact start time and title. The sheet\'s title and performer fill in the book\'s title and author when the file has no tags. Cue sheets that span several files, one per CD, aren\'t supported yet.',
   },
   {
+    q: 'I have a list of the chapters. Can I paste it?',
+    a: 'Yes. "Paste a chapter list" takes a start time and a title per line (like a chapters.txt or the chapters in a YouTube description) and makes those the chapters. A list of only titles, one per line, names the chapters found in the silences or split evenly, in order.',
+  },
+  {
     q: 'Does this split the file into separate tracks?',
     a: 'No. It keeps the audio as one continuous file and adds chapter markers over it, so you get a single tidy M4B. To split an M4B into one MP3 per chapter instead, use the M4B to MP3 tool.',
   },

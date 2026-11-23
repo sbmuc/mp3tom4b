@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.22.0] — 2026-11-24
+
+### Added
+- **Paste a chapter list.** In the editor and in Add chapters, "Paste a chapter list" takes a start time and a title per line (a chapters.txt, the chapters from a YouTube description, a Nero/OGM chapter file, times in front of or after the titles, with or without hours or milliseconds) and makes those the chapters. A list of only titles, one per line, goes onto the chapters already there, in order, and says what happens when the counts differ. On the homepage, pasted titles go onto the files.
+- **Copy the chapter list** as text, with each chapter's start time, to keep, to share, or to paste into another book.
+- **Find & replace in chapter titles** on the homepage, in the editor and in Add chapters, with a count and examples before anything changes. One click removes the track numbers, or the text every title starts or ends with ("Book Title - ", " (Unabridged)"), or names the chapters Chapter 1, 2, 3… Every change can be undone.
+- **Series and description.** The converter, the editor, the merger and Add chapters have fields for the series, the book's number in it, and a description, folded away until you need them. They're saved where Audiobookshelf reads them; the tools read them back from a file, and the compressor keeps them. Looking a book up on iTunes now fills in its description too.
+
+### Fixed
+- **Saving in the editor no longer drops a book's description.** The editor saved only the tags it showed, so a description an M4B came with was lost; it is now shown and kept.
+
+### Changed
+- The anonymous usage counts now also say whether a series or description was filled in (yes or no, never the text), and count the chapter list tools by which one was used and on how many chapters. The privacy policy says so.
+
+---
+
 ## [1.21.3] — 2026-11-24
 
 ### Fixed

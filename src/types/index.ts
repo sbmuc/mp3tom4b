@@ -38,6 +38,24 @@ export interface ConversionMetadata {
   narrator: string
   year: string
   genre: Genre
+  /** What the book is about; '' for none. Written as the description tags. */
+  description: string
+  /** The series the book belongs to; '' for none. */
+  series: string
+  /** Its number in that series ("3", "1.5"); '' for none. */
+  seriesPart: string
+}
+
+/** Every field empty, the genre an audiobook: a new book's details. */
+export const EMPTY_METADATA: Readonly<ConversionMetadata> = {
+  title: '',
+  author: '',
+  narrator: '',
+  year: '',
+  genre: 'Audiobook',
+  description: '',
+  series: '',
+  seriesPart: '',
 }
 
 export type ConversionStatus =
@@ -56,6 +74,9 @@ export interface ExtractedMetadata {
   narrator?: string
   year?: string
   genre?: Genre
+  description?: string
+  series?: string
+  seriesPart?: string
   /** Per-file embedded title — used for chapter title when present */
   chapterTitle?: string
   /** Embedded cover art as a File (already wrapped from picture data) */

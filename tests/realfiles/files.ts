@@ -15,7 +15,7 @@ import { fileNameToChapterTitle } from '@/lib/audio/format'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { readMoov, readMp4Chapters, type Chapter } from '@/lib/audio/mp4Chapters'
 import { decodedAudioSeconds } from '@/lib/ffmpeg/mp4Duration'
-import type { AudioFile, ConversionMetadata } from '@/types'
+import { EMPTY_METADATA, type AudioFile, type ConversionMetadata } from '@/types'
 import { NodeFFmpeg } from '../integration/nodeFFmpeg'
 
 export const ROOT = process.env.REAL_FILES_DIR ?? path.join(os.homedir(), 'Programming/mp3tom4b_test_files')
@@ -86,7 +86,7 @@ export async function asDropped(files: File[]): Promise<AudioFile[]> {
   })
 }
 
-export const META: ConversionMetadata = { title: 'Real File Test', author: 'Test Author', narrator: '', year: '', genre: 'Audiobook' }
+export const META: ConversionMetadata = { ...EMPTY_METADATA, title: 'Real File Test', author: 'Test Author' }
 
 export interface BookInfo {
   seconds: number

@@ -38,7 +38,15 @@ const FAQS = [
   },
   {
     q: 'What can I edit?',
-    a: 'Chapter titles and start times (add, remove, rename, re-time), the book title, author, narrator, year, and genre, and the cover image (keep, replace, or remove).',
+    a: 'Chapter titles and start times (add, remove, rename, re-time), the book title, author, narrator, year, genre, series and description, and the cover image (keep, replace, or remove).',
+  },
+  {
+    q: 'Can I paste a list of chapter names or times?',
+    a: 'Yes. "Paste a chapter list" takes a start time and a title per line, like a chapters.txt or the chapters in a YouTube description, and makes those the chapters. A list of only titles, one per line, renames the chapters that are there, in order. "Copy the list" gives you the chapters as text in the same form.',
+  },
+  {
+    q: 'Can I rename all chapters at once?',
+    a: 'Yes. "Find & replace in titles" changes text in every title and shows how many it changes first. One click also removes track numbers, removes text every title shares (like the book\'s name in front of each), or names them Chapter 1, 2, 3. Every change can be undone.',
   },
   {
     q: 'How do I change the cover of an M4B?',
