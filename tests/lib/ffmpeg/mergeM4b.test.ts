@@ -9,9 +9,10 @@ import {
   type MergePart,
 } from '@/lib/ffmpeg/mergeM4b'
 import type { AudioStreamInfo } from '@/lib/ffmpeg/probeM4b'
-import type { ConversionMetadata } from '@/types'
+import { EMPTY_METADATA, type ConversionMetadata } from '@/types'
 
 const meta: ConversionMetadata = {
+  ...EMPTY_METADATA,
   title: 'My Book',
   author: 'Some Author',
   narrator: 'A Narrator',

@@ -88,3 +88,45 @@ describe('keeping the last M4B for a quick update', () => {
     expect(buildKey([{ id: 'a' }], 64)).not.toBe(buildKey([{ id: 'a' }], 96))
   })
 })
+
+describe('several chapter titles at once', () => {
+  const audio = (name: string) =>
+    ({
+      id: name,
+      file: new File([new Uint8Array([1])], name),
+      chapterTitle: name,
+      originalChapterTitle: name,
+      duration: 10,
+    }) as import('@/types').AudioFile
+
+  beforeEach(() => {
+    store().reset()
+    store().addFiles([audio('a.mp3'), audio('b.mp3'), audio('c.mp3')])
+  })
+
+  it('renames the files named, keeps the rest, and keeps the last M4B for a quick update', () => {
+    store().setOutputBlob(new Blob([new Uint8Array([1])]))
+    store().setLastBuild({ blob: new Blob([new Uint8Array([1])]), key: buildKey(store().files, store().bitrate), starts: [0, 10_000, 20_000], durationMs: 30_000, cover: null })
+    store().setChapterTitles({ 'a.mp3': 'One', 'c.mp3': 'Three' })
+    expect(store().files.map((f) => f.chapterTitle)).toEqual(['One', 'b.mp3', 'Three'])
+    expect(store().outputBlob).toBeNull()
+    expect(store().lastBuild).not.toBeNull()
+  })
+
+  it('leaves the result alone when nothing changes', () => {
+    const blob = new Blob([new Uint8Array([1])])
+    store().setOutputBlob(blob)
+    store().setChapterTitles({ 'a.mp3': 'a.mp3' })
+    expect(store().outputBlob).toBe(blob)
+  })
+})
+
+describe('description and series from the tags', () => {
+  beforeEach(() => store().reset())
+
+  it('fills them from the first file, but never over what the user typed', () => {
+    store().setMetadata({ series: 'Typed series' })
+    store().applyAutoMetadata({ description: 'From the tags', series: 'Tagged series', seriesPart: '2' })
+    expect(store().metadata).toMatchObject({ description: 'From the tags', series: 'Typed series', seriesPart: '2' })
+  })
+})

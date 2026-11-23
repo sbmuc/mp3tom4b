@@ -18,6 +18,23 @@ function pictureToFile(picture: { format: string; data: Uint8Array } | undefined
   return new File([buf], `embedded-cover.${ext}`, { type: mime })
 }
 
+type NativeTags = Record<string, Array<{ id: string; value: unknown }>>
+
+/** The first non-empty text among native tags with one of these ids (any case, any tag format). */
+function nativeText(native: NativeTags | undefined, ids: string[]): string | undefined {
+  if (!native) return undefined
+  const wanted = new Set(ids.map((id) => id.toLowerCase()))
+  for (const tags of Object.values(native)) {
+    for (const tag of tags) {
+      if (!wanted.has(tag.id.toLowerCase())) continue
+      const v = tag.value
+      const text = typeof v === 'string' ? v : Array.isArray(v) && typeof v[0] === 'string' ? v[0] : undefined
+      if (text?.trim()) return text.trim()
+    }
+  }
+  return undefined
+}
+
 /**
  * Extract embedded ID3/MP4/Vorbis metadata from an audio file.
  * Runs entirely in-browser via music-metadata; nothing is uploaded.
@@ -25,7 +42,7 @@ function pictureToFile(picture: { format: string; data: Uint8Array } | undefined
  */
 export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
   try {
-    const { common, format } = await parseBlob(file)
+    const { common, format, native } = await parseBlob(file)
 
     const title = common.album?.trim() || undefined
     const author = (common.artist || common.albumartist)?.trim() || undefined
@@ -33,6 +50,19 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
     const year = common.year ? String(common.year) : undefined
     const genre = mapGenre(common.genre?.[0])
     const chapterTitle = common.title?.trim() || undefined
+    // The long description before the short one: an M4B's ldes, then its
+    // desc (both ours), or an MP3's TDES.
+    const description = (common.longDescription || common.description?.[0])?.trim() || undefined
+    // Where Audiobookshelf reads a series: an M4B's tvsh (ours), the movement
+    // tags (MP4 ©mvn, ID3 MVNM), or a SERIES text tag.
+    const series =
+      common.tvShow?.trim() || common.movement?.trim() || nativeText(native as NativeTags, ['TXXX:SERIES', 'SERIES']) || undefined
+    const movementNo = common.movementIndex?.no
+    const seriesPart =
+      common.tvEpisodeId?.trim() ||
+      (typeof movementNo === 'number' && movementNo > 0 ? String(movementNo) : undefined) ||
+      nativeText(native as NativeTags, ['TXXX:SERIES-PART', 'SERIES-PART']) ||
+      undefined
     const coverFile = pictureToFile(common.picture?.[0])
     const durationMs =
       typeof format.duration === 'number' && Number.isFinite(format.duration)
@@ -55,6 +85,9 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
       narrator,
       year,
       genre,
+      description,
+      series,
+      seriesPart,
       chapterTitle,
       coverFile,
       durationMs,

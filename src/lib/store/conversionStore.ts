@@ -13,11 +13,11 @@ import type {
   CoverSource,
   DuplicateNotice,
   ExtractedMetadata,
-  Genre,
   MetadataSource,
   ShortChapter,
   SortDirection,
 } from '@/types'
+import { EMPTY_METADATA } from '@/types'
 
 function sortFilesNatural(files: AudioFile[], direction: 'asc' | 'desc'): AudioFile[] {
   return orderBy(files, [(f) => f.file.name], [direction])
@@ -71,6 +71,8 @@ interface ConversionStore {
   /** Set the sort direction. 'asc' or 'desc' immediately re-sort the list. */
   setSortDirection: (direction: 'asc' | 'desc') => void
   updateChapterTitle: (id: string, title: string) => void
+  /** Several chapter titles at once (pasted, replaced, numbered), by file id. */
+  setChapterTitles: (titles: Record<string, string>) => void
 
   // Duplicate-detection feedback
   duplicateNotice: DuplicateNotice | null
@@ -135,15 +137,10 @@ interface ConversionStore {
   reset: () => void
 }
 
-const defaultMetadata: ConversionMetadata = {
-  title: '',
-  author: '',
-  narrator: '',
-  // Left blank on purpose: auto-filling the current year would stamp e.g. a
-  // 1937 book with a 2026 release date. Empty means no `date` atom is written.
-  year: '',
-  genre: 'Audiobook' as Genre,
-}
+// The year is left blank on purpose: auto-filling the current year would
+// stamp e.g. a 1937 book with a 2026 release date. Empty means no `date`
+// atom is written.
+const defaultMetadata: ConversionMetadata = { ...EMPTY_METADATA }
 
 const defaultProgress: ConversionProgress = {
   status: 'idle',
@@ -190,6 +187,14 @@ export const useConversionStore = create<ConversionStore>((set) => ({
       files: state.files.map((f) => (f.id === id ? { ...f, chapterTitle: title } : f)),
       outputBlob: null,
     })),
+  setChapterTitles: (titles) =>
+    set((state) => {
+      if (!state.files.some((f) => titles[f.id] !== undefined && titles[f.id] !== f.chapterTitle)) return {}
+      return {
+        files: state.files.map((f) => (titles[f.id] !== undefined ? { ...f, chapterTitle: titles[f.id] } : f)),
+        outputBlob: null,
+      }
+    }),
 
   metadata: defaultMetadata,
   userTouched: {},
@@ -227,7 +232,7 @@ export const useConversionStore = create<ConversionStore>((set) => ({
   applyAutoMetadata: (extracted) =>
     set((state) => {
       const patch: Partial<ConversionMetadata> = {}
-      const fields: MetadataField[] = ['title', 'author', 'narrator', 'year', 'genre']
+      const fields: MetadataField[] = ['title', 'author', 'narrator', 'year', 'genre', 'description', 'series', 'seriesPart']
       for (const field of fields) {
         if (state.userTouched[field]) continue
         if (state.verifiedFields[field]) continue

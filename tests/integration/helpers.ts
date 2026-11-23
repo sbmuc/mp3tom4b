@@ -10,7 +10,7 @@ import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect } from 'vitest'
-import type { AudioFile, ConversionMetadata } from '@/types'
+import { EMPTY_METADATA, type AudioFile, type ConversionMetadata } from '@/types'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { NodeFFmpeg } from './nodeFFmpeg'
 
@@ -100,7 +100,7 @@ export async function asAudioFile(file: File, i: number): Promise<AudioFile> {
   }
 }
 
-export const META: ConversionMetadata = { title: 'Test Book', author: 'Test Author', narrator: '', year: '2026', genre: 'Audiobook' }
+export const META: ConversionMetadata = { ...EMPTY_METADATA, title: 'Test Book', author: 'Test Author', year: '2026' }
 
 export const total = (specs: ToneSpec[]) => specs.reduce((a, t) => a + t.sec, 0)
 

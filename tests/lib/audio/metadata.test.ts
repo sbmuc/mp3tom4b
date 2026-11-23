@@ -68,6 +68,50 @@ describe('extractMetadata — happy path field mapping', () => {
   })
 })
 
+describe('extractMetadata — description and series', () => {
+  it("reads an M4B's long description before its short one, and its series from tvsh and tven", async () => {
+    parseBlobMock.mockResolvedValue({
+      common: {
+        description: ['Short.'],
+        longDescription: ' The whole description. ',
+        tvShow: ' Discworld ',
+        tvEpisodeId: '3',
+        movementIndex: { no: null, of: null },
+      },
+      format: {},
+      native: {},
+    } as never)
+    const result = await extractMetadata(dummyFile())
+    expect(result.description).toBe('The whole description.')
+    expect(result.series).toBe('Discworld')
+    expect(result.seriesPart).toBe('3')
+  })
+
+  it('reads the movement tags and a SERIES text tag, as Audiobookshelf does', async () => {
+    parseBlobMock.mockResolvedValue({
+      common: { movement: 'The Expanse', movementIndex: { no: 2, of: 9 }, description: ['From TDES'] },
+      format: {},
+      native: {},
+    } as never)
+    expect(await extractMetadata(dummyFile())).toMatchObject({ series: 'The Expanse', seriesPart: '2', description: 'From TDES' })
+
+    parseBlobMock.mockResolvedValue({
+      common: { movementIndex: { no: null, of: null } },
+      format: {},
+      native: { 'ID3v2.3': [{ id: 'TXXX:series', value: 'Mistborn' }, { id: 'TXXX:series-part', value: ['1'] }] },
+    } as never)
+    expect(await extractMetadata(dummyFile())).toMatchObject({ series: 'Mistborn', seriesPart: '1' })
+  })
+
+  it('leaves them out when the file has none', async () => {
+    parseBlobMock.mockResolvedValue({ common: { movementIndex: { no: null, of: null } }, format: {}, native: {} } as never)
+    const result = await extractMetadata(dummyFile())
+    expect(result.description).toBeUndefined()
+    expect(result.series).toBeUndefined()
+    expect(result.seriesPart).toBeUndefined()
+  })
+})
+
 describe('extractMetadata — genre filtering', () => {
   it('accepts known genre values case-insensitively', async () => {
     parseBlobMock.mockResolvedValue({

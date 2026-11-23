@@ -70,6 +70,7 @@ export default function MetadataLookup() {
   const applyVerifiedMetadata = useConversionStore((s) => s.applyVerifiedMetadata)
   const setMetadata = useConversionStore((s) => s.setMetadata)
   const setCoverFile = useConversionStore((s) => s.setCoverFile)
+  const userTouched = useConversionStore((s) => s.userTouched)
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [stageInFlight, setStageInFlight] = useState<CascadeStageId>('itunes-1')
@@ -135,6 +136,8 @@ export default function MetadataLookup() {
     const olPatch: Partial<ConversionMetadata> = { title: r.title }
     if (r.year) olPatch.year = r.year
     if (r.narrator) olPatch.narrator = r.narrator
+    // The store's description, unless the user wrote one themselves.
+    if (r.description && !(userTouched.description && metadata.description.trim())) olPatch.description = r.description
 
     // The author found is the person in the narrator field (however each spells the name), and
     // the author field held someone else: the two were typed (or tagged) the wrong way round.
@@ -341,6 +344,7 @@ export default function MetadataLookup() {
                         {r.authors.join(', ') || 'Unknown author'}
                         {r.narrator ? ` · narrated by ${r.narrator}` : ''}
                         {r.year ? ` · ${r.year}` : ''}
+                        {r.description ? ' · with description' : ''}
                       </p>
                       <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
                         {SOURCE_LABEL[r.source]}

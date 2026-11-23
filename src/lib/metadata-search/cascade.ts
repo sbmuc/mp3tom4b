@@ -42,6 +42,8 @@ export interface UnifiedResult {
   year?: string
   /** Cover URL — currently only provided by iTunes results. */
   artworkUrl?: string
+  /** The book's description as plain text — iTunes only. */
+  description?: string
 }
 
 export interface UnifiedCascadeResult {
@@ -74,6 +76,7 @@ function itunesToUnified(r: ItunesResult): UnifiedResult {
     narrator: r.narrator,
     year: r.year,
     artworkUrl: r.artworkUrl,
+    description: r.description,
   }
 }
 

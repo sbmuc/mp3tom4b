@@ -75,6 +75,7 @@ iTunes Search and Open Library already ship in V1.1. These would only land if re
 - **i18n architecture** — set up next-i18next or equivalent so further languages are easy.
 
 ### Advanced chapter handling
+- **Group files into chapters** — several files (a CD rip's short tracks) as one chapter, or a chapter every N minutes across files, in the converter. Audiobook Builder, AudioBookConverter and M4Bindr have it; nobody has asked yet (competitor scan, 2026-11-22). Pasting a list, find & replace and series/description shipped in 1.22.0.
 - **Per-chapter cover art** — different image per chapter, embedded as MP4 chapter atoms.
 - **Chapter-title collision detection** — when multiple files have the same embedded title, warn and offer to deduplicate or rename.
 

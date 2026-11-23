@@ -55,7 +55,8 @@ import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
 import { coverProblem, IMAGE_ACCEPT } from '@/lib/image/validate'
 import { fileNameToChapterTitle, formatBytes, formatDuration } from '@/lib/audio/format'
 import { safeFileName } from '@/lib/format/fileName'
-import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
+import { EMPTY_METADATA, type Bitrate, type ConversionMetadata, type ConversionProgress, type Genre } from '@/types'
+import SeriesDescriptionFields from '@/components/SeriesDescriptionFields'
 import OutputPreview from '@/components/OutputPreview'
 import WhereToListen from '@/components/WhereToListen'
 import ToolError from '@/components/ToolError'
@@ -168,13 +169,7 @@ export default function M4bMerger() {
   const [unpacking, setUnpacking] = useState<string | null>(null)
   const [showConverterHint, setShowConverterHint] = useState(false)
 
-  const [metadata, setMetadata] = useState<ConversionMetadata>({
-    title: '',
-    author: '',
-    narrator: '',
-    year: '',
-    genre: 'Audiobook',
-  })
+  const [metadata, setMetadata] = useState<ConversionMetadata>({ ...EMPTY_METADATA })
   const [chapterMode, setChapterMode] = useState<MergeChapterMode>('keep')
   const [bitrate, setBitrate] = useState<Bitrate>(64)
 
@@ -383,6 +378,9 @@ export default function M4bMerger() {
             narrator: prev.narrator || m.narrator || '',
             year: prev.year || m.year || '',
             genre: prev.genre !== 'Audiobook' ? prev.genre : m.genre ?? 'Audiobook',
+            description: prev.description || m.description || '',
+            series: prev.series || m.series || '',
+            seriesPart: prev.seriesPart || m.seriesPart || '',
           })),
         )
       }
@@ -433,7 +431,7 @@ export default function M4bMerger() {
     setRows([])
     setInputError(null)
     setShowConverterHint(false)
-    setMetadata({ title: '', author: '', narrator: '', year: '', genre: 'Audiobook' })
+    setMetadata({ ...EMPTY_METADATA })
     setChapterMode('keep')
     setBitrate(64)
     setCoverMode('keep')
@@ -498,7 +496,12 @@ export default function M4bMerger() {
         },
       })
       setResultBlob(blob)
-      trackEvent('m4b_merged', { ...shape, elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+      trackEvent('m4b_merged', {
+        ...shape,
+        hasDescription: metadata.description.trim() !== '',
+        hasSeries: metadata.series.trim() !== '',
+        elapsedSec: Math.round((Date.now() - startedAt) / 1000),
+      })
     } catch (err) {
       // Error surfaced via the onProgress 'error' event.
       if (!cancelledRef.current) {
@@ -711,6 +714,15 @@ export default function M4bMerger() {
                   onChange={(e) => setMetadata((m) => ({ ...m, genre: e.target.value as Genre }))} className={inputBase}>
                   {GENRES.map((g) => <option key={g} value={g}>{g}</option>)}
                 </select>
+              </div>
+              <div className="sm:col-span-2">
+                <SeriesDescriptionFields
+                  idPrefix="merge"
+                  value={metadata}
+                  onChange={(patch) => setMetadata((m) => ({ ...m, ...patch }))}
+                  inputClass={inputBase}
+                  labelClass={labelClass}
+                />
               </div>
             </div>
           </section>

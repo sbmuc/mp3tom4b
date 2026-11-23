@@ -163,6 +163,8 @@ export default function ConvertButton() {
         outputMb: Math.round((blob.size / (1024 * 1024)) * 10) / 10,
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
         hasCover: coverFile != null,
+        hasDescription: metadata.description.trim() !== '',
+        hasSeries: metadata.series.trim() !== '',
         shortChapters: result.shortChapters.length,
       })
     } catch (err) {

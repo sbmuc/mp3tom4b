@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
 import { useConversionStore } from '@/lib/store/conversionStore'
 import type { Genre, MetadataSource } from '@/types'
+import SeriesDescriptionFields from './SeriesDescriptionFields'
 
 const GENRES: Genre[] = ['Audiobook', 'Podcast', 'Lecture', 'Other']
 
@@ -148,6 +149,17 @@ export default function MetadataForm() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="sm:col-span-2">
+          <SeriesDescriptionFields
+            idPrefix="md"
+            value={metadata}
+            onChange={(patch) => setMetadata(patch)}
+            badges={{ description: verifiedFields.description && <VerifiedBadge source={verifiedFields.description} /> }}
+            inputClass={`${inputBase} ${inputOk}`}
+            labelClass={labelClass}
+          />
         </div>
       </div>
     </section>
