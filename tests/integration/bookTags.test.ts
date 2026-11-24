@@ -18,6 +18,7 @@ import { compressM4B } from '@/lib/ffmpeg/compress'
 import { convertToM4B } from '@/lib/ffmpeg/convert'
 import { editM4B } from '@/lib/ffmpeg/editM4b'
 import { mergeM4B } from '@/lib/ffmpeg/mergeM4b'
+import { chapterizeFile } from '@/lib/ffmpeg/chapterize'
 import { META, TEN_ODD_CHAPTERS, analyze, asAudioFile, mp3, toneFile, total, type ToneSpec } from './helpers'
 import { NodeFFmpeg } from './nodeFFmpeg'
 
@@ -199,6 +200,24 @@ describe('the editor and the tags it does not show', () => {
     expect(tags.disc).toBeUndefined()
     expect(tags.composer).toBeUndefined()
     expect(tags).toMatchObject({ track: '1/1', comment: 'Tagged in Mp3tag; = kept', copyright: '2024 Someone' })
+  })
+
+  it('Add chapters keeps them for an M4B, but not for an MP3', async () => {
+    const chapters = [{ startMs: 0, title: 'A' }, { startMs: 3000, title: 'B' }]
+    const chapterize = async (file: File, metadata: typeof META) =>
+      (await analyze(new Uint8Array(await (await chapterizeFile({ file, chapters, metadata, cover: { mode: 'remove' }, bitrate: 64, durationMs: 6000 })).arrayBuffer()))).tags
+
+    const m4b = await chapterize(await taggedBook(), { ...META, title: 'Redone', year: '2024-04-03', disc: '2' })
+    expect(m4b).toMatchObject({ title: 'Redone', date: '2024-04-03', disc: '2', track: '1/1', comment: 'Tagged in Mp3tag; = kept', copyright: '2024 Someone' })
+
+    // An MP3's own tags (a CD set's track number, say) don't describe the book.
+    const ff = await NodeFFmpeg.create()
+    expect((await ff.run(['-f', 'lavfi', '-i', 'sine=frequency=440:duration=6', '-c:a', 'libmp3lame', '-b:a', '64k', '-metadata', 'track=3/12', '-metadata', 'comment=From the CD', 'cd.mp3'])).ret).toBe(0)
+    const mp3File = new File([new Uint8Array(await ff.readFile('cd.mp3'))], 'cd.mp3')
+    ff.terminate()
+    const fromMp3 = await chapterize(mp3File, META)
+    expect(fromMp3.track).toBeUndefined()
+    expect(fromMp3.comment).toBeUndefined()
   })
 })
 

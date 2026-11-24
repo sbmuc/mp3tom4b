@@ -1038,7 +1038,7 @@ export default function FileChapterizer() {
       )}
 
       {progress.status === 'error' && (
-        <ToolError title="Something went wrong." message={progress.label} onDismiss={() => setProgress(idleProgress)} />
+        <ToolError title="Adding chapters failed." message={progress.label} onDismiss={() => setProgress(idleProgress)} />
       )}
 
       {resultBlob && downloadUrl && (

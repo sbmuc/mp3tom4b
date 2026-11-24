@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ClipboardCopy, ClipboardPaste, Replace, Undo2 } from 'lucide-react'
 import { trackEvent } from '@/lib/analytics'
 import { applyTitles, formatChapterList, parseChapterList, type ListedChapter } from '@/lib/audio/chapterList'
-import { numberedTitles, replaceInTitles, stripSharedText } from '@/lib/audio/chapterTitles'
+import { numberedTitles, replaceInTitles, stripSharedText, titlesLeftEmpty } from '@/lib/audio/chapterTitles'
 import { stripTrackNumbers } from '@/lib/audio/format'
 
 export interface ToolChapter {
@@ -89,6 +89,15 @@ export default function ChapterTools<S>({ idPrefix, chapters, onTitles, onTimedL
   const [matchCase, setMatchCase] = useState(false)
   const [status, setStatus] = useState<Status<S> | null>(null)
   const [copyFallback, setCopyFallback] = useState<string | null>(null)
+  const pasteRef = useRef<HTMLTextAreaElement>(null)
+  const findRef = useRef<HTMLInputElement>(null)
+
+  // An opened panel takes the focus, so the keyboard goes on to its first
+  // field instead of through the other tool buttons first.
+  useEffect(() => {
+    if (panel === 'paste') pasteRef.current?.focus()
+    else if (panel === 'rename') findRef.current?.focus()
+  }, [panel])
 
   const titles = chapters.map((c) => c.title)
   const currentKey = keyOf(chapters)
@@ -162,6 +171,16 @@ export default function ChapterTools<S>({ idPrefix, chapters, onTitles, onTimedL
   // ---- find & replace, and the one-go clean-ups ----
   const replaced = replaceInTitles(titles, find, replacement, matchCase)
   const changes = replaced.map((t, i) => [titles[i], t] as const).filter(([before, after]) => before !== after)
+  // Titles that have the text but stay: the replacement would leave them empty.
+  const leftEmpty = titlesLeftEmpty(titles, find, replacement, matchCase)
+  const replaceLabel =
+    find === ''
+      ? 'Replace'
+      : changes.length > 0
+        ? `Replace in ${plural(changes.length, 'title')}`
+        : leftEmpty > 0
+          ? `That would leave ${leftEmpty === 1 ? 'the title' : `${leftEmpty} titles`} empty`
+          : 'No title has this'
   const withoutNumbers = stripTrackNumbers(titles)
   const numbersChange = withoutNumbers.some((t, i) => t !== titles[i])
   const shared = stripSharedText(titles)
@@ -215,6 +234,7 @@ export default function ChapterTools<S>({ idPrefix, chapters, onTitles, onTimedL
             Paste a chapter list
           </label>
           <textarea
+            ref={pasteRef}
             id={`${idPrefix}-paste`}
             rows={6}
             value={pasted}
@@ -280,7 +300,7 @@ export default function ChapterTools<S>({ idPrefix, chapters, onTitles, onTimedL
               <label htmlFor={`${idPrefix}-find`} className={smallLabel}>
                 Find
               </label>
-              <input id={`${idPrefix}-find`} type="text" value={find} disabled={disabled} onChange={(e) => setFind(e.target.value)} className={fieldClass} />
+              <input ref={findRef} id={`${idPrefix}-find`} type="text" value={find} disabled={disabled} onChange={(e) => setFind(e.target.value)} className={fieldClass} />
             </div>
             <div>
               <label htmlFor={`${idPrefix}-replace`} className={smallLabel}>
@@ -311,7 +331,7 @@ export default function ChapterTools<S>({ idPrefix, chapters, onTitles, onTimedL
               }}
               className={primaryButton}
             >
-              {find === '' ? 'Replace' : changes.length === 0 ? 'No title has this' : `Replace in ${plural(changes.length, 'title')}`}
+              {replaceLabel}
             </button>
           </div>
           {changes.length > 0 && (
@@ -322,6 +342,13 @@ export default function ChapterTools<S>({ idPrefix, chapters, onTitles, onTimedL
                 </li>
               ))}
               {changes.length > 2 && <li>…and {plural(changes.length - 2, 'more')}</li>}
+              {leftEmpty > 0 && (
+                <li>
+                  {leftEmpty === 1
+                    ? '1 title stays as it is: it would be left empty.'
+                    : `${leftEmpty} titles stay as they are: they would be left empty.`}
+                </li>
+              )}
             </ul>
           )}
 

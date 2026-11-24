@@ -20,12 +20,26 @@ const RIGHT_EDGE = /[\s\-–—_|:,]+$/
  */
 export function replaceInTitles(titles: string[], find: string, replacement: string, matchCase: boolean): string[] {
   if (find === '') return titles
+  return replaceEach(titles, find, replacement, matchCase).map((r, i) => (r === '' ? titles[i] : r))
+}
+
+/**
+ * How many titles the replacement would leave empty, and so keeps as they
+ * were (see replaceInTitles): the reason a title that has the text doesn't
+ * change. Pure.
+ */
+export function titlesLeftEmpty(titles: string[], find: string, replacement: string, matchCase: boolean): number {
+  return replaceEach(titles, find, replacement, matchCase).filter((r) => r === '').length
+}
+
+/** Each title replaced and tidied; '' where nothing would be left. */
+function replaceEach(titles: string[], find: string, replacement: string, matchCase: boolean): string[] {
+  if (find === '') return titles
   const pattern = new RegExp(escapeRegExp(find), matchCase ? 'g' : 'gi')
   return titles.map((title) => {
     const replaced = title.replace(pattern, () => replacement)
     if (replaced === title) return title
-    const tidy = replaced.replace(LEFT_EDGE, '').replace(RIGHT_EDGE, '').replace(/\s{2,}/g, ' ').trim()
-    return tidy === '' ? title : tidy
+    return replaced.replace(LEFT_EDGE, '').replace(RIGHT_EDGE, '').replace(/\s{2,}/g, ' ').trim()
   })
 }
 
