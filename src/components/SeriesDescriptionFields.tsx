@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Plus } from 'lucide-react'
+import { DISC_PROBLEM, discTag } from '@/lib/audio/disc'
 
 export interface SeriesAndDescription {
   description: string
   series: string
   seriesPart: string
+  disc: string
 }
 
 interface Props {
@@ -21,14 +23,17 @@ interface Props {
 }
 
 /**
- * The series, its number and the description, in a book's details. Folded
- * away behind one button while all three are empty (most books need none of
- * them); open as soon as one has a value, from the file's tags or a lookup.
+ * The series, its number, the disc number and the description, in a book's
+ * details. Folded away behind one button while all are empty (most books need
+ * none of them); open as soon as one has a value, from the file's tags or a
+ * lookup.
  */
 export default function SeriesDescriptionFields({ idPrefix, value, onChange, badges, inputClass, labelClass }: Props) {
   const [opened, setOpened] = useState(false)
   const seriesRef = useRef<HTMLInputElement>(null)
-  const hasValue = value.description.trim() !== '' || value.series.trim() !== '' || value.seriesPart.trim() !== ''
+  const hasValue =
+    value.description.trim() !== '' || value.series.trim() !== '' || value.seriesPart.trim() !== '' || value.disc.trim() !== ''
+  const discProblem = value.disc.trim() !== '' && discTag(value.disc) === null
 
   // Opened with the button: on to the first field.
   useEffect(() => {
@@ -44,7 +49,7 @@ export default function SeriesDescriptionFields({ idPrefix, value, onChange, bad
         className="inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-sm font-medium text-accent-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-accent-400"
       >
         <Plus size={14} aria-hidden="true" />
-        Series and description
+        Series, disc number and description
         <span className="font-normal text-zinc-500 dark:text-zinc-400">(optional)</span>
       </button>
     )
@@ -52,7 +57,7 @@ export default function SeriesDescriptionFields({ idPrefix, value, onChange, bad
 
   const optional = <span className="text-zinc-500 dark:text-zinc-400">(optional)</span>
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_10rem]">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_9rem_9rem]">
       <div>
         <label htmlFor={`${idPrefix}-series`} className={labelClass}>
           Series {optional}
@@ -84,7 +89,31 @@ export default function SeriesDescriptionFields({ idPrefix, value, onChange, bad
           className={`${inputClass} font-mono`}
         />
       </div>
-      <div className="sm:col-span-2">
+      <div>
+        <label htmlFor={`${idPrefix}-disc`} className={labelClass}>
+          Disc number
+          {badges?.disc}
+        </label>
+        <input
+          id={`${idPrefix}-disc`}
+          type="text"
+          inputMode="numeric"
+          maxLength={7}
+          value={value.disc}
+          // Digits and one slash: 2, or 2/3 for disc 2 of 3.
+          onChange={(e) => onChange({ disc: e.target.value.replace(/[^\d/]/g, '').replace(/(\/.*)\//g, '$1') })}
+          placeholder="e.g. 2 or 1/2"
+          aria-invalid={discProblem || undefined}
+          aria-describedby={discProblem ? `${idPrefix}-disc-err` : undefined}
+          className={`${inputClass} font-mono`}
+        />
+        {discProblem && (
+          <p id={`${idPrefix}-disc-err`} className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+            {DISC_PROBLEM}
+          </p>
+        )}
+      </div>
+      <div className="sm:col-span-3">
         <label htmlFor={`${idPrefix}-description`} className={labelClass}>
           Description {optional}
           {badges?.description}
@@ -99,8 +128,9 @@ export default function SeriesDescriptionFields({ idPrefix, value, onChange, bad
           className={`${inputClass} resize-y`}
         />
         <p id={`${idPrefix}-extras-help`} className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Saved in the M4B&apos;s tags. Audiobookshelf reads the series and the description; apps that don&apos;t use
-          them simply ignore them.
+          Saved in the M4B&apos;s tags. Audiobookshelf reads the series and the description, Mp3tag shows the disc
+          number as Discnumber (a book in two parts can be 1/2 and 2/2); apps that don&apos;t use them simply ignore
+          them.
         </p>
       </div>
     </div>

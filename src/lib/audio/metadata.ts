@@ -1,5 +1,7 @@
 import { parseBlob } from 'music-metadata'
 import type { ExtractedMetadata, Genre } from '@/types'
+import { discFromTags } from './disc'
+import { yearOrDateFromTags } from './year'
 
 const KNOWN_GENRES: readonly Genre[] = ['Audiobook', 'Podcast', 'Lecture', 'Other']
 
@@ -47,7 +49,8 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
     const title = common.album?.trim() || undefined
     const author = (common.artist || common.albumartist)?.trim() || undefined
     const narrator = common.composer?.[0]?.trim() || undefined
-    const year = common.year ? String(common.year) : undefined
+    // The full date when the tag has one, so saving doesn't cut it to a year.
+    const year = yearOrDateFromTags(common.date, common.year)
     const genre = mapGenre(common.genre?.[0])
     const chapterTitle = common.title?.trim() || undefined
     // The long description before the short one: an M4B's ldes, then its
@@ -63,6 +66,7 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
       (typeof movementNo === 'number' && movementNo > 0 ? String(movementNo) : undefined) ||
       nativeText(native as NativeTags, ['TXXX:SERIES-PART', 'SERIES-PART']) ||
       undefined
+    const disc = discFromTags(common.disk)
     const coverFile = pictureToFile(common.picture?.[0])
     const durationMs =
       typeof format.duration === 'number' && Number.isFinite(format.duration)
@@ -88,6 +92,7 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
       description,
       series,
       seriesPart,
+      disc,
       chapterTitle,
       coverFile,
       durationMs,

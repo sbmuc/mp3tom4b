@@ -19,6 +19,7 @@ import { convertToM4B } from '@/lib/ffmpeg/convert'
 import { editM4B } from '@/lib/ffmpeg/editM4b'
 import { mergeM4B } from '@/lib/ffmpeg/mergeM4b'
 import { META, TEN_ODD_CHAPTERS, analyze, asAudioFile, mp3, toneFile, total, type ToneSpec } from './helpers'
+import { NodeFFmpeg } from './nodeFFmpeg'
 
 // The compressor's parallel path (the one that rewrites the tags from a dump)
 // only runs with more than one worker.
@@ -138,4 +139,66 @@ describe('description and series tags', () => {
     expect(labels.some((l) => l.startsWith('Compressing chapters'))).toBe(true) // the parallel path ran
     expect(await extractMetadata(asFile(blob))).toMatchObject({ description: DESCRIPTION, series: 'Middle-earth', seriesPart: '1.5' })
   })
+
+  it('a release date and a disc number are written, read back and kept', async () => {
+    const file = await book([mp3(440)], { ...META, year: '2024-04-03', disc: '2/3' })
+    expect((await analyze(new Uint8Array(await file.arrayBuffer()))).tags).toMatchObject({ date: '2024-04-03', disc: '2/3' })
+    expect(await extractMetadata(file)).toMatchObject({ year: '2024-04-03', disc: '2/3' })
+  })
 })
+
+describe('the editor and the tags it does not show', () => {
+  // A book tagged in Mp3tag (issue #21): a release date, a disc number, and
+  // tags the editor has no field for.
+  async function taggedBook(): Promise<File> {
+    const ff = await NodeFFmpeg.create()
+    const r = await ff.run([
+      '-f', 'lavfi', '-i', 'sine=frequency=440:duration=6', '-c:a', 'aac', '-b:a', '64k',
+      '-metadata', 'title=Spellforge #2', '-metadata', 'album=Spellforge #2', '-metadata', 'artist=Logan Jacobs',
+      '-metadata', 'composer=Narrator One, Narrator Two', '-metadata', 'genre=Audiobook',
+      '-metadata', 'date=2024-04-03', '-metadata', 'disc=2', '-metadata', 'track=1/1',
+      '-metadata', 'comment=Tagged in Mp3tag; = kept', '-metadata', 'copyright=2024 Someone',
+      '-f', 'mp4', 'tagged.m4b',
+    ])
+    expect(r.ret).toBe(0)
+    const bytes = await ff.readFile('tagged.m4b')
+    ff.terminate()
+    return new File([new Uint8Array(bytes)], 'tagged.m4b')
+  }
+
+  async function save(file: File, change: (m: typeof META) => typeof META) {
+    const opened = await extractMetadata(file)
+    const metadata = change({
+      ...META,
+      title: opened.title ?? '',
+      author: opened.author ?? '',
+      narrator: opened.narrator ?? '',
+      year: opened.year ?? '',
+      disc: opened.disc ?? '',
+    })
+    const blob = await editM4B({ file, chapters: [{ startMs: 0, title: 'One' }], metadata, cover: { mode: 'remove' }, durationMs: 6000 })
+    return (await analyze(new Uint8Array(await blob.arrayBuffer()))).tags
+  }
+
+  it('keeps them, with the full date and the disc number, when only the title changes', async () => {
+    // They used to be dropped, and the date cut to 2024.
+    const tags = await save(await taggedBook(), (m) => ({ ...m, title: 'Spellforge, Book 2' }))
+    expect(tags).toMatchObject({
+      title: 'Spellforge, Book 2',
+      date: '2024-04-03',
+      disc: '2',
+      track: '1/1',
+      comment: 'Tagged in Mp3tag; = kept',
+      copyright: '2024 Someone',
+    })
+  })
+
+  it('changes and clears the ones it shows, and still keeps the rest', async () => {
+    const tags = await save(await taggedBook(), (m) => ({ ...m, year: '2024', disc: '', narrator: '' }))
+    expect(tags.date).toBe('2024')
+    expect(tags.disc).toBeUndefined()
+    expect(tags.composer).toBeUndefined()
+    expect(tags).toMatchObject({ track: '1/1', comment: 'Tagged in Mp3tag; = kept', copyright: '2024 Someone' })
+  })
+})
+

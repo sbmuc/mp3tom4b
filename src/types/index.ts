@@ -36,6 +36,7 @@ export interface ConversionMetadata {
   title: string
   author: string
   narrator: string
+  /** A year (1937) or a release date (1937-09-21); '' for none. */
   year: string
   genre: Genre
   /** What the book is about; '' for none. Written as the description tags. */
@@ -44,6 +45,8 @@ export interface ConversionMetadata {
   series: string
   /** Its number in that series ("3", "1.5"); '' for none. */
   seriesPart: string
+  /** The disc number ("2", or "2/3"); '' for none. See discTag. */
+  disc: string
 }
 
 /** Every field empty, the genre an audiobook: a new book's details. */
@@ -56,6 +59,7 @@ export const EMPTY_METADATA: Readonly<ConversionMetadata> = {
   description: '',
   series: '',
   seriesPart: '',
+  disc: '',
 }
 
 export type ConversionStatus =
@@ -77,6 +81,7 @@ export interface ExtractedMetadata {
   description?: string
   series?: string
   seriesPart?: string
+  disc?: string
   /** Per-file embedded title — used for chapter title when present */
   chapterTitle?: string
   /** Embedded cover art as a File (already wrapped from picture data) */

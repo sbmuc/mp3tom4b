@@ -154,7 +154,7 @@ mp3tom4b/
    - Audiobook title (required)
    - Author (required)
    - Narrator (optional)
-   - Year (optional, 4-digit)
+   - Year (optional: a 4-digit year, or a full release date since v1.23)
    - Genre (optional, dropdown: Audiobook, Podcast, Lecture, Other)
 6. **Cover image upload** — JPG, PNG, WebP (any image the browser decodes), drag or click. Preview thumbnail. Saved as a square JPEG of up to 1200×1200 before embedding.
 7. **Bitrate selector** — 64 kbps (default for spoken word), 96 kbps, 128 kbps (since v1.20 also 32/48 for low-bitrate sources and 192/256 under advanced options).

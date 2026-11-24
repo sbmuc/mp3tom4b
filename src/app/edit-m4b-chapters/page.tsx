@@ -38,7 +38,7 @@ const FAQS = [
   },
   {
     q: 'What can I edit?',
-    a: 'Chapter titles and start times (add, remove, rename, re-time), the book title, author, narrator, year, genre, series and description, and the cover image (keep, replace, or remove).',
+    a: 'Chapter titles and start times (add, remove, rename, re-time), the book title, author, narrator, year or full release date, genre, series, disc number and description, and the cover image (keep, replace, or remove). Tags the editor has no field for, such as a track number, comment or copyright, are kept as they are.',
   },
   {
     q: 'Can I paste a list of chapter names or times?',

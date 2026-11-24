@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildChapters, buildFFMetadata, buildGlobalMetadata, replaceChapters } from '@/lib/ffmpeg/chapters'
+import { buildChapters, buildFFMetadata, buildGlobalMetadata, globalTagLines, otherTagLines, replaceChapters } from '@/lib/ffmpeg/chapters'
 import { EMPTY_METADATA } from '@/types'
 
 describe('buildChapters', () => {
@@ -165,5 +165,62 @@ describe('replaceChapters', () => {
   it('adds chapter blocks to a dump that had none', () => {
     const out = replaceChapters(';FFMETADATA1\ntitle=Book\n', [{ title: 'Only', startMs: 0, endMs: 1000 }])
     expect(out).toBe(';FFMETADATA1\ntitle=Book\n\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=1000\ntitle=Only\n')
+  })
+})
+
+describe('buildGlobalMetadata — date and disc', () => {
+  it('writes a full release date as it is', () => {
+    expect(buildGlobalMetadata({ ...EMPTY_METADATA, year: '2024-04-03' })).toContain('date=2024-04-03')
+  })
+
+  it('writes a disc number only when it is one', () => {
+    expect(buildGlobalMetadata({ ...EMPTY_METADATA, disc: '2' })).toContain('disc=2')
+    expect(buildGlobalMetadata({ ...EMPTY_METADATA, disc: ' 1 / 2 ' })).toContain('disc=1/2')
+    expect(buildGlobalMetadata({ ...EMPTY_METADATA, disc: '3/2' }).some((l) => l.startsWith('disc='))).toBe(false)
+    expect(buildGlobalMetadata(EMPTY_METADATA).some((l) => l.startsWith('disc='))).toBe(false)
+  })
+})
+
+describe('globalTagLines / otherTagLines', () => {
+  // As `ffmpeg -i book.m4b -f ffmetadata` writes it: escapes, an escaped line
+  // break inside a value, then the chapters.
+  const DUMP = [
+    ';FFMETADATA1',
+    'major_brand=isom',
+    'title=Spellforge \; Book \\= 2',
+    'artist=Logan Jacobs',
+    'date=2024-04-03',
+    'disc=2',
+    'track=1/1',
+    'comment=Line one\\',
+    'line two',
+    'copyright=2024 Someone',
+    'sort_name=Spellforge 2',
+    'encoder=Lavf59.27.100',
+    '[CHAPTER]',
+    'TIMEBASE=1/1000',
+    'START=0',
+    'END=1000',
+    'title=Chapter 1',
+    '',
+  ].join('\n')
+
+  it('reads the book-level tags with their lines as written, up to the first section', () => {
+    const tags = globalTagLines(DUMP)
+    expect(tags.map((t) => t.key)).toEqual([
+      'major_brand', 'title', 'artist', 'date', 'disc', 'track', 'comment', 'copyright', 'sort_name', 'encoder',
+    ])
+    expect(tags.find((t) => t.key === 'title')?.line).toBe('title=Spellforge \; Book \\= 2')
+    expect(tags.find((t) => t.key === 'comment')?.line).toBe('comment=Line one\\\nline two')
+  })
+
+  it('keeps only the tags the book details do not set', () => {
+    expect(otherTagLines(DUMP)).toEqual(['track=1/1', 'comment=Line one\\\nline two', 'copyright=2024 Someone', 'sort_name=Spellforge 2'])
+  })
+
+  it('reads Windows line ends, and nothing from a dump without tags', () => {
+    expect(otherTagLines(';FFMETADATA1\r\ncomment=Hi\r\n')).toEqual(['comment=Hi'])
+    expect(otherTagLines(';FFMETADATA1\n')).toEqual([])
+    expect(otherTagLines('')).toEqual([])
   })
 })

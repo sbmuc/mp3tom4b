@@ -5,14 +5,15 @@ import { ffmpegLoadingLabel } from './client'
 import { loadEngine } from './engine'
 import { OWN_COVER_ARGS } from './cover'
 import { humanizeFfmpegError } from './errors'
-import { mountBlobs, takeBlob, unmount } from './files'
-import { buildFFMetadata, buildGlobalMetadata } from './chapters'
+import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
+import { buildFFMetadata, buildGlobalMetadata, otherTagLines } from './chapters'
 import type { ChapterMark } from './types'
 import { resizeCoverImage } from '@/lib/image/resize'
 import { runFFmpeg } from './run'
 
 const OUTPUT_PATH = 'edit_out.m4b'
 const META_PATH = 'edit_meta.ffmeta'
+const DUMP_PATH = 'edit_source.ffmeta'
 // The source is mounted, not copied in (see files.ts).
 const INPUT_DIR = '/mnt_edit_in'
 const COVER_PATH = 'edit_cover.jpg'
@@ -26,15 +27,18 @@ export type CoverMode = 'keep' | 'replace' | 'remove'
 
 /**
  * Build an ffmetadata file (global tags + [CHAPTER] blocks) from the edited
- * chapters + metadata. Chapters are sorted by start; each END is the next
- * chapter's start (or the file duration for the last). Pure + unit-testable.
+ * chapters + metadata, plus `otherTags`: lines of the file's own tags to keep
+ * as they are (see otherTagLines). Chapters are sorted by start; each END is
+ * the next chapter's start (or the file duration for the last). Pure +
+ * unit-testable.
  */
 export function buildEditMetadata(
   metadata: ConversionMetadata,
   chapters: EditChapter[],
   durationMs: number,
+  otherTags: string[] = [],
 ): string {
-  const global: string[] = [';FFMETADATA1', ...buildGlobalMetadata(metadata)]
+  const global: string[] = [';FFMETADATA1', ...buildGlobalMetadata(metadata), ...otherTags]
 
   const sorted = [...chapters].sort((a, b) => a.startMs - b.startMs)
   const marks: ChapterMark[] = sorted.map((c, i) => ({
@@ -103,6 +107,27 @@ export interface EditOptions {
 }
 
 /**
+ * The input's tags that the details form doesn't set, from an ffmetadata dump
+ * of it (a header read, quick). None when the dump fails: then only the
+ * form's tags are written, as before.
+ */
+async function readOtherTags(ffmpeg: Awaited<ReturnType<typeof loadEngine>>, inputPath: string): Promise<string[]> {
+  try {
+    await ffmpeg.exec(['-hide_banner', '-i', inputPath, '-f', 'ffmetadata', DUMP_PATH])
+    const dump = new TextDecoder().decode(ownedBytes(await ffmpeg.readFile(DUMP_PATH)))
+    return otherTagLines(dump)
+  } catch {
+    return []
+  } finally {
+    try {
+      await ffmpeg.deleteFile(DUMP_PATH)
+    } catch {
+      // never written
+    }
+  }
+}
+
+/**
  * Apply edited chapters, metadata, and cover to an existing M4B/M4A. The audio
  * is stream-copied (no re-encode), so it's fast and lossless. All in-browser.
  */
@@ -127,7 +152,9 @@ export async function editM4B(opts: EditOptions): Promise<Blob> {
       tempPaths.push(COVER_PATH)
     }
 
-    await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildEditMetadata(metadata, chapters, durationMs)))
+    // The file's own tags that the form doesn't show stay as they were.
+    const kept = await readOtherTags(ffmpeg, inputPath)
+    await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildEditMetadata(metadata, chapters, durationMs, kept)))
     tempPaths.push(META_PATH)
 
     emit({ status: 'muxing', percent: 15, label: 'Saving changes…' })

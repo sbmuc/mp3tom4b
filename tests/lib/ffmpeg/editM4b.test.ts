@@ -96,3 +96,13 @@ describe('buildEditMuxArgs', () => {
     expect(j).toContain('-map_chapters 1')
   })
 })
+
+describe('buildEditMetadata — the file\'s other tags', () => {
+  it('writes them after the book details, before the chapters', () => {
+    const text = buildEditMetadata(meta, [{ startMs: 0, title: 'One' }], 5000, ['track=1/1', 'comment=Kept'])
+    const lines = text.split('\n')
+    expect(lines.indexOf('comment=Kept')).toBeGreaterThan(lines.indexOf('title=My Book'))
+    expect(lines.indexOf('comment=Kept')).toBeLessThan(lines.indexOf('[CHAPTER]'))
+    expect(lines).toContain('track=1/1')
+  })
+})
