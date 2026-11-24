@@ -13,7 +13,7 @@ vi.mock('@ffmpeg/util', () => ({
   fetchFile: async (f: Blob) => new Uint8Array(await f.arrayBuffer()),
 }))
 
-import { probeM4bInfo } from '@/lib/ffmpeg/probeM4b'
+import { NO_AUDIO_FOUND, probeM4bInfo } from '@/lib/ffmpeg/probeM4b'
 import { probeChapters } from '@/lib/ffmpeg/splitChapters'
 
 const fixture = (name: string) => new File([readFileSync(path.resolve(__dirname, '../fixtures', name))], name)
@@ -33,5 +33,18 @@ describe('probing files dropped together', () => {
     expect(infoA.chapterCount).toBe(3)
     expect(infoB.chapterCount).toBe(0)
     expect(infoA.durationMs).not.toBe(infoB.durationMs)
+  })
+})
+
+describe('a file with no audio ffmpeg can read', () => {
+  it('is refused when it is dropped, not when the tool runs', async () => {
+    // Cut off before its moov box (a download that didn't finish), and not an MP4 at all.
+    const whole = readFileSync(path.resolve(__dirname, '../fixtures', 'aac-3-chapters.m4b'))
+    const cutOff = new File([whole.subarray(0, 5_000)], 'book.m4b')
+    const notMp4 = new File([new TextEncoder().encode('not an audiobook '.repeat(500))], 'book.m4b')
+    await expect(probeM4bInfo(cutOff)).rejects.toThrow(NO_AUDIO_FOUND)
+    await expect(probeM4bInfo(notMp4)).rejects.toThrow(NO_AUDIO_FOUND)
+    // A whole book still reads.
+    expect((await probeM4bInfo(fixture('aac-3-chapters.m4b'))).codec).toBe('aac')
   })
 })

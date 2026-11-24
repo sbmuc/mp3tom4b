@@ -138,7 +138,7 @@ export default function M4bCompressor() {
       // A book at about 64 kbps or less starts on a setting that shrinks it.
       setBitrate(defaultCompressBitrate(info.currentBitrateKbps ?? null))
     } catch (err) {
-      setInputError(readFailureMessage(err, 'Could not read that file. It may be corrupt or not a valid M4B.'))
+      setInputError(readFailureMessage(err, 'Could not read that file. It may be incomplete (still downloading or copying?), damaged, or not an M4B.'))
       setFile(null)
     } finally {
       setProbing(false)

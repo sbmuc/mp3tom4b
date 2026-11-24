@@ -7,6 +7,7 @@ import {
   canCopyStreams,
   copySegmentExtension,
   mayStreamCopy,
+  parseSegmentList,
   parseSegmentStarts,
   pickEncodeTarget,
   remapThroughSegments,
@@ -136,6 +137,29 @@ describe('parseSegmentStarts', () => {
     expect(parseSegmentStarts(csv, 4)).toBeNull()
     expect(parseSegmentStarts('x.m4a,abc,1\n', 1)).toBeNull()
     expect(parseSegmentStarts('', 1)).toBeNull()
+  })
+})
+
+describe('parseSegmentList', () => {
+  it('reads where each piece starts and ends, in ms', () => {
+    const csv = 'ch_seg_000.mp3,0.000000,10.031000\nch_seg_001.mp3,10.031000,20.010000\n'
+    expect(parseSegmentList(csv)).toEqual([
+      { startMs: 0, endMs: 10_031 },
+      { startMs: 10_031, endMs: 20_010 },
+    ])
+  })
+
+  it('lists only the pieces made: a split time past the end of the file gets none', () => {
+    // Asked for cuts at 10 s and 45 s in a file that ends at 30 s.
+    const csv = 'ch_seg_000.mka,0.000000,10.000000\nch_seg_001.mka,10.000000,30.000000\n'
+    expect(parseSegmentList(csv)?.at(-1)?.endMs).toBe(30_000)
+    expect(parseSegmentList(csv)).toHaveLength(2)
+  })
+
+  it('is null for an empty list or a row it cannot read', () => {
+    expect(parseSegmentList('')).toBeNull()
+    expect(parseSegmentList('x.mka,abc,1\n')).toBeNull()
+    expect(parseSegmentList('x.mka,5,2\n')).toBeNull()
   })
 })
 
