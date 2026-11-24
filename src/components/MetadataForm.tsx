@@ -112,20 +112,18 @@ export default function MetadataForm() {
 
         <div>
           <label htmlFor="md-year" className={labelClass}>
-            Year <span className="text-zinc-500 dark:text-zinc-400">(optional)</span>
+            Year or date <span className="text-zinc-500 dark:text-zinc-400">(optional)</span>
             {verifiedFields.year && <VerifiedBadge source={verifiedFields.year} />}
           </label>
           <input
             id="md-year"
             type="text"
-            inputMode="numeric"
-            pattern="\d{4}"
-            maxLength={4}
+            maxLength={10}
             value={metadata.year}
             onChange={(e) => setMetadata({ year: e.target.value })}
             onBlur={() => markTouched('year')}
             // An example, not a value: a bare current year looked filled in.
-            placeholder="e.g. 1937"
+            placeholder="e.g. 1937 or 1937-09-21"
             aria-invalid={showYearError || undefined}
             aria-describedby={showYearError ? 'md-year-err' : undefined}
             className={`${inputBase} ${showYearError ? inputErr : inputOk} font-mono`}

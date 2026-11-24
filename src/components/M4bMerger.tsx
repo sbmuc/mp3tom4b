@@ -381,6 +381,8 @@ export default function M4bMerger() {
             description: prev.description || m.description || '',
             series: prev.series || m.series || '',
             seriesPart: prev.seriesPart || m.seriesPart || '',
+            // Not the first file's disc number: the merged book is one, not a part.
+            disc: prev.disc,
           })),
         )
       }
@@ -703,8 +705,8 @@ export default function M4bMerger() {
                   onChange={(e) => setMetadata((m) => ({ ...m, narrator: e.target.value }))} className={inputBase} />
               </div>
               <div>
-                <label htmlFor="merge-year" className={labelClass}>Year</label>
-                <input id="merge-year" type="text" inputMode="numeric" maxLength={4} value={metadata.year}
+                <label htmlFor="merge-year" className={labelClass}>Year or date</label>
+                <input id="merge-year" type="text" maxLength={10} value={metadata.year} placeholder="e.g. 1937-09-21"
                   onChange={(e) => setMetadata((m) => ({ ...m, year: e.target.value }))}
                   className={`${inputBase} font-mono ${yearOk ? '' : '!border-rose-400 dark:!border-rose-700'}`} />
               </div>

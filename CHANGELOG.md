@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.23.0] — 2026-11-24
+
+### Added
+- **A full release date.** The year field in every tool now also takes a date, like 2024-04-03 (or a month, 2024-04), and reads one back from a file. A year alone works as before. Asked for in [issue #21](https://github.com/sbmuc/mp3tom4b/issues/21).
+- **Disc number.** The converter, the editor, the merger and Add chapters have a disc number field next to the series ("2", or "1/2" for the first of two parts), shown by Mp3tag as Discnumber. Asked for in the same issue.
+
+### Fixed
+- **The editor keeps the tags it has no field for.** Saving a book in the editor wrote only the tags it shows, so a track number, comment, copyright and other tags set in Mp3tag or elsewhere were lost, a disc number too, and a release date became just the year. Those tags now stay as they were; only the fields in the editor are changed.
+
+---
+
 ## [1.22.0] — 2026-11-24
 
 ### Added

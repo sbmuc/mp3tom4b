@@ -406,21 +406,26 @@ test('add chapters: an M4B starts from the chapters it already has', async ({ pa
   await expect(page.getByLabel('Chapter start time').nth(1)).toHaveValue('0:00:20')
 })
 
-test('converter: any four-digit year is taken, and a wrong one blocks Convert', async ({ page }) => {
+test('converter: any year or full date is taken, and a wrong one blocks Convert', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Choose audio files and a cover image').setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3')])
   await expect(page.getByText(/^2 files ·/)).toBeVisible()
-  const year = page.getByLabel(/^Year/)
-  await expect(year).toHaveAttribute('placeholder', 'e.g. 1937')
+  const year = page.getByLabel(/^Year or date/)
+  const problem = page.getByText('Enter a year (1937) or a date (1937-09-21), or leave it empty.')
+  await expect(year).toHaveAttribute('placeholder', 'e.g. 1937 or 1937-09-21')
   await year.fill('185')
   await year.blur()
-  await expect(page.getByText('Year must be 4 digits, or left empty.')).toBeVisible()
+  await expect(problem).toBeVisible()
   await expect(page.getByText(/To enable: fix the year/)).toBeVisible()
   // aria-disabled, but clickable: the click shows what's wrong (see the unreadable-file test).
   await page.getByRole('button', { name: 'Convert to M4B' }).click({ force: true })
   await expect(year).toBeFocused()
+  await year.fill('1851-02-30') // no such day
+  await expect(problem).toBeVisible()
   await year.fill('1851')
-  await expect(page.getByText('Year must be 4 digits, or left empty.')).toHaveCount(0)
+  await expect(problem).toHaveCount(0)
+  await year.fill('1851-10-18') // Moby-Dick's release date (issue #21)
+  await expect(problem).toHaveCount(0)
   await page.getByRole('button', { name: 'Convert to M4B' }).click()
   await expect(page.getByText('Your audiobook is ready')).toBeVisible()
 })
@@ -510,7 +515,7 @@ test('editor: a pasted chapter list, find & replace, and the series and descript
   await chapters.getByRole('button', { name: 'Replace in 3 titles' }).click()
   await expect(chapters.getByLabel('Chapter title').nth(1)).toHaveValue('Middle')
 
-  await page.getByRole('button', { name: /Series and description/ }).click()
+  await page.getByRole('button', { name: /Series, disc number and description/ }).click()
   await expect(page.locator('#edit-series')).toBeFocused()
   await page.locator('#edit-series').fill('E2E Series')
   await page.locator('#edit-series-part').fill('2')
@@ -599,3 +604,31 @@ test('converter: pasted titles, a copied list, and the description from iTunes g
   await expect(page.locator('#edit-series-part')).toHaveValue('3')
   await expect(page.locator('#edit-description')).toHaveValue('Bold start.\n\nSecond & last.')
 })
+
+// Issue #21: a book tagged in Mp3tag, with a release date and a disc number.
+// Saving it in the editor cut the date to a year and dropped the disc number
+// and every other tag the editor has no field for.
+test('editor: a release date, a disc number and the tags it has no field for are kept', async ({ page }) => {
+  await page.goto('/edit-m4b-chapters')
+  await page.getByLabel('Choose an M4B to edit').setInputFiles(fixture('tagged.m4b'))
+  await expect(page.locator('#edit-year')).toHaveValue('2024-04-03')
+  await expect(page.locator('#edit-disc')).toHaveValue('2') // the details are open: one has a value
+  await page.locator('#edit-disc').fill('3/2')
+  await expect(page.getByText('Not saved like this: a number like 2, or 2/3 for disc 2 of 3.')).toBeVisible()
+  await page.locator('#edit-disc').fill('2/3')
+  await page.locator('#edit-title').fill('Tagged Book, Part 2')
+  await page.getByRole('button', { name: 'Save M4B' }).click()
+  await expect(page.getByText('Your edited audiobook is ready')).toBeVisible()
+
+  const download = page.waitForEvent('download')
+  await page.getByRole('link', { name: 'Download M4B' }).click()
+  const saved = readFileSync(await (await download).path())
+  expect(saved.includes(Buffer.from('Kept from Mp3tag'))).toBe(true) // the comment
+  expect(saved.includes(Buffer.from('2024 E2E Publisher'))).toBe(true) // the copyright
+  await page.getByRole('button', { name: 'Edit another' }).click()
+  await page.getByLabel('Choose an M4B to edit').setInputFiles({ name: 'saved.m4b', mimeType: 'audio/mp4', buffer: saved })
+  await expect(page.locator('#edit-title')).toHaveValue('Tagged Book, Part 2')
+  await expect(page.locator('#edit-year')).toHaveValue('2024-04-03')
+  await expect(page.locator('#edit-disc')).toHaveValue('2/3')
+})
+

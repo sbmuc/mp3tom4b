@@ -217,3 +217,22 @@ describe('extractMetadata — failure', () => {
     expect(result).toEqual({})
   })
 })
+
+describe('extractMetadata — date and disc', () => {
+  it('reads a full date instead of only its year, and the disc number', async () => {
+    parseBlobMock.mockResolvedValue({
+      common: { year: 2024, date: '2024-04-03T07:00:00Z', disk: { no: 2, of: 3 } },
+      format: {},
+    } as never)
+    const result = await extractMetadata(dummyFile())
+    expect(result.year).toBe('2024-04-03')
+    expect(result.disc).toBe('2/3')
+  })
+
+  it('reads the year when the date is only a year, and no disc when there is none', async () => {
+    parseBlobMock.mockResolvedValue({ common: { year: 1937, date: '1937', disk: { no: null, of: null } }, format: {} } as never)
+    const result = await extractMetadata(dummyFile())
+    expect(result.year).toBe('1937')
+    expect(result.disc).toBeUndefined()
+  })
+})

@@ -207,6 +207,7 @@ export default function M4bEditor() {
         description: meta.description ?? '',
         series: meta.series ?? '',
         seriesPart: meta.seriesPart ?? '',
+        disc: meta.disc ?? '',
       })
 
       setOriginalCoverFile(meta.coverFile ?? null)
@@ -447,8 +448,8 @@ export default function M4bEditor() {
                   onChange={(e) => setMetadata((m) => ({ ...m, narrator: e.target.value }))} className={inputBase} />
               </div>
               <div>
-                <label htmlFor="edit-year" className={labelClass}>Year</label>
-                <input id="edit-year" type="text" inputMode="numeric" maxLength={4} value={metadata.year}
+                <label htmlFor="edit-year" className={labelClass}>Year or date</label>
+                <input id="edit-year" type="text" maxLength={10} value={metadata.year} placeholder="e.g. 1937-09-21"
                   onChange={(e) => setMetadata((m) => ({ ...m, year: e.target.value }))}
                   className={`${inputBase} font-mono ${yearOk ? '' : '!border-rose-400 dark:!border-rose-700'}`} />
               </div>

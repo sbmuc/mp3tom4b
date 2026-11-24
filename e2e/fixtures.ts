@@ -140,6 +140,16 @@ export async function makeFixtures(): Promise<void> {
     'pauses.mp3',
   )
 
+  // book.m4b as Mp3tag users tag it (issue #21): a release date, a disc
+  // number, and tags the editor has no field for.
+  await ff.writeFile('book.m4b', readFileSync(fixture('book.m4b')))
+  await make(
+    ['-i', 'book.m4b', '-map', '0:a', '-map', '0:v', '-c', 'copy', '-disposition:v', 'attached_pic', '-map_metadata', '0', '-map_chapters', '0',
+      '-metadata', 'title=Tagged Book', '-metadata', 'album=Tagged Book', '-metadata', 'date=2024-04-03', '-metadata', 'disc=2',
+      '-metadata', 'comment=Kept from Mp3tag', '-metadata', 'copyright=2024 E2E Publisher', '-f', 'mp4'],
+    'tagged.m4b',
+  )
+
   // The same book as AAC in an MP4, named .mp3, as some downloads come: Add
   // chapters' split refused it ("ffmpeg exited with code 1").
   await ff.writeFile('pauses.mp3', readFileSync(fixture('pauses.mp3')))
