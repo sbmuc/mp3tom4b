@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.21.3] — 2026-11-24
+
+### Fixed
+- **A failure no longer leaves the progress bar stuck.** When one chapter failed while others were still being encoded, the converter, compressor and Add chapters put the progress bar back over the error message, and the page sat on "Encoding…" for good. The error now stays, and the button works again.
+- **Add chapters takes a file whose name says the wrong format.** An AAC, FLAC or WAV file named .mp3 (as some downloads come) failed at once with "ffmpeg exited with code 1", every time. It now gets its chapters like any other file.
+- **A cover in the audio file that can't be read is left out instead of failing the conversion at the very end.** The converter and Add chapters now check it when the file is dropped, as they already did for a picked cover, and say so.
+- **The compressor says at once when it can't read a file**, for example one that hasn't finished downloading, instead of showing it as a book without chapters and failing when you press Compress.
+- Add chapters no longer says "out of memory" for a file whose length the page couldn't read; it reads the length itself. A chapter past the real end of a file that's shorter than its tags said is left out, instead of failing with "FS error".
+
+### Changed
+- Failure counts from Add chapters now carry the step it stopped at, the file's type (such as MP3, from a fixed list), its size and length, the number of chapters and the bitrate, as the other tools do. Never a file or chapter name.
+
+---
+
 ## [1.21.2] — 2026-11-21
 
 ### Fixed

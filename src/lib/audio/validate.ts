@@ -10,6 +10,17 @@ export const AUDIO_EXTENSIONS: ReadonlySet<string> = new Set([
   '.aac', '.aif', '.aiff', '.aifc', '.wma', '.mp4', '.oga', '.webm', '.weba', '.mka', '.mp2',
 ])
 
+/**
+ * A file's type for the anonymous failure counts: its extension when it is one
+ * the tools take (or .m4b), else "other". Only from this fixed list, so
+ * nothing else of the file's name gets through. Pure.
+ */
+export function audioFormatOf(name: string): string {
+  const dot = name.lastIndexOf('.')
+  const ext = dot >= 0 ? name.slice(dot).toLowerCase() : ''
+  return AUDIO_EXTENSIONS.has(ext) || ext === '.m4b' ? ext.slice(1) : 'other'
+}
+
 /** The formats as the drop zones list them (the common ones; the FAQ has all). */
 export const AUDIO_FORMATS_LABEL = 'MP3 · M4A · AAC · WAV · AIFF · FLAC · OGG · Opus · WMA · WebM'
 

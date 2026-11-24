@@ -24,7 +24,7 @@ import {
 import { trackEvent, trackFailure } from '@/lib/analytics'
 import { takeChapterizerHandoff } from '@/lib/handoff'
 import { decodeCueBytes, isCueFile, parseCue, type CueChapter } from '@/lib/audio/cue'
-import { AUDIO_ACCEPT, AUDIO_EXTENSIONS, AUDIO_FORMATS_LABEL, AUDIO_FORMATS_TEXT } from '@/lib/audio/validate'
+import { AUDIO_ACCEPT, AUDIO_EXTENSIONS, AUDIO_FORMATS_LABEL, AUDIO_FORMATS_TEXT, audioFormatOf } from '@/lib/audio/validate'
 import { lowSourceKbps, suggestBitrate } from '@/lib/audio/bitrate'
 import {
   chapterizeFile,
@@ -41,7 +41,7 @@ import { useEta } from '@/lib/hooks/useEta'
 import { extractMetadata } from '@/lib/audio/metadata'
 import { readPlaybackInfo } from '@/lib/audio/playback'
 import { isValidYear, YEAR_PROBLEM } from '@/lib/audio/year'
-import { coverProblem, IMAGE_ACCEPT } from '@/lib/image/validate'
+import { coverProblem, IMAGE_ACCEPT, isDecodableImage } from '@/lib/image/validate'
 import { formatBytes, formatDuration } from '@/lib/audio/format'
 import { safeFileName } from '@/lib/format/fileName'
 import type { Bitrate, ConversionMetadata, ConversionProgress, Genre } from '@/types'
@@ -176,6 +176,8 @@ export default function FileChapterizer() {
   // Cover
   const [coverMode, setCoverMode] = useState<ChapterizeCoverMode>('keep')
   const [originalCoverFile, setOriginalCoverFile] = useState<File | null>(null)
+  // The file has a cover, but not one the browser can decode: left out.
+  const [unreadableCover, setUnreadableCover] = useState(false)
   const [replaceFile, setReplaceFile] = useState<File | null>(null)
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
   const [replaceUrl, setReplaceUrl] = useState<string | null>(null)
@@ -295,6 +297,7 @@ export default function FileChapterizer() {
     setSilenceNote(null)
     setCoverMode('keep')
     setOriginalCoverFile(null)
+    setUnreadableCover(false)
     setReplaceFile(null)
     setCoverError(null)
     setInputError(null)
@@ -325,6 +328,7 @@ export default function FileChapterizer() {
     setCoverMode('keep')
     setReplaceFile(null)
     setCoverError(null)
+    setUnreadableCover(false)
     setFile(candidate)
     setProbing(true)
     // Warm the ffmpeg core so its one-time download (about 10 MB) overlaps with the
@@ -391,7 +395,11 @@ export default function FileChapterizer() {
         year: meta.year ?? '',
         genre: meta.genre ?? 'Audiobook',
       })
-      setOriginalCoverFile(meta.coverFile ?? null)
+      // Checked like a picked cover: one the browser can't decode would only
+      // fail the run when it gets to the cover.
+      const embeddedCover = meta.coverFile && (await isDecodableImage(meta.coverFile)) ? meta.coverFile : null
+      setOriginalCoverFile(embeddedCover)
+      setUnreadableCover(meta.coverFile != null && embeddedCover == null)
       // A file of 48 kbps or less starts on the setting that keeps it: at 64
       // the M4B would be bigger and no better.
       const low = lowSourceKbps([meta])
@@ -585,7 +593,14 @@ export default function FileChapterizer() {
     } catch (err) {
       // Error surfaced via the onProgress 'error' event.
       if (!cancelledRef.current) {
-        trackFailure('chapterize', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        trackFailure('chapterize', err, {
+          chapterCount: rows.length,
+          audioDurationSec: Math.round(durationMs / 1000),
+          inputMb: Math.round((file.size / (1024 * 1024)) * 10) / 10,
+          inputFormat: audioFormatOf(file.name),
+          bitrateKbps: bitrate,
+          elapsedSec: Math.round((Date.now() - startedAt) / 1000),
+        })
         resetFFmpegAfterFailure()
       }
     }
@@ -910,7 +925,9 @@ export default function FileChapterizer() {
                         ? 'Using a new cover image.'
                         : hadOriginal
                           ? "Keeping the file's cover."
-                          : 'No cover in this file — add one.'}
+                          : unreadableCover
+                            ? "This file's cover can't be read, so it's left out. Add one instead?"
+                            : 'No cover in this file — add one.'}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 focus-within:ring-2 focus-within:ring-accent-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">

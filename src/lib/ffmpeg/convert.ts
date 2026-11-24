@@ -19,7 +19,7 @@ import {
 import { OWN_COVER_ARGS } from './cover'
 import { buildJobs, findShortChapters, pauseScanArgs, pickCuts, piecesPerFile, type EncodeJob } from './pieces'
 import { parseSilences } from './chapterize'
-import { humanizeFfmpegError } from './errors'
+import { humanizeFfmpegError, noteFailureStep } from './errors'
 import { mountBlobs, ownedBytes, unmount } from './files'
 import { decodedAudioSeconds } from './mp4Duration'
 import { probeDurationMs } from './probe'
@@ -224,6 +224,11 @@ async function encodeJobsParallel(
   // the others sat idle. The parts still join in book order.
   const queue: number[] = Array.from({ length: total }, (_, i) => i).sort((a, b) => weights[b] - weights[a] || a - b)
   const concurrency = Math.min(workers, total)
+  // Once a job fails the run is over: the other workers take no new job and
+  // report nothing more. Their last report used to come after the failure (the
+  // page stops them, and a stopped job still "finished"), and put the bar back
+  // over the error message.
+  let failed = false
 
   /** Time left, from the pace so far; undefined until there's enough to go on. */
   function remainingMs(): number | undefined {
@@ -255,6 +260,7 @@ async function encodeJobsParallel(
   }
 
   function emitProgress() {
+    if (failed) return
     const fraction = perJob.reduce((sum, p, i) => sum + p * weights[i], 0) / totalWeight
     emit({
       status: 'encoding',
@@ -266,9 +272,15 @@ async function encodeJobsParallel(
   }
 
   async function runWorker() {
-    const worker = await createWorkerFFmpeg()
+    let worker: Awaited<ReturnType<typeof createWorkerFFmpeg>>
     try {
-      while (true) {
+      worker = await createWorkerFFmpeg()
+    } catch (err) {
+      failed = true
+      throw err
+    }
+    try {
+      while (!failed) {
         const idx = queue.shift()
         if (idx === undefined) break
         startedAt[idx] = Date.now()
@@ -322,6 +334,9 @@ async function encodeJobsParallel(
           const bytes = await tagged('reading encoded output of', async () => ownedBytes(await worker.readFile(outPath)))
           decodedSec[idx] = decodedAudioSeconds(bytes)
           parts[idx] = new Blob([bytes], { type: 'audio/mp4' })
+        } catch (err) {
+          failed = true
+          throw err
         } finally {
           worker.off('progress', onProgress)
           perJob[idx] = 1
@@ -495,8 +510,15 @@ export async function convertToM4B(opts: ConvertOptions): Promise<ConvertResult>
     let hasCover = false
     if (coverFile) {
       emit({ status: 'muxing', percent: 86, label: 'Preparing cover art…' })
-      const resized = await resizeCoverImage(coverFile)
-      await ffmpeg.writeFile(COVER_PATH, new Uint8Array(await resized.arrayBuffer()))
+      try {
+        const resized = await resizeCoverImage(coverFile)
+        await ffmpeg.writeFile(COVER_PATH, new Uint8Array(await resized.arrayBuffer()))
+      } catch (err) {
+        // Its own step in the failure count: an undecodable cover read as an
+        // unexplained InvalidStateError near the end of a conversion.
+        noteFailureStep(err, 'cover')
+        throw err
+      }
       tempPaths.push(COVER_PATH)
       hasCover = true
     }

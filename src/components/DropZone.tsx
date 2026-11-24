@@ -273,6 +273,7 @@ export default function DropZone() {
           const duplicateNames: string[] = []
           const matchedExistingIds: string[] = []
           let firstAcceptedExtraction: ExtractedMetadata | null = null
+          let firstAcceptedName = ''
 
           // An embedded title only works as a chapter name when it's unique
           // across the drop. Many MP3 sets stamp every file with the same
@@ -322,7 +323,10 @@ export default function DropZone() {
             if (durationMs == null) unreadableNames.push(file.name)
             newFiles.push(newFile)
             pool.push({ id: newFile.id, name: file.name, size: file.size, durationMs: candidate.durationMs })
-            if (!firstAcceptedExtraction) firstAcceptedExtraction = extracted
+            if (!firstAcceptedExtraction) {
+              firstAcceptedExtraction = extracted
+              firstAcceptedName = file.name
+            }
           }
 
           // "01 - The Happy Prince" → "The Happy Prince" when the whole drop is
@@ -333,8 +337,21 @@ export default function DropZone() {
             readable[i].originalChapterTitle = title
           })
 
+          // A cover in the tags is checked like a dropped one before it is used:
+          // one the browser can't decode only failed the conversion at the very
+          // end ("The source image could not be decoded"), after the whole encode.
+          let autoMetadata = wasEmpty ? firstAcceptedExtraction : null
+          if (autoMetadata?.coverFile) {
+            const { coverSource } = useConversionStore.getState()
+            const wouldUse = coverSource === null || coverSource === 'auto'
+            if (wouldUse && !(await isDecodableImage(autoMetadata.coverFile))) {
+              autoMetadata = { ...autoMetadata, coverFile: undefined }
+              addNotice(`The cover inside "${firstAcceptedName}" couldn't be read, so it was left out. You can add one under Cover image.`, true)
+            }
+          }
+
           if (newFiles.length > 0) addFiles(newFiles)
-          if (wasEmpty && firstAcceptedExtraction) applyAutoMetadata(firstAcceptedExtraction)
+          if (autoMetadata) applyAutoMetadata(autoMetadata)
           if (newFiles.length > 0) applySmartBitrate()
 
           if (wasEmpty && newFiles.length > 0) {

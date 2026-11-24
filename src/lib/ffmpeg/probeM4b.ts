@@ -6,6 +6,9 @@ import { oneAtATime } from './serial'
 
 const PROBE_DIR = '/mnt_probe_m4b'
 
+/** probeM4bInfo's error for a file with no audio ffmpeg can read. */
+export const NO_AUDIO_FOUND = 'no audio found in the file'
+
 export interface AudioStreamInfo {
   /** Codec name, lower-cased (e.g. "aac"), or null if not found. */
   codec: string | null
@@ -123,5 +126,12 @@ async function probeM4bInfoNow(file: File): Promise<M4bProbeInfo> {
     await unmount(ffmpeg, PROBE_DIR)
   }
 
-  return parseM4bProbe(lines)
+  const info = parseM4bProbe(lines)
+  // No audio stream: ffmpeg couldn't read the file at all ("moov atom not
+  // found" for one cut off mid-download, "Invalid data found" for one that
+  // isn't an MP4). Said now, not after the user starts: a 541 MB file showed
+  // as a book without chapters, and the compressor failed on it at once, four
+  // times over.
+  if (info.codec == null) throw new Error(NO_AUDIO_FOUND)
+  return info
 }

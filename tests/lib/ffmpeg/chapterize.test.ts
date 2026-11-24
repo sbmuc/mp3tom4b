@@ -4,11 +4,31 @@ import {
   buildSegmentBoundaries,
   buildSegmentTimes,
   chapterLengthsMs,
+  chaptersWithin,
   describeSilenceResult,
   parseSilences,
   proposeChaptersFromSilence,
   proposeEqualChapters,
 } from '@/lib/ffmpeg/chapterize'
+
+describe('chaptersWithin', () => {
+  const ch = (startMs: number, title: string) => ({ startMs, title })
+
+  it('keeps the chapters that start inside the file, in order', () => {
+    expect(chaptersWithin([ch(20_000, 'B'), ch(0, 'A')], 30_000)).toEqual([ch(0, 'A'), ch(20_000, 'B')])
+  })
+
+  it('drops a chapter that starts at or past the end: it has no audio', () => {
+    expect(chaptersWithin([ch(0, 'A'), ch(10_000, 'B'), ch(30_000, 'C'), ch(45_000, 'D')], 30_000)).toEqual([
+      ch(0, 'A'),
+      ch(10_000, 'B'),
+    ])
+  })
+
+  it('always keeps the first chapter', () => {
+    expect(chaptersWithin([ch(0, 'A')], 0)).toEqual([ch(0, 'A')])
+  })
+})
 
 describe('chapterLengthsMs', () => {
   it('runs each chapter to the next start, and the last to the end of the file', () => {

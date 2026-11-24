@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_TOTAL_BYTES, extensionOf, isAudioFile, isDrmFile, validateFiles } from '@/lib/audio/validate'
+import { MAX_TOTAL_BYTES, audioFormatOf, extensionOf, isAudioFile, isDrmFile, validateFiles } from '@/lib/audio/validate'
 
 function makeFile(name: string, type: string): File {
   return new File([new Uint8Array(0)], name, { type })
@@ -81,5 +81,19 @@ describe('the formats the engine decodes', () => {
   it('reads the extension in lower case, empty without one', () => {
     expect(extensionOf('Chapter 1.MP3')).toBe('.mp3')
     expect(extensionOf('README')).toBe('')
+  })
+})
+
+describe('audioFormatOf', () => {
+  it('gives the extension of a file the tools take, in lower case', () => {
+    expect(audioFormatOf('Chapter 1.MP3')).toBe('mp3')
+    expect(audioFormatOf('book.m4b')).toBe('m4b')
+    expect(audioFormatOf('lecture.webm')).toBe('webm')
+  })
+
+  it('gives "other" for anything else, so nothing more of the name gets through', () => {
+    expect(audioFormatOf('My Secret Book.part1.rar')).toBe('other')
+    expect(audioFormatOf('README')).toBe('other')
+    expect(audioFormatOf('name.with.dots')).toBe('other')
   })
 })

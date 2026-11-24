@@ -154,6 +154,32 @@ export function copySegmentExtension(ext: string): string {
 }
 
 /**
+ * The pieces' extension when the one from the file's name doesn't fit what is
+ * inside: Matroska takes any audio codec as it is. Seen in the field: an AAC
+ * file named .mp3 failed to split, because the .mp3 muxer takes only MP3.
+ */
+export const ANY_AUDIO_SEGMENT_EXT = 'mka'
+
+/**
+ * The pieces the segment muxer really made, from its CSV list ("name,start,end"
+ * per line): where each starts and ends in the source, in ms. Fewer rows than
+ * split times asked for when the file ends sooner than its tags said: a time
+ * past the end gets no piece. Null when the list is empty or a row can't be
+ * read. Pure.
+ */
+export function parseSegmentList(csv: string): Array<{ startMs: number; endMs: number }> | null {
+  const rows = csv.split('\n').map((l) => l.trim()).filter(Boolean)
+  if (rows.length === 0) return null
+  const list = rows.map((row) => {
+    const cells = row.split(',')
+    return { startMs: Number(cells.at(-2)) * 1000, endMs: Number(cells.at(-1)) * 1000 }
+  })
+  return list.every((r) => Number.isFinite(r.startMs) && Number.isFinite(r.endMs) && r.startMs >= 0 && r.endMs >= r.startMs)
+    ? list
+    : null
+}
+
+/**
  * Actual segment start times (ms) from the segment muxer's CSV list
  * (`-segment_list x.csv -segment_list_type csv`: "name,start,end" per line).
  * A stream-copy split can only cut on a packet, so each piece starts up to one

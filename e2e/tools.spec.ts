@@ -145,12 +145,25 @@ test('compressor: a chaptered M4B gets smaller and keeps its chapters', async ({
 
 test('compressor: after a failed run, the next one in the same tab works', async ({ page, consoleErrors }) => {
   await page.goto('/compress-m4b')
-  await page.getByLabel('Choose an M4B to compress').setInputFiles(fixture('cut-off.m4b'))
+  await page.getByLabel('Choose an M4B to compress').setInputFiles(fixture('scrambled.m4b'))
   await page.getByRole('button', { name: 'Compress M4B' }).click()
   await expect(page.getByText('Compression failed.')).toBeVisible()
   // The tool logs the failure on purpose; it has to be the only error, and the right kind.
-  expect(consoleErrors.splice(0)).toEqual([expect.stringContaining("FFmpegExitError: ffmpeg couldn't read the input")])
+  expect(consoleErrors.splice(0)).toEqual([expect.stringContaining("FFmpegExitError: ffmpeg couldn't decode most of the input")])
   await expect(page.getByRole('link', { name: 'open an issue on GitHub' })).toBeVisible()
+
+  await page.getByLabel('Choose an M4B to compress').setInputFiles(fixture('book.m4b'))
+  await page.getByRole('button', { name: 'Compress M4B' }).click()
+  await expect(page.getByText('Your compressed audiobook is ready')).toBeVisible()
+})
+
+// Seen in the field: a 541 MB file it couldn't read showed as a book without
+// chapters, and Compress failed on it at once, four times over.
+test('compressor: a file it cannot read is refused when it is dropped', async ({ page }) => {
+  await page.goto('/compress-m4b')
+  await page.getByLabel('Choose an M4B to compress').setInputFiles(fixture('cut-off.m4b'))
+  await expect(page.getByText(/Could not read that file\. It may be incomplete/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Compress M4B' })).toHaveCount(0)
 
   await page.getByLabel('Choose an M4B to compress').setInputFiles(fixture('book.m4b'))
   await page.getByRole('button', { name: 'Compress M4B' }).click()
@@ -236,6 +249,27 @@ test('add chapters: a cue sheet dropped with the file gives the chapters and tit
   await page.getByText('Preview: listen and check the chapters').click()
   await expect(page.getByText('3 chapters')).toBeVisible()
   await expect(page.getByText('The Middle').last()).toBeVisible()
+})
+
+// Seen in the field: an AAC file named .mp3 failed at once, five tries in a row.
+test('add chapters: an AAC file named .mp3 gets its chapters too', async ({ page }) => {
+  await page.goto('/add-chapters-to-mp3')
+  await page
+    .getByLabel('Choose an audio file to add chapters to')
+    .setInputFiles([fixture('pauses-aac.mp3'), fixture('pauses.cue')])
+  await expect(page.getByText('3 chapters from "pauses.cue".')).toBeVisible()
+  await page.getByRole('button', { name: 'Create chaptered M4B' }).click()
+  await expect(page.getByText('Your chaptered audiobook is ready')).toBeVisible()
+  await page.getByText('Preview: listen and check the chapters').click()
+  await expect(page.getByText('3 chapters')).toBeVisible()
+})
+
+test('add chapters: a cover in the file that cannot be read is left out, not failed on', async ({ page }) => {
+  await page.goto('/add-chapters-to-mp3')
+  await page.getByLabel('Choose an audio file to add chapters to').setInputFiles(fixture('bad-cover.mp3'))
+  await expect(page.getByText("This file's cover can't be read, so it's left out.")).toBeVisible()
+  await page.getByRole('button', { name: 'Create chaptered M4B' }).click()
+  await expect(page.getByText('Your chaptered audiobook is ready')).toBeVisible()
 })
 
 test('converter: a file with its cue sheet is offered to Add chapters with those chapters', async ({ page }) => {
@@ -411,6 +445,35 @@ test.describe('on a phone, the file list', () => {
     const row = page.locator('li', { has: page.getByLabel('Chapter title') }).first()
     await expect(row.locator('p').getByText('0:08')).toBeVisible()
   })
+})
+
+// A chapter that fails while the others are still encoding: the error has to
+// stay up. The stopped workers' last progress used to put the bar back over it.
+test('converter: when one chapter fails mid-encode, the error stays', async ({ page, consoleErrors }) => {
+  await page.goto('/')
+  await page
+    .getByLabel('Choose audio files and a cover image')
+    .setInputFiles([fixture('chapter-1.mp3'), fixture('chapter-2.mp3'), fixture('scrambled.m4a')])
+  await expect(page.getByText(/^3 files ·/)).toBeVisible()
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  await expect(page.getByText('Conversion failed.')).toBeVisible()
+  await page.waitForTimeout(3000)
+  await expect(page.getByText('Conversion failed.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Convert to M4B' })).toBeEnabled()
+  expect(consoleErrors.splice(0)).toEqual([expect.stringContaining("couldn't decode most of the input")])
+})
+
+// Seen in the field: the cover from the tags failed the conversion at the
+// very end, after the whole encode ("The source image could not be decoded").
+test('converter: a cover in the tags that cannot be read is left out, and the book is made', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose audio files and a cover image').setInputFiles(fixture('bad-cover.mp3'))
+  await expect(page.getByText(/The cover inside "bad-cover\.mp3" couldn't be read, so it was left out/)).toBeVisible()
+  await expect(page.getByText('from audio file')).toHaveCount(0)
+  await page.locator('#md-title').fill('Broken Cover Book')
+  await page.locator('#md-author').fill('E2E Author')
+  await page.getByRole('button', { name: 'Convert to M4B' }).click()
+  await expect(page.getByText('Your audiobook is ready')).toBeVisible()
 })
 
 test('converter: the cover zone takes a WebP', async ({ page }) => {

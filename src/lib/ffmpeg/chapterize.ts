@@ -1,18 +1,27 @@
 'use client'
 
+import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import type { Bitrate, ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel, getFFmpeg } from './client'
 import { loadEngine } from './engine'
-import { allKnown, buildTimedConcatList, copySegmentExtension, parseSegmentStarts, remapThroughSegments } from './concatPlan'
+import {
+  ANY_AUDIO_SEGMENT_EXT,
+  allKnown,
+  buildTimedConcatList,
+  copySegmentExtension,
+  parseSegmentList,
+  remapThroughSegments,
+} from './concatPlan'
 import { OWN_COVER_ARGS } from './cover'
-import { humanizeFfmpegError } from './errors'
+import { humanizeFfmpegError, noteFailureStep, type FailureStep } from './errors'
 import { buildEditMetadata, type EditChapter } from './editM4b'
 import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
+import { parseM4bProbe } from './probeM4b'
 import { buildMergeMuxArgs } from './mergeM4b'
 import { encodeConcurrency, encodeSegmentsInWorkers } from './segments'
 import { oneAtATime } from './serial'
 import { resizeCoverImage } from '@/lib/image/resize'
-import { runFFmpeg } from './run'
+import { FFmpegExitError, runFFmpeg } from './run'
 
 const OUTPUT_PATH = 'chapterize_out.m4b'
 const META_PATH = 'chapterize_meta.ffmeta'
@@ -339,29 +348,83 @@ export interface ChapterizeOptions {
 }
 
 /**
+ * What the user reads when not even ffmpeg can tell how long the file is: the
+ * last chapter would have no end, and ffmpeg refuses that.
+ */
+export const UNKNOWN_LENGTH =
+  "Couldn't tell how long this file is, so the chapters can't be placed. The file may be damaged."
+
+/**
+ * The chapters that start inside a file of `durationMs`, in order; the first
+ * always stays. A chapter past the end has no audio, and as the last one it
+ * would end before it starts, which ffmpeg refuses. Pure + unit-testable.
+ */
+export function chaptersWithin(chapters: EditChapter[], durationMs: number): EditChapter[] {
+  return [...chapters].sort((a, b) => a.startMs - b.startMs).filter((c, i) => i === 0 || c.startMs < durationMs)
+}
+
+/** The file's length as ffmpeg reads it from the header, in ms, or null. */
+async function headerDurationMs(ffmpeg: FFmpeg, path: string): Promise<number | null> {
+  const lines: string[] = []
+  const onLog = ({ message }: { message: string }) => {
+    lines.push(message)
+  }
+  ffmpeg.on('log', onLog)
+  try {
+    // No output file: ffmpeg exits non-zero after printing the header, which
+    // is all we need. `-v info`: the level persists across runs on one instance.
+    await ffmpeg.exec(['-hide_banner', '-v', 'info', '-i', path])
+  } catch {
+    // expected
+  } finally {
+    ffmpeg.off('log', onLog)
+  }
+  const ms = parseM4bProbe(lines).durationMs
+  return ms != null && ms > 0 ? ms : null
+}
+
+async function deleteQuietly(ffmpeg: FFmpeg, path: string): Promise<void> {
+  try {
+    await ffmpeg.deleteFile(path)
+  } catch {
+    // never written
+  }
+}
+
+/**
  * Turn a single audio file into a chaptered M4B: the file is split into
  * chapter-sized pieces, each re-encoded to AAC in parallel (so long books don't
  * exhaust memory), then concatenated and muxed with the given chapter markers,
  * metadata, and cover. Short files use a single serial re-encode. All in-browser.
  */
 export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
-  const { file, chapters, metadata, cover, bitrate, durationMs, onProgress } = opts
+  const { file, metadata, cover, bitrate, onProgress } = opts
   const emit = (p: ConversionProgress) => onProgress?.(p)
 
   emit({ status: 'loading-ffmpeg', percent: 2, label: ffmpegLoadingLabel() })
   const ffmpeg = await loadEngine(emit, 'chapterize')
 
   const inputExt = fileExtension(file.name)
-  const segExt = copySegmentExtension(inputExt)
   const inputName = `in.${inputExt}`
   const inputPath = `${INPUT_DIR}/${inputName}`
   const tempPaths: string[] = []
+  // Where it was if it fails, for the failure count (see noteFailureStep).
+  let step: FailureStep = 'reading'
 
   try {
     emit({ status: 'encoding', percent: 4, label: 'Reading file…' })
     await mountBlobs(ffmpeg, INPUT_DIR, [{ name: inputName, data: file }])
 
+    // The page reads the length from the tags or the browser's player; when
+    // neither could, ffmpeg still can. Without one the last chapter ended at
+    // 0, which ffmpeg refused as "Cannot allocate memory": a memory error to
+    // the user, for a file that was fine.
+    let durationMs = opts.durationMs > 0 ? opts.durationMs : ((await headerDurationMs(ffmpeg, inputPath)) ?? 0)
+    if (durationMs <= 0) throw new Error(UNKNOWN_LENGTH)
+    let chapters = chaptersWithin(opts.chapters, durationMs)
+
     // Cover (resized JPEG) — both "keep" and "replace" supply a File.
+    step = 'cover'
     let coverPath: string | null = null
     if (cover.mode !== 'remove' && cover.file) {
       const resized = await resizeCoverImage(cover.file)
@@ -374,29 +437,52 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
     await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildEditMetadata(metadata, chapters, durationMs)))
     tempPaths.push(META_PATH)
 
-    const boundaries = buildSegmentBoundaries(chapters.map((c) => c.startMs), durationMs)
-    const segCount = boundaries.length
-    const useParallel = segCount >= 2 && encodeConcurrency(segCount) >= 1 && durationMs > 0
+    let boundaries = buildSegmentBoundaries(chapters.map((c) => c.startMs), durationMs)
+    const useParallel = boundaries.length >= 2 && encodeConcurrency(boundaries.length) >= 1
 
     if (useParallel) {
       // 1. Split the input into pieces by stream copy (fast, low memory).
+      step = 'splitting'
       emit({ status: 'encoding', percent: 6, label: 'Splitting into chapters…' })
-      await runFFmpeg(ffmpeg, [
+      const splitArgs = (ext: string) => [
         '-hide_banner', '-i', inputPath, '-map', '0:a', '-c:a', 'copy',
         '-f', 'segment', '-segment_times', buildSegmentTimes(boundaries),
         '-segment_list', SEG_LIST_PATH, '-segment_list_type', 'csv',
-        '-reset_timestamps', '1', `ch_seg_%03d.${segExt}`,
-      ])
+        '-reset_timestamps', '1', `ch_seg_%03d.${ext}`,
+      ]
       tempPaths.push(SEG_LIST_PATH)
-      for (let i = 0; i < segCount; i++) tempPaths.push(segSrc(i, segExt))
-      // Where each piece really starts (the copy split cuts on a packet, up to
-      // one frame from the time asked for).
-      let segStarts: number[] | null = null
+      let segExt = copySegmentExtension(inputExt)
       try {
-        segStarts = parseSegmentStarts(new TextDecoder().decode(ownedBytes(await ffmpeg.readFile(SEG_LIST_PATH))), segCount)
-      } catch {
-        segStarts = null
+        await runFFmpeg(ffmpeg, splitArgs(segExt))
+      } catch (err) {
+        // The muxer the name picks refused what is inside (an AAC, FLAC or WAV
+        // file named .mp3 failed at once with "ffmpeg exited with code 1"):
+        // split into Matroska instead, which takes any audio as it is.
+        if (!(err instanceof FFmpegExitError && err.kind === 'unknown') || segExt === ANY_AUDIO_SEGMENT_EXT) throw err
+        for (let i = 0; i < boundaries.length; i++) await deleteQuietly(ffmpeg, segSrc(i, segExt))
+        segExt = ANY_AUDIO_SEGMENT_EXT
+        await runFFmpeg(ffmpeg, splitArgs(segExt))
       }
+
+      // The pieces it really made, and where each really starts (a copy split
+      // cuts on a packet, up to one frame from the time asked for). A file that
+      // ends sooner than the page thought (a length from the tags can be an
+      // estimate) has no pieces for the times past its end, and the chapters
+      // there have no audio: they are dropped instead of failing the run.
+      let list: Array<{ startMs: number; endMs: number }> | null = null
+      try {
+        list = parseSegmentList(new TextDecoder().decode(ownedBytes(await ffmpeg.readFile(SEG_LIST_PATH))))
+      } catch {
+        list = null
+      }
+      if (list && list.length < boundaries.length) {
+        boundaries = boundaries.slice(0, list.length)
+        durationMs = list[list.length - 1].endMs
+        chapters = chaptersWithin(chapters, durationMs)
+      }
+      const segCount = boundaries.length
+      for (let i = 0; i < segCount; i++) tempPaths.push(segSrc(i, segExt))
+      const segStarts = list && list.length === segCount ? list.map((r) => r.startMs) : null
 
       // 2. Hand the pieces to the browser as Blobs, so none stays in this
       // page's memory while the workers encode them.
@@ -405,6 +491,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
       await unmount(ffmpeg, INPUT_DIR)
 
       // 3. Re-encode each piece to AAC across workers.
+      step = 'encoding'
       const { parts, decodedSec } = await encodeSegmentsInWorkers(segments, {
         ext: segExt,
         args: (input, output) => buildSegmentEncodeArgs({ input, output, bitrate }),
@@ -415,6 +502,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
             label: `Encoding chapters… (${done} of ${segCount} done)`,
           }),
       })
+      step = 'joining'
       await mountBlobs(ffmpeg, PARTS_DIR, parts.map((data, i) => ({ name: encName(i), data })))
 
       // 4. Concat the pieces with their real decoded lengths + attach our
@@ -426,30 +514,31 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
       await ffmpeg.writeFile(LIST_PATH, new TextEncoder().encode(listBody))
       tempPaths.push(LIST_PATH)
       const known = allKnown(decodedSec)
-      if (known) {
-        const moved = chapters.map((c) => ({ ...c, startMs: remapThroughSegments(c.startMs, segStarts ?? boundaries, known) }))
-        const totalMs = known.reduce((a, s) => a + s * 1000, 0)
-        await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildEditMetadata(metadata, moved, totalMs)))
-      }
+      const moved = known
+        ? chapters.map((c) => ({ ...c, startMs: remapThroughSegments(c.startMs, segStarts ?? boundaries, known) }))
+        : chapters
+      const totalMs = known ? known.reduce((a, s) => a + s * 1000, 0) : durationMs
+      await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildEditMetadata(metadata, moved, totalMs)))
 
       emit({ status: 'muxing', percent: 88, label: 'Finalizing audiobook…' })
       tempPaths.push(OUTPUT_PATH)
       await runFFmpeg(ffmpeg, buildMergeMuxArgs({ listPath: LIST_PATH, coverPath, metaPath: META_PATH, output: OUTPUT_PATH, ownCover: true }))
       await unmount(ffmpeg, PARTS_DIR)
 
+      step = 'reading_output'
       const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
       emit({ status: 'done', percent: 100, label: 'Done.' })
       return blob
     }
 
     // ---- Serial fallback (short file / single segment): one re-encode exec ----
+    step = 'encoding'
     emit({ status: 'encoding', percent: 10, label: 'Encoding audiobook…' })
     const pct = (ratio: number) => Math.min(99, 10 + Math.round(Math.max(0, Math.min(1, ratio)) * 89))
     const onProg = ({ progress }: { progress: number }) => {
       emit({ status: 'encoding', percent: pct(progress), label: 'Encoding audiobook…' })
     }
     const onLog = ({ message }: { message: string }) => {
-      if (durationMs <= 0) return
       const elapsed = elapsedMsFromLog(message)
       if (elapsed != null) emit({ status: 'encoding', percent: pct(elapsed / durationMs), label: 'Encoding audiobook…' })
     }
@@ -464,10 +553,12 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
     }
     await unmount(ffmpeg, INPUT_DIR)
 
+    step = 'reading_output'
     const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
+    noteFailureStep(err, step)
     console.error('mp3tom4b chapterize failed:', err)
     emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
     throw err

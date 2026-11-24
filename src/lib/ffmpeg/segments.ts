@@ -35,16 +35,28 @@ export async function encodeSegmentsInWorkers(
   const decodedSec = new Array<number | null>(count).fill(null)
   const perSeg = new Array<number>(count).fill(0)
   let completed = 0
+  // Once a segment fails the run is over: the other workers take no new
+  // segment and report nothing more. Their last report used to come after the
+  // failure (the page stops them, and a stopped run still "finished"), and put
+  // the bar back over the error: the page sat on "2 of 2 done, 90%" for good.
+  let failed = false
   const totalSize = segments.reduce((sum, seg) => sum + seg.size, 0) || 1
-  const report = () =>
-    o.onProgress(perSeg.reduce((sum, p, i) => sum + p * segments[i].size, 0) / totalSize, completed)
+  const report = () => {
+    if (!failed) o.onProgress(perSeg.reduce((sum, p, i) => sum + p * segments[i].size, 0) / totalSize, completed)
+  }
 
   const queue = Array.from({ length: count }, (_, i) => i)
 
   async function runWorker() {
-    const worker = await createWorkerFFmpeg()
+    let worker: Awaited<ReturnType<typeof createWorkerFFmpeg>>
     try {
-      while (true) {
+      worker = await createWorkerFFmpeg()
+    } catch (err) {
+      failed = true
+      throw err
+    }
+    try {
+      while (!failed) {
         const idx = queue.shift()
         if (idx === undefined) break
 
@@ -65,6 +77,9 @@ export async function encodeSegmentsInWorkers(
           const bytes = await takeBytes(worker, output)
           decodedSec[idx] = decodedAudioSeconds(bytes)
           parts[idx] = new Blob([bytes], { type: 'audio/mp4' })
+        } catch (err) {
+          failed = true
+          throw err
         } finally {
           worker.off('progress', onProg)
           perSeg[idx] = 1
