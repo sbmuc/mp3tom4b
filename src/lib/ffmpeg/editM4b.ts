@@ -109,9 +109,10 @@ export interface EditOptions {
 /**
  * The input's tags that the details form doesn't set, from an ffmetadata dump
  * of it (a header read, quick). None when the dump fails: then only the
- * form's tags are written, as before.
+ * form's tags are written, as before. Used by the editor and by Add chapters
+ * for an M4B.
  */
-async function readOtherTags(ffmpeg: Awaited<ReturnType<typeof loadEngine>>, inputPath: string): Promise<string[]> {
+export async function readOtherTags(ffmpeg: Awaited<ReturnType<typeof loadEngine>>, inputPath: string): Promise<string[]> {
   try {
     await ffmpeg.exec(['-hide_banner', '-i', inputPath, '-f', 'ffmetadata', DUMP_PATH])
     const dump = new TextDecoder().decode(ownedBytes(await ffmpeg.readFile(DUMP_PATH)))

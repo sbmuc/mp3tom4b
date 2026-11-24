@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { numberedTitles, replaceInTitles, stripSharedText } from '@/lib/audio/chapterTitles'
+import { numberedTitles, replaceInTitles, stripSharedText, titlesLeftEmpty } from '@/lib/audio/chapterTitles'
 
 describe('replaceInTitles', () => {
   it('replaces plain text in every title, ignoring case', () => {
@@ -85,3 +85,18 @@ describe('numberedTitles', () => {
     expect(numberedTitles(2, 'Part')).toEqual(['Part 1', 'Part 2'])
   })
 })
+
+describe('titlesLeftEmpty', () => {
+  it('counts the titles the replacement would leave empty, which therefore stay', () => {
+    const titles = ['Book - End', 'Book - Start', 'Other']
+    expect(titlesLeftEmpty(titles, 'Book - End', '', false)).toBe(1)
+    expect(titlesLeftEmpty(titles, 'book - ', '', false)).toBe(0)
+    expect(titlesLeftEmpty(['- Book -', 'Book'], 'book', '', false)).toBe(2) // only separators would be left
+  })
+
+  it('is 0 without text to find, or when the text gets something in its place', () => {
+    expect(titlesLeftEmpty(['A'], '', '', false)).toBe(0)
+    expect(titlesLeftEmpty(['A'], 'A', 'B', false)).toBe(0)
+  })
+})
+

@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.23.1] — 2026-11-24
+
+### Fixed
+- **Add chapters keeps an M4B's other tags.** Redoing the chapters of an M4B dropped the tags the form has no field for, such as a track number, comment or copyright, as the editor did until 1.23.0. They're now kept. An MP3's own tags still stay behind, since a CD set's track number doesn't describe the book.
+- **Find & replace says when a title would be left empty.** Removing the whole of a title keeps the title as it is, but the button said "No title has this". It now says "That would leave the title empty", and the examples say how many titles stay as they are.
+- **The chapter list tools take the focus when opened**, so the keyboard goes straight on to the list box or the Find field instead of through the other buttons first.
+- Add chapters' error heading now reads "Adding chapters failed.", like the other tools'.
+
+---
+
 ## [1.23.0] — 2026-11-24
 
 ### Added

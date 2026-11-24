@@ -14,7 +14,7 @@ import {
 } from './concatPlan'
 import { OWN_COVER_ARGS } from './cover'
 import { humanizeFfmpegError, noteFailureStep, type FailureStep } from './errors'
-import { buildEditMetadata, type EditChapter } from './editM4b'
+import { buildEditMetadata, readOtherTags, type EditChapter } from './editM4b'
 import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
 import { parseM4bProbe } from './probeM4b'
 import { buildMergeMuxArgs } from './mergeM4b'
@@ -37,6 +37,9 @@ const SILENCE_DIR = '/mnt_silence'
 // file is never re-encoded in one pass) regardless of how few chapters the user
 // set — this is what stops long books from OOMing.
 const MAX_SEG_MS = 20 * 60 * 1000
+
+/** Inputs that are books already, whose own tags carry over (see chapterizeFile). */
+const MP4_FAMILY = new Set(['m4b', 'm4a', 'mp4'])
 
 const segSrc = (i: number, ext: string) => `ch_seg_${String(i).padStart(3, '0')}.${ext}`
 const encName = (i: number) => `ch_enc_${String(i).padStart(3, '0')}.m4a`
@@ -422,6 +425,11 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
     let durationMs = opts.durationMs > 0 ? opts.durationMs : ((await headerDurationMs(ffmpeg, inputPath)) ?? 0)
     if (durationMs <= 0) throw new Error(UNKNOWN_LENGTH)
     let chapters = chaptersWithin(opts.chapters, durationMs)
+    // An M4B (or M4A, MP4) gets its chapters redone but stays the same book:
+    // the tags the form has no field for (track, comment, copyright, …) are
+    // kept, as the editor keeps them. Other files' tags (an MP3's track number
+    // of a CD set, say) don't describe the book, so they stay behind.
+    const otherTags = MP4_FAMILY.has(inputExt) ? await readOtherTags(ffmpeg, inputPath) : []
 
     // Cover (resized JPEG) — both "keep" and "replace" supply a File.
     step = 'cover'
@@ -434,7 +442,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
     }
 
     // Our chapter markers (independent of where the audio is physically split).
-    await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildEditMetadata(metadata, chapters, durationMs)))
+    await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildEditMetadata(metadata, chapters, durationMs, otherTags)))
     tempPaths.push(META_PATH)
 
     let boundaries = buildSegmentBoundaries(chapters.map((c) => c.startMs), durationMs)
@@ -518,7 +526,7 @@ export async function chapterizeFile(opts: ChapterizeOptions): Promise<Blob> {
         ? chapters.map((c) => ({ ...c, startMs: remapThroughSegments(c.startMs, segStarts ?? boundaries, known) }))
         : chapters
       const totalMs = known ? known.reduce((a, s) => a + s * 1000, 0) : durationMs
-      await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildEditMetadata(metadata, moved, totalMs)))
+      await ffmpeg.writeFile(META_PATH, new TextEncoder().encode(buildEditMetadata(metadata, moved, totalMs, otherTags)))
 
       emit({ status: 'muxing', percent: 88, label: 'Finalizing audiobook…' })
       tempPaths.push(OUTPUT_PATH)

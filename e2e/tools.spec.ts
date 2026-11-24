@@ -632,3 +632,31 @@ test('editor: a release date, a disc number and the tags it has no field for are
   await expect(page.locator('#edit-disc')).toHaveValue('2/3')
 })
 
+test('editor: an opened tool panel takes the focus, and a replace that would empty a title says so', async ({ page }) => {
+  await page.goto('/edit-m4b-chapters')
+  await page.getByLabel('Choose an M4B to edit').setInputFiles(fixture('book.m4b'))
+  const chapters = page.getByRole('region', { name: 'Chapters', exact: true })
+  await expect(chapters.getByLabel('Chapter title')).toHaveCount(2)
+  await chapters.getByRole('button', { name: 'Paste a chapter list' }).click()
+  await expect(chapters.getByLabel('Paste a chapter list')).toBeFocused()
+  await chapters.getByRole('button', { name: 'Find & replace in titles' }).click()
+  const find = chapters.getByLabel('Find', { exact: true })
+  await expect(find).toBeFocused()
+  // Removing the whole of a title would leave it empty, so it stays; the button says why.
+  await find.fill('One')
+  await expect(chapters.getByRole('button', { name: 'That would leave the title empty' })).toBeDisabled()
+})
+
+test('add chapters: an M4B keeps the tags the form has no field for', async ({ page }) => {
+  await page.goto('/add-chapters-to-mp3')
+  await page.getByLabel('Choose an audio file to add chapters to').setInputFiles(fixture('tagged.m4b'))
+  await expect(page.locator('#ch-year')).toHaveValue('2024-04-03')
+  await page.getByRole('button', { name: 'Create chaptered M4B' }).click()
+  await expect(page.getByText('Your chaptered audiobook is ready')).toBeVisible()
+  const download = page.waitForEvent('download')
+  await page.getByRole('link', { name: 'Download M4B' }).click()
+  const made = readFileSync(await (await download).path())
+  expect(made.includes(Buffer.from('Kept from Mp3tag'))).toBe(true)
+  expect(made.includes(Buffer.from('2024 E2E Publisher'))).toBe(true)
+})
+
