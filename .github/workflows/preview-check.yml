@@ -1,0 +1,45 @@
+name: Preview check
+
+# The browser smoke tests (e2e/) against a pull request's Vercel preview: the
+# real Vercel build, with its headers, CSP and rewrites, before it is merged.
+# CI tests a local `next start`; the Production check tests www after the
+# merge. This one fills the gap in between.
+#
+# Previews sit behind Vercel's login. The run gets past it with a Protection
+# Bypass for Automation secret (Vercel → project Settings → Deployment
+# Protection), kept in GitHub as VERCEL_AUTOMATION_BYPASS_SECRET. The tests
+# send it only to the preview's own host (e2e/tools.spec.ts). The report isn't
+# uploaded: its traces hold the request headers, so the secret.
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check that the bypass secret is set
+        env:
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -z "$BYPASS" ]; then
+            echo "::error::VERCEL_AUTOMATION_BYPASS_SECRET is not set. Create one in Vercel (project Settings → Deployment Protection → Protection Bypass for Automation) and add it in GitHub (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.deployment.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          BASE_URL: ${{ github.event.deployment_status.environment_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

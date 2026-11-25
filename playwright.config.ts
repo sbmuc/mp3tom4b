@@ -4,7 +4,9 @@ import { defineConfig, devices } from '@playwright/test'
  * Browser smoke tests (e2e/): every tool, in a real Chrome, on small generated
  * files. `npm run test:e2e` builds nothing itself: against a local server it
  * starts `next start` on a build you've made (`npm run build`); with BASE_URL
- * set (the daily and post-deploy check) it tests that site instead.
+ * set (the daily and post-deploy check) it tests that site instead. With
+ * VERCEL_AUTOMATION_BYPASS_SECRET as well, BASE_URL can be a Vercel preview
+ * behind Vercel's login (the Preview check).
  */
 const baseURL = process.env.BASE_URL ?? 'http://localhost:3100'
 
