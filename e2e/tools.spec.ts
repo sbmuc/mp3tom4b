@@ -13,6 +13,26 @@ const test = base.extend<{ consoleErrors: string[] }>({
     async ({ page }, use) => {
       // Keep test runs out of the site's statistics (Umami and Vercel Analytics).
       await page.route(/\/(stats|_vercel)\//, (route) => route.fulfill({ status: 204, body: '' }))
+      // On a Vercel preview (the Preview check): get past Vercel's login and
+      // keep the Vercel toolbar out (our CSP would block its script). Only the
+      // preview's own host gets these headers, never the other sites a page
+      // talks to. The cookie covers requests that aren't routed.
+      const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      if (bypass && process.env.BASE_URL) {
+        const host = new URL(process.env.BASE_URL).host
+        await page.context().route(
+          (url) => url.host === host,
+          (route) =>
+            route.continue({
+              headers: {
+                ...route.request().headers(),
+                'x-vercel-protection-bypass': bypass,
+                'x-vercel-set-bypass-cookie': 'true',
+                'x-vercel-skip-toolbar': '1',
+              },
+            }),
+        )
+      }
       const errors: string[] = []
       page.on('pageerror', (e) => errors.push(e.message))
       page.on('console', (m) => {
