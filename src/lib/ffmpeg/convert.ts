@@ -516,8 +516,7 @@ export async function convertToM4B(opts: ConvertOptions): Promise<ConvertResult>
       } catch (err) {
         // Its own step in the failure count: an undecodable cover read as an
         // unexplained InvalidStateError near the end of a conversion.
-        noteFailureStep(err, 'cover')
-        throw err
+        throw noteFailureStep(err, 'cover')
       }
       tempPaths.push(COVER_PATH)
       hasCover = true

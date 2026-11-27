@@ -298,8 +298,15 @@ export default function M4bEditor() {
     cancelledRef.current = false
     setResultBlob(null)
     const startedAt = Date.now()
+    const chapters = rows.map((r) => ({ startMs: parseTimecode(r.timeStr) ?? 0, title: r.title }))
+    // The same figures for a save and a failed one, so failures can be told apart.
+    const shape = {
+      chapterCount: chapters.length,
+      coverMode,
+      audioDurationSec: Math.round(durationMs / 1000),
+      inputMb: Math.round((file.size / (1024 * 1024)) * 10) / 10,
+    }
     try {
-      const chapters = rows.map((r) => ({ startMs: parseTimecode(r.timeStr) ?? 0, title: r.title }))
       const blob = await editM4B({
         file,
         chapters,
@@ -312,8 +319,7 @@ export default function M4bEditor() {
       })
       setResultBlob(blob)
       trackEvent('m4b_edited', {
-        chapterCount: chapters.length,
-        coverMode,
+        ...shape,
         hasDescription: metadata.description.trim() !== '',
         hasSeries: metadata.series.trim() !== '',
         elapsedSec: Math.round((Date.now() - startedAt) / 1000),
@@ -321,7 +327,7 @@ export default function M4bEditor() {
     } catch (err) {
       // Error surfaced via the onProgress 'error' event.
       if (!cancelledRef.current) {
-        trackFailure('edit', err, { elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
+        trackFailure('edit', err, { ...shape, elapsedSec: Math.round((Date.now() - startedAt) / 1000) })
         resetFFmpegAfterFailure()
       }
     }

@@ -67,6 +67,23 @@ describe('mergeM4B', () => {
 })
 
 describe('editM4B', () => {
+  // As for the merger: the failure count gets the step the save stopped at.
+  it('notes the step a failed save stopped at', async () => {
+    const junk = new File([new Uint8Array(8192).fill(7)], 'junk.m4b')
+    const err = await editM4B({
+      file: junk,
+      chapters: [{ startMs: 0, title: 'One' }],
+      metadata: { ...META, title: 'Junk' },
+      cover: { mode: 'keep' },
+      durationMs: 3000,
+    }).then(
+      () => null,
+      (e: unknown) => e,
+    )
+    expect(err).not.toBeNull()
+    expect(failureDetails(err)).toMatchObject({ step: 'copying' })
+  })
+
   it('renames chapters and retags the book without touching the audio', async () => {
     const specs = [mp3(440), mp3(660), mp3(880)]
     const file = await book(specs, 'Before')

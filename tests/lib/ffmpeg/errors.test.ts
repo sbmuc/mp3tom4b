@@ -79,8 +79,24 @@ describe('failureDetails', () => {
   })
 
   it('leaves a bare number without a step', () => {
-    noteFailureStep(28, 'encoding')
+    expect(noteFailureStep(28, 'encoding')).toBe(28)
     expect(failureDetails(28)).toEqual({ exitCode: 28 })
+  })
+
+  it('gives an error the worker sent as text a step, reading and counting the same', () => {
+    // ffmpeg.wasm's worker rejects with e.toString(): text can't carry a step.
+    const text = 'RuntimeError: memory access out of bounds'
+    const failure = noteFailureStep(text, 'copying')
+    expect(failure).toBeInstanceOf(Error)
+    expect((failure as Error).message).toBe(text)
+    expect(failureDetails(failure)).toEqual({ errorClass: 'RuntimeError', step: 'copying' })
+    expect(failureReason(failure)).toBe(failureReason(text))
+    expect(humanizeFfmpegError(failure)).toBe(humanizeFfmpegError(text))
+  })
+
+  it('returns an error object as it is', () => {
+    const err = new Error('ffmpeg exited with code 1')
+    expect(noteFailureStep(err, 'joining')).toBe(err)
   })
 })
 
@@ -110,6 +126,14 @@ describe('a Blob the browser can no longer read', () => {
     const reading = new Error(chrome)
     noteFailureStep(reading, 'reading')
     expect(failureReason(reading)).toBe('source_moved')
+  })
+
+  it('the same when the worker sends the error as text', () => {
+    // How it really arrives: ffmpeg.wasm rejects with the error's text.
+    const joining = noteFailureStep(chrome, 'joining')
+    expect(humanizeFfmpegError(joining)).toBe(TOO_BIG_FOR_BROWSER)
+    expect(failureReason(joining)).toBe('browser_storage')
+    expect(failureReason(noteFailureStep(chrome, 'reading'))).toBe('source_moved')
   })
 
   it('a file that is gone altogether (NotFoundError) is read the same way', () => {
