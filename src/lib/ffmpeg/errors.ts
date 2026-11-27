@@ -47,11 +47,17 @@ export type FailureStep = 'cover' | 'reading' | 'splitting' | 'encoding' | 'copy
 const failureSteps = new WeakMap<object, FailureStep>()
 
 /**
- * Remember the step a tool was in when `err` was thrown. An error that isn't
- * an object (ffmpeg.wasm can throw a bare number) can't carry one.
+ * Remember the step a tool was in when `err` was thrown, and return the error
+ * to throw on. ffmpeg.wasm's worker sends its errors back as plain text
+ * ("NotReadableError: …"), which can't carry a step: that is wrapped in an
+ * Error with the same message, so what the user reads and how it is counted
+ * stay the same. A bare number (ffmpeg.wasm's POSIX codes) is counted by its
+ * value, so it stays as it is, without a step.
  */
-export function noteFailureStep(err: unknown, step: FailureStep): void {
-  if (typeof err === 'object' && err !== null) failureSteps.set(err, step)
+export function noteFailureStep(err: unknown, step: FailureStep): unknown {
+  const carrier = typeof err === 'string' ? new Error(err) : err
+  if (typeof carrier === 'object' && carrier !== null) failureSteps.set(carrier, step)
+  return carrier
 }
 
 function notedStep(err: unknown): FailureStep | undefined {

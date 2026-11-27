@@ -340,10 +340,10 @@ export async function mergeM4B(opts: MergeOptions): Promise<Blob> {
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
-    noteFailureStep(err, step)
-    console.error('mp3tom4b merge failed:', err)
-    emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
-    throw err
+    const failure = noteFailureStep(err, step)
+    console.error('mp3tom4b merge failed:', failure)
+    emit({ status: 'error', percent: 0, label: humanizeFfmpegError(failure) })
+    throw failure
   } finally {
     await unmount(ffmpeg, INPUT_DIR)
     await unmount(ffmpeg, PARTS_DIR)

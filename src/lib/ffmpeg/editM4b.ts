@@ -4,7 +4,7 @@ import type { ConversionMetadata, ConversionProgress } from '@/types'
 import { ffmpegLoadingLabel } from './client'
 import { loadEngine } from './engine'
 import { OWN_COVER_ARGS } from './cover'
-import { humanizeFfmpegError } from './errors'
+import { humanizeFfmpegError, noteFailureStep, type FailureStep } from './errors'
 import { mountBlobs, ownedBytes, takeBlob, unmount } from './files'
 import { buildFFMetadata, buildGlobalMetadata, otherTagLines } from './chapters'
 import type { ChapterMark } from './types'
@@ -142,15 +142,19 @@ export async function editM4B(opts: EditOptions): Promise<Blob> {
   const inputName = `edit_in.${fileExtension(file.name)}`
   const inputPath = `${INPUT_DIR}/${inputName}`
   const tempPaths: string[] = []
+  // Where it was if it fails, for the failure count (see noteFailureStep).
+  let step: FailureStep = 'reading'
 
   try {
     emit({ status: 'muxing', percent: 8, label: 'Reading file…' })
     await mountBlobs(ffmpeg, INPUT_DIR, [{ name: inputName, data: file }])
 
     if (cover.mode === 'replace' && cover.file) {
+      step = 'cover'
       const resized = await resizeCoverImage(cover.file)
       await ffmpeg.writeFile(COVER_PATH, new Uint8Array(await resized.arrayBuffer()))
       tempPaths.push(COVER_PATH)
+      step = 'reading'
     }
 
     // The file's own tags that the form doesn't show stay as they were.
@@ -182,6 +186,7 @@ export async function editM4B(opts: EditOptions): Promise<Blob> {
       })
     }
     tempPaths.push(OUTPUT_PATH)
+    step = 'copying'
     ffmpeg.on('log', onLog)
     try {
       await runFFmpeg(ffmpeg, args)
@@ -190,14 +195,16 @@ export async function editM4B(opts: EditOptions): Promise<Blob> {
     }
     await unmount(ffmpeg, INPUT_DIR)
 
+    step = 'reading_output'
     const blob = await takeBlob(ffmpeg, OUTPUT_PATH)
 
     emit({ status: 'done', percent: 100, label: 'Done.' })
     return blob
   } catch (err) {
-    console.error('mp3tom4b edit failed:', err)
-    emit({ status: 'error', percent: 0, label: humanizeFfmpegError(err) })
-    throw err
+    const failure = noteFailureStep(err, step)
+    console.error('mp3tom4b edit failed:', failure)
+    emit({ status: 'error', percent: 0, label: humanizeFfmpegError(failure) })
+    throw failure
   } finally {
     await unmount(ffmpeg, INPUT_DIR)
     for (const path of tempPaths) {

@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [1.23.2] — 2026-11-27
+
+### Fixed
+- **A merge or compression too big for the browser says so in every case.** Since 1.21.1 the merger and compressor say a book is too big for the browser when it can't hold the parts while putting them together. When the engine reported that as plain text rather than as an error, they still asked whether the file had been moved. They now give the right message either way.
+
+### Changed
+- Failure counts from the editor now carry the step it stopped at (cover, reading, copying or reading the result) and the size, length and number of chapters of the book, as the merger's and compressor's already do, so a failed save can be traced. The converter's "Update M4B" uses the same save, so its failures carry the step too. Never a file or chapter name; the privacy policy already lists these figures.
+- The step a tool stopped at is now also counted when the engine reports the error as plain text, which it does for most errors inside the engine. Until now those failures came without a step.
+
+---
+
 ## [1.23.1] — 2026-11-24
 
 ### Fixed
